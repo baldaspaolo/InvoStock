@@ -1,0 +1,25 @@
+/* Centriraj formu na ekranu */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; /* Visina ekrana */
+  background-color: #f4f4f4; /* Pozadina */
+}
+
+/* Stilovi za Card komponentu */
+.p-card {
+  width: 100%;
+  max-width: 400px; /* Maksimalna širina card-a */
+  padding: 2rem;
+}
+
+/* Dodaj malo razmaka između inputa i buttona */
+.p-field {
+  margin-bottom: 1rem;
+}
+
+/* Stil za button */
+.p-button {
+  width: 100%; /* Button zauzima cijelu širinu */
+}
