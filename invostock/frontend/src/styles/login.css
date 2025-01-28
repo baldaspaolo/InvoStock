@@ -1,25 +1,26 @@
-/* Centriraj formu na ekranu */
+body {
+  background-color: #ffffff;
+}
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh; /* Visina ekrana */
-  background-color: #f4f4f4; /* Pozadina */
+  height: 100vh;
+  background-color: #f4f4f4;
 }
 
-/* Stilovi za Card komponentu */
 .p-card {
+  margin-top: 1%;
   width: 100%;
-  max-width: 400px; /* Maksimalna širina card-a */
+  max-width: 100vw;
   padding: 2rem;
+  border-radius: 5%;
 }
-
-/* Dodaj malo razmaka između inputa i buttona */
 .p-field {
   margin-bottom: 1rem;
 }
 
-/* Stil za button */
 .p-button {
-  width: 100%; /* Button zauzima cijelu širinu */
+  margin-top: 5%;
+  width: 103%;
 }

@@ -1,10 +1,14 @@
 const express = require("express");
 const mysql = require("mysql2");
 const dotenv = require("dotenv");
+const cors = require("cors");
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(cors());
 
 const db = mysql.createConnection({
   host: process.env.DB_HOST,
@@ -25,7 +29,7 @@ app.get("/", (req, res) => {
   res.send("Dobrodošli na server!");
 });
 
-app.get("/get-users", (req, res) => {
+app.get("/getUsers", (req, res) => {
   db.query("SELECT * FROM users", (err, results) => {
     if (err) {
       console.error("Greška pri izvršavanju upita:", err);
@@ -34,6 +38,36 @@ app.get("/get-users", (req, res) => {
     }
     console.log("Rezultati upita:", results);
     res.json(results);
+  });
+});
+
+app.post("/getUser", (req, res) => {
+  const { email, password } = req.body;
+  console.log(req.body);
+
+  if (!email || !password) {
+    return res.status(400).json({
+      error: "Korisničko ime i zaporka obavezni su parametri!",
+    });
+  }
+
+  const query = `SELECT id, name, email, role, organization_id FROM users WHERE email=? AND password=?`;
+
+  db.query(query, [email, password], (err, results) => {
+    if (err) {
+      console.error("Greška pri izvođenju upita!", err);
+      return res.status(500).send("Internal Server Error!");
+    }
+
+    if (results.length > 0) {
+      const user = results[0];
+      res.json({ success: true, user, message: "Uspješan login!" });
+    } else {
+      res.json({
+        success: false,
+        message: "Pogrešno korisničko ime ili zaporka.",
+      });
+    }
   });
 });
 
