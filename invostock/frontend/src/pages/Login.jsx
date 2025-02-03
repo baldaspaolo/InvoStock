@@ -29,9 +29,9 @@ const Login = () => {
   const handleLoginAsync = async () => {
     try {
       const response = await fetch("http://localhost:3000/getUser", {
-        method: "POST", 
+        method: "POST",
         headers: {
-          "Content-Type": "application/json", 
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: email,
@@ -60,13 +60,13 @@ const Login = () => {
         alignItems: "center",
 
         flexDirection: "column",
-        marginTop: "5%", 
+        marginTop: "5%",
       }}
     >
       <img
         src="/photos/logo-no-background.svg"
         alt="Logo"
-        style={{ width: "50%", height: "50%", marginBottom: "20px" }} 
+        style={{ width: "50%", height: "50%", marginBottom: "20px" }}
       />
       <Card title="Login" style={{ width: "25rem" }}>
         {error && <Message severity="error" text={error} />}
@@ -96,6 +96,9 @@ const Login = () => {
               className="p-inputtext-lg"
             />
           </div>
+          <a href="/register">
+            <u>Nemate račun? Registrirajte se!</u>
+          </a>
           <Button label="Login" className="mt-3 p-button-lg" type="submit" />
         </form>
       </Card>

@@ -71,69 +71,48 @@ app.post("/getUser", (req, res) => {
   });
 });
 
-app.post("/registerUser", (req, res) => {
-  const { name, password, email } = req.body;
-
-  if (!email || !password || !name) {
-    return res.status(400).json({ error: "Sva polja su obavezna!" });
-  }
-
-  const query = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
-
-  db.query(query, [name, email, password], (err, result) => {
-    if (err) {
-      console.error("Greška pri obradi!", err);
-      return res.status(500).json({ error: "Greška na serveru!" });
-    }
-
-    res.status(201).json({
-      success: true,
-      message: "Korisnik uspješno dodan!",
-      userId: result.insertId,
-      userName: name,
-    });
-  });
-});
-
 app.post("/registerOrganization", (req, res) => {
-  const { orgName, orgAddress, name, email, password } = req.body;
+  const { name, address } = req.body;
 
-  if (!orgName || !orgAddress || !name || !email || !password) {
+  if (!name || !address) {
     return res.status(400).json({ error: "Sva polja su obavezna!" });
   }
 
   const orgQuery = "INSERT INTO organizations (name, address) VALUES (?, ?)";
 
-  db.query(orgQuery, [orgName, orgAddress], (err, orgResult) => {
+  db.query(orgQuery, [name, address], (err, result) => {
     if (err) {
       console.error("Greška pri dodavanju organizacije:", err);
       return res.status(500).json({ error: "Greška na serveru!" });
     }
 
-    const organizationId = orgResult.insertId; // Dohvaćamo ID nove organizacije
-
-    // Drugi upit: Unos korisnika i povezivanje s organizacijom
-    const userQuery =
-      "INSERT INTO users (name, email, password, organization_id) VALUES (?, ?, ?, ?)";
-
-    db.query(
-      userQuery,
-      [name, email, password, organizationId],
-      (err, userResult) => {
-        if (err) {
-          console.error("Greška pri dodavanju korisnika:", err);
-          return res.status(500).json({ error: "Greška na serveru!" });
-        }
-
-        res.status(201).json({
-          success: true,
-          message: "Organizacija i korisnik uspješno registrirani!",
-          organizationId: organizationId,
-          userId: userResult.insertId,
-        });
-      }
-    );
+    const organizationId = result.insertId;
+    res.status(201).json({ success: true, organizationId });
   });
+});
+
+app.post("/registerUser", (req, res) => {
+  const { name, email, password, organizationId } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "Sva polja su obavezna!" });
+  }
+
+  const userQuery =
+    "INSERT INTO users (name, email, password, organization_id) VALUES (?, ?, ?, ?)";
+
+  db.query(
+    userQuery,
+    [name, email, password, organizationId || null],
+    (err, result) => {
+      if (err) {
+        console.error("Greška pri dodavanju korisnika:", err);
+        return res.status(500).json({ error: "Greška na serveru!" });
+      }
+
+      res.status(201).json({ success: true, userId: result.insertId });
+    }
+  );
 });
 
 app.use((req, res) => {
