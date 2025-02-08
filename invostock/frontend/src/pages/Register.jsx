@@ -41,60 +41,60 @@ const Register = () => {
 
   const handleRegisterAsync = async () => {
     try {
-        if (isOrganization) {
-           
-            const orgResponse = await fetch("http://localhost:3000/registerOrganization", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: orgName,
-                    address: orgAddress
-                })
-            });
+      if (isOrganization) {
+        const orgResponse = await fetch(
+          "http://localhost:3000/registerOrganization",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: orgName,
+              address: orgAddress,
+            }),
+          }
+        );
 
-            const orgData = await orgResponse.json();
-            if (!orgData.success) {
-                alert("Greška pri registraciji organizacije!");
-                return;
-            }
-
-            
-            const userResponse = await fetch("http://localhost:3000/registerUser", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    password,
-                    organizationId: orgData.organizationId
-                })
-            });
-
-            const userData = await userResponse.json();
-            if (userData.success) {
-                alert("Uspješna registracija!");
-            } else {
-                alert("Greška pri registraciji korisnika!");
-            }
-        } else {
-            
-            const userResponse = await fetch("http://localhost:3000/registerUser", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password })
-            });
-
-            const userData = await userResponse.json();
-            if (userData.success) {
-                alert("Uspješna registracija!");
-            } else {
-                alert("Greška pri registraciji korisnika!");
-            }
+        const orgData = await orgResponse.json();
+        if (!orgData.success) {
+          alert("Greška pri registraciji organizacije!");
+          return;
         }
+
+        const userResponse = await fetch("http://localhost:3000/registerUser", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            organizationId: orgData.organizationId,
+          }),
+        });
+
+        const userData = await userResponse.json();
+        if (userData.success) {
+          alert("Uspješna registracija!");
+        } else {
+          alert("Greška pri registraciji korisnika!");
+        }
+      } else {
+        const userResponse = await fetch("http://localhost:3000/registerUser", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        });
+
+        const userData = await userResponse.json();
+        if (userData.success) {
+          alert("Uspješna registracija!");
+        } else {
+          alert("Greška pri registraciji korisnika!");
+        }
+      }
     } catch (error) {
-        console.error("Error:", error);
+      console.error("Error:", error);
     }
-};
+  };
 
   return (
     <div
@@ -103,15 +103,24 @@ const Register = () => {
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "column",
+        justifyContent: "center",
         marginTop: "5%",
       }}
     >
-      <img
-        src="/photos/logo-no-background.svg"
-        alt="Logo"
-        style={{ width: "50%", height: "50%", marginBottom: "20px" }}
-      />
-      <Card title="Registracija" style={{ width: "25rem", padding: "20px" }}>
+      <Card title="" style={{ width: "25rem", padding: "20px" }}>
+        <div className="text-center mb-5">
+          <img
+            src="/photos/logo-no-background.svg"
+            alt="Logo"
+            style={{ width: "60%", height: "60%", marginBottom: "20px" }}
+          />
+          <div
+            className="text-900 text-3xl font-medium mb-3"
+            style={{ marginBottom: "10%" }}
+          >
+            Registrirajte se!
+          </div>
+        </div>
         {error && <Message severity="error" text={error} />}
 
         <form onSubmit={handleRegister}>
@@ -159,6 +168,7 @@ const Register = () => {
                 display: "flex",
                 gap: "20px",
                 alignItems: "center",
+                justifyContent: "center",
                 marginTop: "5px",
               }}
             >

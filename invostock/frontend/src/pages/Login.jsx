@@ -28,7 +28,7 @@ const Login = () => {
 
   const handleLoginAsync = async () => {
     try {
-      const response = await fetch("http://localhost:3000/getUser", {
+      const response = await fetch("http://localhost:3000/api/users/getUser", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -42,7 +42,7 @@ const Login = () => {
       const data = await response.json();
       console.log(data);
 
-      if (data.success == true) {
+      if (data.success === true) {
         alert("Prijavljeni ste!");
       } else {
         alert("Neuspješna prijava");
@@ -58,17 +58,25 @@ const Login = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-
         flexDirection: "column",
         marginTop: "5%",
       }}
     >
-      <img
-        src="/photos/logo-no-background.svg"
-        alt="Logo"
-        style={{ width: "50%", height: "50%", marginBottom: "20px" }}
-      />
-      <Card title="Login" style={{ width: "25rem" }}>
+      <Card title="" style={{ width: "25rem" }}>
+        <div className="text-center mb-5">
+          <img
+            src="/photos/logo-no-background.svg"
+            alt="Logo"
+            style={{ width: "60%", height: "60%", marginBottom: "20px" }}
+          />
+          <div
+            className="text-900 text-3xl font-medium mb-3"
+            style={{ marginBottom: "10%" }}
+          >
+            Dobrodošli natrag!
+          </div>
+        </div>
+
         {error && <Message severity="error" text={error} />}
 
         <form onSubmit={handleLogin}>
