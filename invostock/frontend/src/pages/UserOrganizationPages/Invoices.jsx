@@ -5,7 +5,7 @@ import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
-import { Calendar } from "primereact/calendar"; 
+import { Calendar } from "primereact/calendar";
 import "./style.css";
 
 const statusOptions = [
@@ -18,9 +18,9 @@ const statusOptions = [
 const Invoices = () => {
   const [invoices, setInvoices] = useState([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(null);
-  const [startDate, setStartDate] = useState(null); 
-  const [endDate, setEndDate] = useState(null); 
+  const [statusFilter, setStatusFilter] = useState("sve");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
   const fetchInvoices = async () => {
     try {
@@ -56,27 +56,26 @@ const Invoices = () => {
     return date.toLocaleDateString("hr-HR");
   };
 
-  const filteredInvoices = invoices.filter((invoice) => {
-    const invoiceDate = new Date(invoice.invoice_date);
-    const matchesSearch = invoice.client_name
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    const matchesStatus =
-      statusFilter === "sve" || invoice.status === statusFilter;
-
-    const matchesDateRange =
-      (!startDate || invoiceDate >= new Date(startDate)) &&
-      (!endDate || invoiceDate <= new Date(endDate));
-
-    return matchesSearch && matchesStatus && matchesDateRange;
-  });
+  const filteredInvoices = statusFilter
+    ? invoices.filter((invoice) => {
+        const matchesSearch = invoice.client_name
+          .toLowerCase()
+          .includes(search.toLowerCase());
+        const matchesStatus =
+          statusFilter === "sve" || invoice.status === statusFilter;
+        const invoiceDate = new Date(invoice.invoice_date);
+        const matchesDateRange =
+          (!startDate || invoiceDate >= new Date(startDate)) &&
+          (!endDate || invoiceDate <= new Date(endDate));
+        return matchesSearch && matchesStatus && matchesDateRange;
+      })
+    : [];
 
   const handleStatusChange = (e) => {
-    const selectedStatus = e.value;
-    setStatusFilter(selectedStatus);
+    setStatusFilter(e.value);
   };
 
-  const inputStyle = { height: "2.5rem", width: "100%" }; 
+  const inputStyle = { height: "2.5rem", width: "100%" };
 
   return (
     <div className="parent">
@@ -134,21 +133,21 @@ const Invoices = () => {
               options={statusOptions}
               onChange={handleStatusChange}
               placeholder="Filtriraj po statusu"
-              style={inputStyle} 
+              style={inputStyle}
             />
             <Calendar
               value={startDate}
               onChange={(e) => setStartDate(e.value)}
               placeholder="Početni datum"
               showIcon
-              style={inputStyle} 
+              style={inputStyle}
             />
             <Calendar
               value={endDate}
               onChange={(e) => setEndDate(e.value)}
               placeholder="Završni datum"
               showIcon
-              style={inputStyle} 
+              style={inputStyle}
             />
           </div>
 
