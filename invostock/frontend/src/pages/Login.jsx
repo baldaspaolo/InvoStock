@@ -28,7 +28,7 @@ const Login = () => {
 
   const handleLoginAsync = async () => {
     try {
-      const response = await fetch("http://localhost:3000/getUser", {
+      const response = await fetch("http://localhost:3000/api/users/getUser", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -42,7 +42,7 @@ const Login = () => {
       const data = await response.json();
       console.log(data);
 
-      if (data.success == true) {
+      if (data.success === true) {
         alert("Prijavljeni ste!");
       } else {
         alert("Neuspješna prijava");
@@ -58,17 +58,25 @@ const Login = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-
         flexDirection: "column",
         marginTop: "5%",
       }}
     >
-      <img
-        src="/photos/logo-no-background.svg"
-        alt="Logo"
-        style={{ width: "50%", height: "50%", marginBottom: "20px" }}
-      />
-      <Card title="Login" style={{ width: "25rem" }}>
+      <Card title="" style={{ width: "25rem" }}>
+        <div className="r mb-5">
+          <img
+            src="/photos/logo-no-background.svg"
+            alt="Logo"
+            style={{ width: "60%", height: "60%", marginBottom: "20px" }}
+          />
+          <div
+            className="text-900 text-3xl font-medium mb-3"
+            style={{ marginBottom: "10%" }}
+          >
+            Dobrodošli natrag!
+          </div>
+        </div>
+
         {error && <Message severity="error" text={error} />}
 
         <form onSubmit={handleLogin}>
@@ -81,7 +89,7 @@ const Login = () => {
               type="email"
               placeholder="Unesite email adresu"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
           <div className="field">
@@ -93,13 +101,13 @@ const Login = () => {
               type="password"
               placeholder="Unesite zaporku"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
           <a href="/register">
             <u>Nemate račun? Registrirajte se!</u>
           </a>
-          <Button label="Login" className="mt-3 p-button-lg" type="submit" />
+          <Button label="Login" className="mt-3 p-button-m" type="submit" />
         </form>
       </Card>
     </div>

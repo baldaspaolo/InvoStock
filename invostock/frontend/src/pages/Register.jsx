@@ -41,60 +41,60 @@ const Register = () => {
 
   const handleRegisterAsync = async () => {
     try {
-        if (isOrganization) {
-           
-            const orgResponse = await fetch("http://localhost:3000/registerOrganization", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: orgName,
-                    address: orgAddress
-                })
-            });
+      if (isOrganization) {
+        const orgResponse = await fetch(
+          "http://localhost:3000/registerOrganization",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: orgName,
+              address: orgAddress,
+            }),
+          }
+        );
 
-            const orgData = await orgResponse.json();
-            if (!orgData.success) {
-                alert("Greška pri registraciji organizacije!");
-                return;
-            }
-
-            
-            const userResponse = await fetch("http://localhost:3000/registerUser", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    password,
-                    organizationId: orgData.organizationId
-                })
-            });
-
-            const userData = await userResponse.json();
-            if (userData.success) {
-                alert("Uspješna registracija!");
-            } else {
-                alert("Greška pri registraciji korisnika!");
-            }
-        } else {
-            
-            const userResponse = await fetch("http://localhost:3000/registerUser", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password })
-            });
-
-            const userData = await userResponse.json();
-            if (userData.success) {
-                alert("Uspješna registracija!");
-            } else {
-                alert("Greška pri registraciji korisnika!");
-            }
+        const orgData = await orgResponse.json();
+        if (!orgData.success) {
+          alert("Greška pri registraciji organizacije!");
+          return;
         }
+
+        const userResponse = await fetch("http://localhost:3000/registerUser", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            organizationId: orgData.organizationId,
+          }),
+        });
+
+        const userData = await userResponse.json();
+        if (userData.success) {
+          alert("Uspješna registracija!");
+        } else {
+          alert("Greška pri registraciji korisnika!");
+        }
+      } else {
+        const userResponse = await fetch("http://localhost:3000/registerUser", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password }),
+        });
+
+        const userData = await userResponse.json();
+        if (userData.success) {
+          alert("Uspješna registracija!");
+        } else {
+          alert("Greška pri registraciji korisnika!");
+        }
+      }
     } catch (error) {
-        console.error("Error:", error);
+      console.error("Error:", error);
     }
-};
+  };
 
   return (
     <div
@@ -103,19 +103,28 @@ const Register = () => {
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "column",
+        justifyContent: "center",
         marginTop: "5%",
       }}
     >
-      <img
-        src="/photos/logo-no-background.svg"
-        alt="Logo"
-        style={{ width: "50%", height: "50%", marginBottom: "20px" }}
-      />
-      <Card title="Registracija" style={{ width: "25rem", padding: "20px" }}>
+      <Card title="" style={{ width: "25rem"}}>
+        <div className="r mb-5">
+          <img
+            src="/photos/logo-no-background.svg"
+            alt="Logo"
+            style={{ width: "60%", height: "60%", marginBottom: "20px" }}
+          />
+          <div
+            className="text-900 text-3xl font-medium mb-3"
+            style={{ marginBottom: "10%" }}
+          >
+            Registrirajte se!
+          </div>
+        </div>
         {error && <Message severity="error" text={error} />}
 
         <form onSubmit={handleRegister}>
-          <div className="field" style={{ marginBottom: "15px" }}>
+          <div className="field">
             <label htmlFor="name">Korisničko ime</label>
             <InputText
               id="name"
@@ -124,10 +133,10 @@ const Register = () => {
               type="text"
               placeholder="Unesite korisničko ime"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
-          <div className="field" style={{ marginBottom: "15px" }}>
+          <div className="field">
             <label htmlFor="email">Email</label>
             <InputText
               id="email"
@@ -136,7 +145,7 @@ const Register = () => {
               type="email"
               placeholder="Unesite email adresu"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
           <div className="field" style={{ marginBottom: "15px" }}>
@@ -148,7 +157,7 @@ const Register = () => {
               type="password"
               placeholder="Unesite zaporku"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
 
@@ -159,6 +168,7 @@ const Register = () => {
                 display: "flex",
                 gap: "20px",
                 alignItems: "center",
+                justifyContent: "center",
                 marginTop: "5px",
               }}
             >
@@ -200,7 +210,7 @@ const Register = () => {
                   type="text"
                   placeholder="Unesite ime organizacije"
                   required
-                  className="p-inputtext-lg"
+                  className="p-inputtext-m"
                 />
               </div>
               <div className="field" style={{ marginBottom: "15px" }}>
@@ -212,7 +222,7 @@ const Register = () => {
                   type="email"
                   placeholder="Unesite email organizacije"
                   required
-                  className="p-inputtext-lg"
+                  className="p-inputtext-m"
                 />
               </div>
               <div className="field" style={{ marginBottom: "15px" }}>
@@ -224,7 +234,7 @@ const Register = () => {
                   type="text"
                   placeholder="Unesite adresu organizacije"
                   required
-                  className="p-inputtext-lg"
+                  className="p-inputtext-m"
                 />
               </div>
             </>
@@ -235,7 +245,7 @@ const Register = () => {
 
           <Button
             label="Registracija"
-            className="p-button-lg"
+            className="p-button-m"
             type="submit"
             style={{ marginTop: "10px" }}
           />
