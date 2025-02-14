@@ -63,7 +63,7 @@ const Login = () => {
       }}
     >
       <Card title="" style={{ width: "25rem" }}>
-        <div className="text-center mb-5">
+        <div className="r mb-5">
           <img
             src="/photos/logo-no-background.svg"
             alt="Logo"
@@ -89,7 +89,7 @@ const Login = () => {
               type="email"
               placeholder="Unesite email adresu"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
           <div className="field">
@@ -101,13 +101,13 @@ const Login = () => {
               type="password"
               placeholder="Unesite zaporku"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
           <a href="/register">
             <u>Nemate račun? Registrirajte se!</u>
           </a>
-          <Button label="Login" className="mt-3 p-button-lg" type="submit" />
+          <Button label="Login" className="mt-3 p-button-m" type="submit" />
         </form>
       </Card>
     </div>

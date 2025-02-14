@@ -107,8 +107,8 @@ const Register = () => {
         marginTop: "5%",
       }}
     >
-      <Card title="" style={{ width: "25rem", padding: "20px" }}>
-        <div className="text-center mb-5">
+      <Card title="" style={{ width: "25rem"}}>
+        <div className="r mb-5">
           <img
             src="/photos/logo-no-background.svg"
             alt="Logo"
@@ -124,7 +124,7 @@ const Register = () => {
         {error && <Message severity="error" text={error} />}
 
         <form onSubmit={handleRegister}>
-          <div className="field" style={{ marginBottom: "15px" }}>
+          <div className="field">
             <label htmlFor="name">Korisničko ime</label>
             <InputText
               id="name"
@@ -133,10 +133,10 @@ const Register = () => {
               type="text"
               placeholder="Unesite korisničko ime"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
-          <div className="field" style={{ marginBottom: "15px" }}>
+          <div className="field">
             <label htmlFor="email">Email</label>
             <InputText
               id="email"
@@ -145,7 +145,7 @@ const Register = () => {
               type="email"
               placeholder="Unesite email adresu"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
           <div className="field" style={{ marginBottom: "15px" }}>
@@ -157,7 +157,7 @@ const Register = () => {
               type="password"
               placeholder="Unesite zaporku"
               required
-              className="p-inputtext-lg"
+              className="p-inputtext-m"
             />
           </div>
 
@@ -210,7 +210,7 @@ const Register = () => {
                   type="text"
                   placeholder="Unesite ime organizacije"
                   required
-                  className="p-inputtext-lg"
+                  className="p-inputtext-m"
                 />
               </div>
               <div className="field" style={{ marginBottom: "15px" }}>
@@ -222,7 +222,7 @@ const Register = () => {
                   type="email"
                   placeholder="Unesite email organizacije"
                   required
-                  className="p-inputtext-lg"
+                  className="p-inputtext-m"
                 />
               </div>
               <div className="field" style={{ marginBottom: "15px" }}>
@@ -234,7 +234,7 @@ const Register = () => {
                   type="text"
                   placeholder="Unesite adresu organizacije"
                   required
-                  className="p-inputtext-lg"
+                  className="p-inputtext-m"
                 />
               </div>
             </>
@@ -245,7 +245,7 @@ const Register = () => {
 
           <Button
             label="Registracija"
-            className="p-button-lg"
+            className="p-button-m"
             type="submit"
             style={{ marginTop: "10px" }}
           />

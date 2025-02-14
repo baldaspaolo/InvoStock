@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/UserOrganizationPages/Dashboard";
 import Layout from "./components/Layout";
+import Invoices from "./pages/UserOrganizationPages/Invoices";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
 
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/invoices" element={<Invoices />} />
         </Route>
 
         <Route path="*" element={<Login />} />
