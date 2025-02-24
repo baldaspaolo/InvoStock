@@ -82,16 +82,21 @@ const Invoices = () => {
       <div className="div1">
         <h1>Fakture</h1>
       </div>
-      <div
-        className="div3"
-        style={{ width: "70%", textAlign: "center", margin: "0" }}
-      >
+      <div className="div3">
         <Button
-          label="Dodaj novu fakturu"
+          label="Novu faktura"
           icon="pi pi-plus"
           iconPos="right"
           raised
           size="small"
+        />
+        <Button
+          icon="pi pi-ellipsis-h"
+          text
+          raised
+          severity="info"
+          aria-label="User"
+          style={{ width: "50%" }}
         />
       </div>
 

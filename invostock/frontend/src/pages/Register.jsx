@@ -103,11 +103,10 @@ const Register = () => {
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "column",
-        justifyContent: "center",
         marginTop: "5%",
       }}
     >
-      <Card title="" style={{ width: "25rem"}}>
+      <Card title="" style={{ width: "25rem" }}>
         <div className="r mb-5">
           <img
             src="/photos/logo-no-background.svg"

@@ -12,6 +12,8 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/UserOrganizationPages/Dashboard";
 import Layout from "./components/Layout";
 import Invoices from "./pages/UserOrganizationPages/Invoices";
+import Inventory from "./pages/UserOrganizationPages/Inventory";
+import Expenses from "./pages/UserOrganizationPages/Expenses";
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/invoices" element={<Invoices />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/expenses" element={<Expenses />} />
           </Route>
 
           <Route path="*" element={<Login />} />
