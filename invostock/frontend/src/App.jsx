@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { Toast } from "primereact/toast";
+import ProtectedRoute from "./ProtectedRoute"; // Uvozite ProtectedRoute
 
 import "./App.css";
 import "primereact/resources/themes/lara-light-cyan/theme.css";
@@ -24,7 +25,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          <Route element={<Layout />}>
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/inventory" element={<Inventory />} />
