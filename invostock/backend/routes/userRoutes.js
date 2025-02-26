@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db"); // Poveznica na bazu podataka
+const db = require("../db"); 
 
-// Dohvati sve korisnike
+
 router.get("/getUsers", (req, res) => {
   db.query("SELECT * FROM users", (err, results) => {
     if (err) {
@@ -13,7 +13,6 @@ router.get("/getUsers", (req, res) => {
   });
 });
 
-// Dohvati korisnika po emailu i lozinci
 router.post("/getUser", (req, res) => {
   const { email, password } = req.body;
 

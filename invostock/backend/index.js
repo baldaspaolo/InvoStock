@@ -12,10 +12,14 @@ app.use(cors());
 const userRoutes = require("./routes/userRoutes");
 const organizationRoutes = require("./routes/organizationRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/invoices", invoiceRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.get("/", (req, res) => {
   res.send("Dobrodošli na server!");

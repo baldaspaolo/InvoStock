@@ -1,0 +1,32 @@
+.notification-overlay {
+  padding: 1rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  align-items: center;
+}
+
+.notification-overlay h3 {
+  margin-top: 0;
+  font-size: 1.25rem;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-overlay ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notification-overlay ul li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.notification-overlay ul li:last-child {
+  border-bottom: none;
+}
