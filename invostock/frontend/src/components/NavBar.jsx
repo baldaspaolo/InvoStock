@@ -1,4 +1,6 @@
 import React, { useRef, useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { AuthContext } from "../context/AuthContext";
 import { Menubar } from "primereact/menubar";
 import { Menu } from "primereact/menu";
@@ -8,13 +10,14 @@ import { Toast } from "primereact/toast";
 import "./NavBar.css";
 
 export default function Navbar() {
-  const { user } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const menu = useRef(null);
   const op = useRef(null);
   const toast = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -85,6 +88,20 @@ export default function Navbar() {
     }
   };
 
+  const logoutUser = () => {
+    logout();
+    toast.current.show({
+      severity: "success",
+      summary: "Odjava",
+      detail: "Uspješna odjava!",
+      life: 3000,
+    });
+    console.log(user);
+    setTimeout(() => {
+      navigate("/login");
+    }, 1500);
+  };
+
   const items = [
     {
       label: "Home",
@@ -139,7 +156,7 @@ export default function Navbar() {
     {
       label: "Odjava",
       icon: "pi pi-sign-out",
-      command: () => alert("Odjava radi!"),
+      command: () => logoutUser(),
     },
   ];
 
