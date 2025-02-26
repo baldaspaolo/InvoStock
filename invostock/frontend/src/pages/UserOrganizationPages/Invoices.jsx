@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
+import { AuthContext } from "../../context/AuthContext";
+
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -16,7 +18,10 @@ const statusOptions = [
 ];
 
 const Invoices = () => {
+  const { user } = useContext(AuthContext);
+
   const [invoices, setInvoices] = useState([]);
+  const [status, setStatus] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("sve");
   const [startDate, setStartDate] = useState(null);
@@ -31,7 +36,7 @@ const Invoices = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ userId: 2 }),
+          body: JSON.stringify({ userId: user.id }),
         }
       );
 
@@ -42,13 +47,36 @@ const Invoices = () => {
       const data = await response.json();
       setInvoices(data.invoices);
       console.log(data);
+      console.log(invoices);
     } catch (error) {
       console.error("Error fetching invoices:", error);
     }
   };
 
+  const fetchStatusData = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:3000/api/invoices/getUserInvoicesSummary",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ userId: user.id }),
+        }
+      );
+
+      const data = await response.json();
+      setStatus(data);
+      console.log(data);
+    } catch (error) {
+      console.log("Greška u izvršavanju zahtjeva!", error);
+    }
+  };
+
   useEffect(() => {
     fetchInvoices();
+    fetchStatusData();
   }, []);
 
   const formatDate = (dateString) => {
@@ -102,18 +130,19 @@ const Invoices = () => {
 
       <div className="div4">
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
-          <Panel header="Trenutna potraživanja" style={{ fontSize: "0.88rem" }}>
+          <Panel header="Status faktura" style={{ fontSize: "0.88rem" }}>
             <div style={{ display: "flex", gap: "2rem" }}>
               <div>
-                <h3>500€</h3>
-                <p>Ukupno faktura</p>
+                <h3>{invoices.remaining_amount}</h3>
+                <h3>{status.total_receivables}€</h3>
+                <p>Ukupna potražnja</p>
               </div>
               <div>
-                <h3>2</h3>
+                <h3>{status.unpaid_invoices}</h3>
                 <p>Neplaćene fakture</p>
               </div>
               <div>
-                <h3>3</h3>
+                <h3>{status.partially_paid_invoices}</h3>
                 <p>Djelomično plaćene</p>
               </div>
             </div>
