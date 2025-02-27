@@ -84,4 +84,56 @@ router.post("/getUserInvoicesSummary", (req, res) => {
   });
 });
 
+router.post("/getInvoiceItems", (req, res) => {
+  const { invoiceId } = req.body;
+
+  if (!invoiceId) {
+    return res.status(400).json({ error: "Nedostaje ID fakture!" });
+  }
+
+  const query = `
+    SELECT * 
+    FROM invoice_items 
+    WHERE invoice_id = ?
+  `;
+
+  db.query(query, [invoiceId], (err, results) => {
+    if (err) {
+      console.error("Greška pri dohvaćanju stavki fakture!", err);
+      return res.status(500).json({ error: "Greška na serveru!" });
+    }
+
+    res.status(200).json({
+      success: true,
+      items: results,
+    });
+  });
+});
+
+router.post("/getUserInovice", (req, res) => {
+  const { invoiceId } = req.body;
+
+  if (!invoiceId) {
+    return res.status(400).json({ error: "Nedostaje ID fakture!" });
+  }
+
+  const query = `
+    SELECT * 
+    FROM invoices
+    WHERE id = ?
+  `;
+
+  db.query(query, [invoiceId], (err, results) => {
+    if (err) {
+      console.error("Greška pri dohvaćanju stavki fakture!", err);
+      return res.status(500).json({ error: "Greška na serveru!" });
+    }
+
+    res.status(200).json({
+      success: true,
+      invoice: results,
+    });
+  });
+});
+
 module.exports = router;
