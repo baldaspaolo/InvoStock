@@ -15,6 +15,7 @@ import Layout from "./components/Layout";
 import Invoices from "./pages/UserOrganizationPages/Invoices";
 import Inventory from "./pages/UserOrganizationPages/Inventory";
 import Expenses from "./pages/UserOrganizationPages/Expenses";
+import InvoiceItem from "./pages/UserOrganizationPages/InvoiceItem";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/invoices" element={<Invoices />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/expenses" element={<Expenses />} />
+            <Route path="/invoices/:id/:user_id" element={<InvoiceItem />} />
           </Route>
 
           <Route path="*" element={<Login />} />
