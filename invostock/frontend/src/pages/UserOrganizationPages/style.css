@@ -132,3 +132,7 @@
 .p-menu.p-menu-overlay {
   width: 15%;
 }
+
+.p-divider-horizontal:before {
+  width: 165%;
+}
