@@ -31,19 +31,29 @@ const Contacts = () => {
   const menuRef = useRef(null);
   const { user } = useContext(AuthContext);
 
- 
   useEffect(() => {
-    fetch("http://localhost:3000/api/contacts/getUserContacts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ userId: user.id }),
-    })
-      .then((response) => response.json())
-      .then((data) => {
+    const fetchContacts = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:3000/api/contacts/getUserContacts",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ userId: user.id }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const data = await response.json();
+
         if (data.success) {
           setContacts(data.contacts);
+          console.log(data);
         } else {
           toast.current.show({
             severity: "error",
@@ -52,18 +62,20 @@ const Contacts = () => {
             life: 3000,
           });
         }
-      })
-      .catch((error) => {
+      } catch (error) {
+        console.error("Greška pri dohvaćanju kontakata:", error);
         toast.current.show({
           severity: "error",
           summary: "Error",
           detail: "Network error.",
           life: 3000,
         });
-      });
+      }
+    };
+
+    fetchContacts();
   }, [user.id]);
 
- 
   const onRowExpand = (event) => {
     toast.current.show({
       severity: "info",
@@ -73,7 +85,6 @@ const Contacts = () => {
     });
   };
 
-  
   const onRowCollapse = (event) => {
     toast.current.show({
       severity: "info",
@@ -83,7 +94,6 @@ const Contacts = () => {
     });
   };
 
-  
   const rowExpansionTemplate = (data) => {
     return (
       <div className="p-3">
@@ -92,6 +102,12 @@ const Contacts = () => {
           <div className="col-6">
             <p>
               <strong>Adresa:</strong> {data.address}
+            </p>
+            <p>
+              <strong>Mjesto:</strong> {data.place || "N/A"}
+            </p>
+            <p>
+              <strong>Poštanski broj:</strong> {data.zip_code || "N/A"}
             </p>
             <p>
               <strong>Telefon:</strong> {data.phone_number}
@@ -117,59 +133,125 @@ const Contacts = () => {
     );
   };
 
-  
   const openEditDialog = (contact) => {
     setSelectedContact({ ...contact });
     setIsEditDialogVisible(true);
   };
 
-  
   const hideEditDialog = () => {
     setIsEditDialogVisible(false);
   };
 
-  
-  const saveContact = () => {
-    confirmDialog({
-      message: "Jeste li sigurni da želite spremiti promjene?",
-      header: "Potvrda",
-      icon: "pi pi-exclamation-triangle",
-      accept: () => {
-        setContacts(
-          contacts.map((c) =>
-            c.id === selectedContact.id ? selectedContact : c
+  const saveContact = async () => {
+    try {
+      if (
+        !selectedContact.first_name ||
+        !selectedContact.last_name ||
+        !selectedContact.phone_number ||
+        !selectedContact.email
+      ) {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: "Molimo popunite sva obavezna polja.",
+          life: 3000,
+        });
+        return;
+      }
+
+      const response = await fetch(
+        `http://localhost:3000/api/contacts/updateContact/${selectedContact.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(selectedContact),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setContacts((prevContacts) =>
+          prevContacts.map((contact) =>
+            contact.id === selectedContact.id ? selectedContact : contact
           )
         );
         toast.current.show({
           severity: "success",
-          summary: "Uređeno",
+          summary: "Uspjeh",
           detail: "Kontakt uspješno ažuriran.",
           life: 3000,
         });
         hideEditDialog();
-      },
-    });
+      } else {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: data.error || "Došlo je do greške pri ažuriranju kontakta.",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Greška pri ažuriranju kontakta:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Došlo je do greške pri ažuriranju kontakta.",
+        life: 3000,
+      });
+    }
   };
 
- 
-  const deleteContact = (contact) => {
-    confirmDialog({
-      message: "Jeste li sigurni da želite obrisati ovaj kontakt?",
-      header: "Potvrda brisanja",
-      icon: "pi pi-exclamation-triangle",
-      accept: () => {
-        setContacts(contacts.filter((c) => c.id !== contact.id));
+  const deleteContact = async (contact) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/contacts/deleteContact/${contact.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        setContacts((prevContacts) =>
+          prevContacts.filter((c) => c.id !== contact.id)
+        );
         toast.current.show({
-          severity: "warn",
-          summary: "Obrisano",
+          severity: "success",
+          summary: "Uspjeh",
           detail: "Kontakt uspješno obrisan.",
           life: 3000,
         });
-      },
-    });
+      } else {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: data.error || "Došlo je do greške pri brisanju kontakta.",
+          life: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Greška pri brisanju kontakta:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Došlo je do greške pri brisanju kontakta.",
+        life: 3000,
+      });
+    }
   };
 
- 
   const actionTemplate = (rowData) => {
     const menuModel = [
       {
@@ -197,12 +279,10 @@ const Contacts = () => {
     );
   };
 
-  
   const openAddDialog = () => {
     setIsAddDialogVisible(true);
   };
 
-  
   const hideAddDialog = () => {
     setIsAddDialogVisible(false);
     setNewContact({
@@ -218,8 +298,7 @@ const Contacts = () => {
     });
   };
 
-  // 📌 Spremi novi kontakt
-  const saveNewContact = () => {
+  const saveNewContact = async () => {
     if (
       !newContact.first_name ||
       !newContact.last_name ||
@@ -242,49 +321,57 @@ const Contacts = () => {
       ...newContact,
     };
 
-    fetch("http://localhost:3000/api/contacts/addUser", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(contactData),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.success) {
-          const newContactWithId = {
-            ...newContact,
-            id: data.contactId,
-            user_id: user.id,
-            organization_id: user.organizationId,
-            created_at: new Date().toISOString(),
-          };
-          setContacts([...contacts, newContactWithId]);
-          toast.current.show({
-            severity: "success",
-            summary: "Uspjeh",
-            detail: "Kontakt uspješno dodan.",
-            life: 3000,
-          });
-          hideAddDialog();
-        } else {
-          toast.current.show({
-            severity: "error",
-            summary: "Greška",
-            detail: "Došlo je do greške pri dodavanju kontakta.",
-            life: 3000,
-          });
+    try {
+      const response = await fetch(
+        "http://localhost:3000/api/contacts/addUser",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contactData),
         }
-      })
-      .catch((error) => {
-        console.error("Greška pri slanju zahtjeva:", error);
+      );
+
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      const data = await response.json();
+
+      if (data.success) {
+        const newContactWithId = {
+          ...newContact,
+          id: data.contactId,
+          user_id: user.id,
+          organization_id: user.organizationId,
+          created_at: new Date().toISOString(),
+        };
+        setContacts([...contacts, newContactWithId]);
+        toast.current.show({
+          severity: "success",
+          summary: "Uspjeh",
+          detail: "Kontakt uspješno dodan.",
+          life: 3000,
+        });
+        hideAddDialog();
+      } else {
         toast.current.show({
           severity: "error",
           summary: "Greška",
-          detail: "Došlo je do greške pri slanju zahtjeva.",
+          detail: "Došlo je do greške pri dodavanju kontakta.",
           life: 3000,
         });
+      }
+    } catch (error) {
+      console.error("Greška pri slanju zahtjeva:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Došlo je do greške pri slanju zahtjeva.",
+        life: 3000,
       });
+    }
   };
 
   return (
@@ -453,7 +540,6 @@ const Contacts = () => {
         </div>
       </Dialog>
 
-      
       <Dialog
         visible={isEditDialogVisible}
         style={{ width: "30vw" }}

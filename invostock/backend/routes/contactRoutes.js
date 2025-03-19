@@ -44,6 +44,7 @@ router.post("/addUser", (req, res) => {
     last_name,
     address,
     zip_code,
+    place,
     phone_number,
     email,
     company_name,
@@ -58,9 +59,9 @@ router.post("/addUser", (req, res) => {
 
   const query = `
     INSERT INTO contacts 
-      (user_id, organization_id, first_name, last_name, address, zip_code, phone_number, email, company_name, tax_id, notes) 
+      (user_id, organization_id, first_name, last_name, address, zip_code, place, phone_number, email, company_name, tax_id, notes) 
     VALUES 
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const values = [
@@ -70,6 +71,7 @@ router.post("/addUser", (req, res) => {
     last_name,
     address,
     zip_code,
+    place,
     phone_number,
     email,
     company_name,
@@ -83,6 +85,71 @@ router.post("/addUser", (req, res) => {
       return res.status(500).json({ error: "Greška na serveru!" });
     }
     res.status(200).json({ success: true, contactId: result.insertId });
+  });
+});
+
+router.put("/updateContact/:id", (req, res) => {
+  const contactId = req.params.id; 
+  const {
+    first_name,
+    last_name,
+    address,
+    zip_code,
+    place,
+    phone_number,
+    email,
+    company_name,
+    tax_id,
+    notes,
+  } = req.body;
+
+  
+  if (!contactId || !first_name || !last_name) {
+    return res.status(400).json({ error: "Nedostaju obavezni podaci!" });
+  }
+
+  const query = `
+    UPDATE contacts 
+    SET 
+      first_name = ?,
+      last_name = ?,
+      address = ?,
+      zip_code = ?,
+      place = ?,
+      phone_number = ?,
+      email = ?,
+      company_name = ?,
+      tax_id = ?,
+      notes = ?
+    WHERE 
+      id = ?
+  `;
+
+  const values = [
+    first_name,
+    last_name,
+    address,
+    zip_code,
+    place,
+    phone_number,
+    email,
+    company_name,
+    tax_id,
+    notes,
+    contactId, 
+  ];
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      console.error("Greška pri ažuriranju kontakta:", err);
+      return res.status(500).json({ error: "Greška na serveru!" });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Kontakt nije pronađen!" });
+    }
+    res
+      .status(200)
+      .json({ success: true, message: "Kontakt uspješno ažuriran." });
   });
 });
 
