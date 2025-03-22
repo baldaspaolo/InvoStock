@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -8,6 +9,7 @@ import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Calendar } from "primereact/calendar";
+
 import "./style.css";
 
 const statusOptions = [
@@ -19,6 +21,7 @@ const statusOptions = [
 
 const Invoices = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const [invoices, setInvoices] = useState([]);
   const [status, setStatus] = useState([]);
@@ -103,6 +106,11 @@ const Invoices = () => {
     setStatusFilter(e.value);
   };
 
+  const handleRowClick = (e) => {
+    console.log(e.data);
+    navigate(`/invoices/${e.data.id}/${e.data.user_id}`);
+  };
+
   const inputStyle = { height: "2.5rem", width: "100%" };
 
   return (
@@ -117,6 +125,7 @@ const Invoices = () => {
           iconPos="right"
           raised
           size="small"
+          onClick={() => navigate("/invoices/add")}
         />
         <Button
           icon="pi pi-ellipsis-h"
@@ -191,6 +200,8 @@ const Invoices = () => {
             rows={5}
             rowsPerPageOptions={[5, 10, 25, 50]}
             style={{ fontSize: "0.9rem" }}
+            onRowClick={handleRowClick}
+            selectionMode="single"
           >
             <Column field="id" header="ID" sortable></Column>
             <Column field="client_name" header="Klijent" sortable></Column>
