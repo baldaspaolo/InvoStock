@@ -18,6 +18,7 @@ import Expenses from "./pages/UserOrganizationPages/Expenses";
 import InvoiceItem from "./pages/UserOrganizationPages/InvoiceItem";
 import InvoiceAdd from "./pages/UserOrganizationPages/InvoiceAdd";
 import Contacts from "./pages/UserOrganizationPages/Contacts";
+import InventoryItem from "./pages/UserOrganizationPages/InventoryItem";
 
 function App() {
   return (
@@ -42,6 +43,7 @@ function App() {
             <Route path="/invoices/:id/:user_id" element={<InvoiceItem />} />
             <Route path="/invoices/add" element={<InvoiceAdd />} />
             <Route path="/contacts" element={<Contacts />} />
+            <Route path="/inventoryItem" element={<InventoryItem />} />
           </Route>
 
           <Route path="*" element={<Login />} />

@@ -1,10 +1,14 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const { Resend } = require("resend"); 
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
+const resend = new Resend(process.env.RESEND_API_KEY); 
 
 app.use(express.json());
 app.use(cors());
@@ -22,6 +26,68 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/contacts", contactRoutes);
+
+app.post("/api/sendLowStockNotification", (req, res) => {
+  const { itemName, userEmail } = req.body;
+
+  if (!userEmail || !userEmail) {
+    return res
+      .status(400)
+      .json({ error: "Email i podatak o stavki su obavezni." });
+  }
+
+  resend.emails.send(
+    {
+      from: "Acme <onboarding@resend.dev>",
+      to: [userEmail],
+      subject: `Niska zaliha za artikal: ${itemName}`,
+      html: `<p>Obavještavamo vas da zaliha artikla <strong>${itemName}</strong> pada ispod minimalne razine. Molimo da poduzmete odgovarajuće mjere.</p>`,
+    },
+    (err, result) => {
+      if (err) {
+        console.error("Greška pri slanju emaila:", err);
+        return res
+          .status(500)
+          .json({ error: "Interna greška pri slanju emaila." });
+      }
+
+      res.status(200).json({
+        message: `Email obavijest za ${itemName} poslana korisniku.`,
+      });
+    }
+  );
+});
+
+app.post("/api/sendZeroStockNotification", (req, res) => {
+  const { itemName, userEmail } = req.body;
+
+  if (!userEmail || !userEmail) {
+    return res
+      .status(400)
+      .json({ error: "Email i podatak o stavki su obavezni." });
+  }
+
+  resend.emails.send(
+    {
+      from: "Acme <onboarding@resend.dev>",
+      to: [userEmail],
+      subject: `Niska zaliha za artikal: ${itemName}`,
+      html: `<p>Obavještavamo vas da zaliha artikla <strong>${itemName}</strong> je jednaka nuli. Molimo da poduzmete odgovarajuće mjere.</p>`,
+    },
+    (err, result) => {
+      if (err) {
+        console.error("Greška pri slanju emaila:", err);
+        return res
+          .status(500)
+          .json({ error: "Interna greška pri slanju emaila." });
+      }
+
+      res.status(200).json({
+        message: `Email obavijest za ${itemName} poslana korisniku.`,
+      });
+    }
+  );
+});
 
 app.get("/", (req, res) => {
   res.send("Dobrodošli na server!");
