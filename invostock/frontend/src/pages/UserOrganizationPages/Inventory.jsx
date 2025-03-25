@@ -1,4 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useContext, useRef, useEffect } from "react";
+import { AuthContext } from "../../context/AuthContext";
+
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -6,6 +8,7 @@ import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Menu } from "primereact/menu";
+import { Dialog } from "primereact/dialog";
 
 import "./style.css";
 
@@ -25,39 +28,45 @@ const categoryOptions = [
 
 const Inventory = () => {
   const menu = useRef(null);
-  const [inventoryItems, setInventoryItems] = useState([
-    {
-      id: 1,
-      item_name: "Sat Seiko SNK809",
-      category: "Satovi",
-      stock_quantity: 3,
-      reorder_level: 5,
-      price: 120,
-      status: "low_stock",
-    },
-    {
-      id: 2,
-      item_name: "Narukvica Mesh 20mm",
-      category: "Pribor",
-      stock_quantity: 10,
-      reorder_level: 5,
-      price: 25,
-      status: "sufficient",
-    },
-    {
-      id: 3,
-      item_name: "Staklo Hardlex",
-      category: "Rezervni dijelovi",
-      stock_quantity: 0,
-      reorder_level: 2,
-      price: 15,
-      status: "out_of_stock",
-    },
-  ]);
-
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const { user } = useContext(AuthContext);
+  const [displayModal, setDisplayModal] = useState(false);
+  const [modalContent, setModalContent] = useState(null);
+  const [modalTitle, setModalTitle] = useState("");
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:3000/api/inventory/getInventory",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              organizationId: user.organizationId,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Greška prilikom dohvaćanja inventara");
+        }
+
+        const data = await response.json();
+        setInventoryItems(data.inventory);
+      } catch (error) {
+        console.error("Greška:", error);
+      }
+    };
+
+    fetchInventory();
+  }, [user.id, user.organizationId]);
 
   const menuItems = [
     {
@@ -66,8 +75,7 @@ const Inventory = () => {
       command: () => {
         alert("Dodaj kategoriju");
       },
-    }
-    ,
+    },
   ];
 
   const handleStatusChange = (e) => {
@@ -94,15 +102,75 @@ const Inventory = () => {
   const onRowClick = (e) => {
     const itemId = e.data.id;
     console.log(`Kliknuto na artikl s ID: ${itemId}`);
-    // Kasnije: navigate(`/inventory/${itemId}`)
   };
 
-  const lowStockCount = inventoryItems.filter(
-    (item) => item.stock_quantity <= item.reorder_level
-  ).length;
-  const outOfStockCount = inventoryItems.filter(
+  const lowStockItems = inventoryItems.filter(
+    (item) =>
+      item.stock_quantity <= item.reorder_level && item.stock_quantity > 0
+  );
+  const outOfStockItems = inventoryItems.filter(
     (item) => item.stock_quantity === 0
-  ).length;
+  );
+
+  const showLowStockModal = () => {
+    setModalTitle("Artikli na niskoj zalihi");
+    setModalContent(
+      <DataTable
+        value={lowStockItems}
+        paginator
+        rows={5}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        style={{ fontSize: "0.9rem" }}
+        onRowClick={onRowClick}
+      >
+        <Column field="id" header="ID" sortable></Column>
+        <Column field="item_name" header="Naziv artikla" sortable></Column>
+        <Column field="category" header="Kategorija" sortable></Column>
+        <Column
+          field="stock_quantity"
+          header="Količina na zalihi"
+          sortable
+        ></Column>
+        <Column
+          field="reorder_level"
+          header="Minimalna zaliha"
+          sortable
+        ></Column>
+        <Column field="price" header="Cijena (€)" sortable></Column>
+      </DataTable>
+    );
+    setDisplayModal(true);
+  };
+
+  const showOutOfStockModal = () => {
+    setModalTitle("Artikli bez zaliha");
+    setModalContent(
+      <DataTable
+        value={outOfStockItems}
+        paginator
+        rows={5}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+        style={{ fontSize: "0.9rem" }}
+        onRowClick={onRowClick}
+      >
+        <Column field="id" header="ID" sortable></Column>
+        <Column field="item_name" header="Naziv artikla" sortable></Column>
+        <Column field="category" header="Kategorija" sortable></Column>
+        <Column
+          field="stock_quantity"
+          header="Količina na zalihi"
+          sortable
+        ></Column>
+        <Column
+          field="reorder_level"
+          header="Minimalna zaliha"
+          sortable
+        ></Column>
+        <Column field="price" header="Cijena (€)" sortable></Column>
+      </DataTable>
+    );
+    setDisplayModal(true);
+  };
 
   return (
     <div className="parent">
@@ -133,12 +201,18 @@ const Inventory = () => {
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
           <Panel header="Stanje zaliha" style={{ fontSize: "0.88rem" }}>
             <div style={{ display: "flex", gap: "2rem" }}>
-              <div style={{ color: "red" }}>
-                <h3>{lowStockCount}</h3>
+              <div
+                style={{ color: "red", cursor: "pointer" }}
+                onClick={showLowStockModal}
+              >
+                <h3>{lowStockItems.length}</h3>
                 <p>Artikli na niskoj zalihi</p>
               </div>
-              <div style={{ color: "red" }}>
-                <h3>{outOfStockCount}</h3>
+              <div
+                style={{ color: "red", cursor: "pointer" }}
+                onClick={showOutOfStockModal}
+              >
+                <h3>{outOfStockItems.length}</h3>
                 <p>Artikli bez zalihe</p>
               </div>
             </div>
@@ -200,6 +274,15 @@ const Inventory = () => {
           </DataTable>
         </div>
       </div>
+
+      <Dialog
+        header={modalTitle}
+        visible={displayModal}
+        style={{ width: "80vw" }}
+        onHide={() => setDisplayModal(false)}
+      >
+        {modalContent}
+      </Dialog>
     </div>
   );
 };
