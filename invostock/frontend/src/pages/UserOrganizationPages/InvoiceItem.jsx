@@ -11,7 +11,7 @@ import { Divider } from "primereact/divider";
 
 import "./style.css";
 
-const Invoices = () => {
+const InvoiceItem = () => {
   const { user } = useContext(AuthContext);
   const { id, user_id } = useParams();
 
@@ -233,4 +233,4 @@ const Invoices = () => {
   );
 };
 
-export default Invoices;
+export default InvoiceItem;
