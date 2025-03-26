@@ -1,14 +1,13 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const { Resend } = require("resend"); 
+const { Resend } = require("resend");
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-
-const resend = new Resend(process.env.RESEND_API_KEY); 
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.use(express.json());
 app.use(cors());
@@ -19,6 +18,7 @@ const invoiceRoutes = require("./routes/invoiceRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const salesRoutes = require("./routes/salesRoutes");
 
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
@@ -26,6 +26,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/contacts", contactRoutes);
+app.use("/api/sales", salesRoutes);
 
 app.post("/api/sendLowStockNotification", (req, res) => {
   const { itemName, userEmail } = req.body;
