@@ -18,6 +18,7 @@ const SalesItem = () => {
   const [orderItems, setOrderItems] = useState([]);
   const [orderData, setOrderData] = useState(null);
   const [contact, setContact] = useState(null);
+  const [salePrice, setSalePrice] = useState(null);
 
   useEffect(() => {
     const fetchOrderData = async () => {
@@ -47,7 +48,26 @@ const SalesItem = () => {
       }
     };
 
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch(
+          "http://localhost:3000/api/sales/calculateOrderTotal",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId: sale_id }),
+          }
+        );
+        const data = await res.json();
+        setSalePrice(data);
+        console.log("Response", data);
+      } catch (error) {
+        console.error("Greška na serveru!", error);
+      }
+    };
+
     fetchOrderData();
+    fetchPrice();
   }, [sale_id]);
 
   const formatDate = (dateString) => {
@@ -152,7 +172,13 @@ const SalesItem = () => {
               </DataTable>
             </div>
             <div style={{ textAlign: "right", fontSize: "0.9rem" }}>
-              <h3>Popust: {orderData?.discount || 0} €</h3>
+              <h3>Zbroj: {salePrice?.subtotal || 0} €</h3>
+            </div>
+            <div style={{ textAlign: "right", fontSize: "0.9rem" }}>
+              <h3>Popust: {salePrice?.discount || 0} €</h3>
+            </div>
+            <div style={{ textAlign: "right", fontSize: "0.9rem" }}>
+              <h3>Ukupno: {salePrice?.total || 0} €</h3>
             </div>
           </Panel>
         </div>
