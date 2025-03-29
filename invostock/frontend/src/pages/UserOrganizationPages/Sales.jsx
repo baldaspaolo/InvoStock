@@ -2,6 +2,9 @@ import React, { useContext, useEffect, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
+import { Toast } from "primereact/toast";
+import { useRef } from "react";
+
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -10,6 +13,7 @@ import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { Calendar } from "primereact/calendar";
 
 import "./style.css";
 
@@ -21,6 +25,8 @@ const statusOptions = [
 
 const Sales = () => {
   const { user } = useContext(AuthContext);
+  const toast = useRef(null);
+
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
@@ -29,6 +35,10 @@ const Sales = () => {
   const [summary, setSummary] = useState({});
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [dueDate, setDueDate] = useState(null);
+  const [invoiceDialogVisible, setInvoiceDialogVisible] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -89,9 +99,16 @@ const Sales = () => {
     const matchesSearch = `${order.first_name} ${order.last_name}`
       .toLowerCase()
       .includes(search.toLowerCase());
+
     const matchesStatus =
       statusFilter === "svi" || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
+
+    const orderDate = new Date(order.created_at);
+    const matchesDateRange =
+      (!startDate || orderDate >= startDate) &&
+      (!endDate || orderDate <= endDate);
+
+    return matchesSearch && matchesStatus && matchesDateRange;
   });
 
   const handleRowClick = (e) => {
@@ -104,21 +121,79 @@ const Sales = () => {
   };
 
   const handleCreateInvoice = () => {
-    confirmDialog({
-      message: "Želite li također odmah kreirati i paket?",
-      header: "Kreiraj fakturu",
-      icon: "pi pi-question-circle",
-      acceptLabel: "Faktura + Paket",
-      rejectLabel: "Samo faktura",
-      accept: () => {
-        console.log("Kreiraj fakturu i paket za orderId:", selectedOrder.id);
-        setDialogVisible(false);
-      },
-      reject: () => {
-        console.log("Kreiraj samo fakturu za orderId:", selectedOrder.id);
-        setDialogVisible(false);
-      },
-    });
+    setDialogVisible(false);
+    setInvoiceDialogVisible(true);
+  };
+
+  const confirmCreateInvoice = async (createPackage) => {
+    if (!dueDate) return;
+
+    try {
+      const itemsRes = await fetch(
+        "http://localhost:3000/api/sales/getOrderDetails",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ orderId: selectedOrder.id }),
+        }
+      );
+
+      const data = await itemsRes.json();
+
+      const payload = {
+        userId: user.id,
+        organizationId: user.organization_id,
+        contactId: selectedOrder.contact_id,
+        invoiceDate: new Date().toISOString().slice(0, 10),
+        dueDate: dueDate.toISOString().slice(0, 10),
+        discount: selectedOrder.discount,
+        salesOrderId: selectedOrder.id, 
+        items: data.items.map((item) => ({
+          itemId: item.item_id,
+          itemName: item.item_name,
+          itemDescription: null,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+      };
+
+      const response = await fetch(
+        "http://localhost:3000/api/invoices/createInvoice",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.current.show({
+          severity: "success",
+          summary: "Faktura kreirana",
+          detail: `Kod: ${result.custom_invoice_code}`,
+          life: 4000,
+        });
+
+        setInvoiceDialogVisible(false);
+        setDueDate(null);
+        setSelectedOrder(null);
+        fetchOrders(); 
+      } else {
+        throw new Error(result.error || "Neuspješno kreiranje fakture.");
+      }
+    } catch (error) {
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Neuspješno kreiranje fakture.",
+        life: 4000,
+      });
+      console.error("Greška pri kreiranju fakture iz naloga:", error);
+    }
   };
 
   const handleCreatePackage = () => {
@@ -131,6 +206,13 @@ const Sales = () => {
         setDialogVisible(false);
       },
     });
+  };
+
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("svi");
+    setStartDate(null);
+    setEndDate(null);
   };
 
   const actionBodyTemplate = (rowData) => {
@@ -147,9 +229,12 @@ const Sales = () => {
     );
   };
 
+  const inputStyle = { height: "2.5rem", width: "100%" };
+
   return (
     <div className="parent">
       <ConfirmDialog />
+      <Toast ref={toast} />
       <div className="div1">
         <h1>Prodajni nalozi</h1>
       </div>
@@ -207,14 +292,35 @@ const Sales = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Pretraži kontakt"
-              style={{ height: "2.5rem", width: "100%" }}
+              style={inputStyle}
             />
             <Dropdown
               value={statusFilter}
               options={statusOptions}
               onChange={(e) => setStatusFilter(e.value)}
               placeholder="Filtriraj po statusu"
-              style={{ height: "2.5rem", width: "100%" }}
+              style={inputStyle}
+            />
+            <Calendar
+              value={startDate}
+              onChange={(e) => setStartDate(e.value)}
+              placeholder="Početni datum"
+              showIcon
+              style={inputStyle}
+            />
+            <Calendar
+              value={endDate}
+              onChange={(e) => setEndDate(e.value)}
+              placeholder="Završni datum"
+              showIcon
+              style={inputStyle}
+            />
+            <Button
+              label="Resetiraj"
+              icon="pi pi-refresh"
+              severity="secondary"
+              onClick={resetFilters}
+              style={{ marginBottom: "5%", height: "2.5rem" }}
             />
           </div>
 
@@ -274,6 +380,40 @@ const Sales = () => {
                 icon="pi pi-box"
                 severity="secondary"
                 onClick={handleCreatePackage}
+              />
+            </div>
+          </Dialog>
+
+          <Dialog
+            header="Kreiraj fakturu"
+            visible={invoiceDialogVisible}
+            style={{ width: "25rem" }}
+            onHide={() => setInvoiceDialogVisible(false)}
+          >
+            <p>Unesite datum dospijeća fakture:</p>
+            <Calendar
+              value={dueDate}
+              onChange={(e) => setDueDate(e.value)}
+              showIcon
+              dateFormat="dd.mm.yy"
+              style={{ width: "100%", marginTop: "1rem" }}
+            />
+            <div className="flex justify-content-end gap-2 mt-4">
+              <Button
+                label="Odustani"
+                icon="pi pi-times"
+                severity="secondary"
+                onClick={() => setInvoiceDialogVisible(false)}
+              />
+              <Button
+                label="Samo faktura"
+                icon="pi pi-check"
+                onClick={() => confirmCreateInvoice(false)}
+              />
+              <Button
+                label="Faktura + Paket"
+                icon="pi pi-box"
+                onClick={() => confirmCreateInvoice(true)}
               />
             </div>
           </Dialog>
