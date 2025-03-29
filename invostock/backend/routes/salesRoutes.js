@@ -69,7 +69,8 @@ router.post("/calculateOrderTotal", (req, res) => {
         return res.status(500).json({ error: "Greška na serveru" });
       }
 
-      const discount = result[0]?.discount || 0;
+      const discount = parseFloat(result[0]?.discount || 0);
+
       const finalTotal = total - discount;
 
       res.status(200).json({
@@ -96,7 +97,7 @@ router.post("/getOrderDetails", (req, res) => {
     sales_orders.invoice_id,
     sales_orders.status,
     sales_orders.notes,
-    sales_orders.discount, -- 👈 OVDJE
+    sales_orders.discount, 
     sales_orders.created_at,
     contacts.first_name,
     contacts.last_name,
@@ -175,7 +176,6 @@ VALUES (?, ?, ?, ?, ?, 'open', NOW())
 
     const orderId = result1.insertId;
 
-    // unos
     let completed = 0;
     let errorOccurred = false;
 
@@ -198,7 +198,6 @@ VALUES (?, ?, ?, ?, ?, 'open', NOW())
 
         completed++;
 
-        //artikli uneseni
         if (completed === items.length && !errorOccurred) {
           res.status(201).json({
             message: "Prodajni nalog uspješno kreiran",
@@ -207,6 +206,183 @@ VALUES (?, ?, ?, ?, ?, 'open', NOW())
         }
       });
     });
+  });
+});
+
+router.post("/updateOrder", (req, res) => {
+  const { orderId, notes, status, discount } = req.body;
+
+  if (!orderId) {
+    return res.status(400).json({ error: "Nedostaje orderId" });
+  }
+
+  const query = `
+    UPDATE sales_orders 
+    SET notes = ?, status = ?, discount = ?
+    WHERE id = ?
+  `;
+
+  db.query(
+    query,
+    [notes || null, status || "open", discount || 0, orderId],
+    (err, result) => {
+      if (err) {
+        console.error("Greška pri ažuriranju naloga:", err);
+        return res.status(500).json({ error: "Greška na serveru" });
+      }
+
+      res.status(200).json({ success: true, message: "Nalog ažuriran" });
+    }
+  );
+});
+
+router.post("/updateFullOrder", (req, res) => {
+  const { orderId, status, contactId, notes, discount, items } = req.body;
+
+  if (!orderId) {
+    return res.status(400).json({ error: "Nedostaje orderId" });
+  }
+
+  const updateOrderQuery = `
+    UPDATE sales_orders 
+    SET status = ?, contact_id = ?, notes = ?, discount = ?
+    WHERE id = ?
+  `;
+
+  db.query(
+    updateOrderQuery,
+    [status || "open", contactId, notes || null, discount || 0, orderId],
+    (err1) => {
+      if (err1) {
+        console.error("Greška pri ažuriranju naloga:", err1);
+        return res.status(500).json({ error: "Greška na serveru" });
+      }
+
+      if (!items || items.length === 0) {
+        return res.status(200).json({
+          success: true,
+          message: "Nalog ažuriran (bez promjena stavki)",
+        });
+      }
+
+      let completed = 0;
+      let errorOccurred = false;
+
+      items.forEach((item) => {
+        const checkQuery = `
+        SELECT * FROM sales_order_items 
+        WHERE sales_order_id = ? AND item_id = ?
+      `;
+
+        db.query(checkQuery, [orderId, item.itemId], (err2, result) => {
+          if (err2) {
+            console.error("Greška pri provjeri stavke:", err2);
+            if (!errorOccurred) {
+              errorOccurred = true;
+              return res.status(500).json({ error: "Greška na serveru" });
+            }
+          }
+
+          if (result.length > 0) {
+            const updateItemQuery = `
+            UPDATE sales_order_items 
+            SET quantity = ?, price = ?
+            WHERE sales_order_id = ? AND item_id = ?
+          `;
+            db.query(
+              updateItemQuery,
+              [item.quantity, item.price, orderId, item.itemId],
+              (err3) => {
+                if (err3) {
+                  console.error("Greška pri ažuriranju stavke:", err3);
+                  if (!errorOccurred) {
+                    errorOccurred = true;
+                    return res.status(500).json({ error: "Greška na serveru" });
+                  }
+                }
+                completed++;
+                if (completed === items.length && !errorOccurred) {
+                  res.status(200).json({
+                    success: true,
+                    message: "Nalog i stavke ažurirani",
+                  });
+                }
+              }
+            );
+          } else {
+            const insertItemQuery = `
+            INSERT INTO sales_order_items (sales_order_id, item_id, quantity, price)
+            VALUES (?, ?, ?, ?)
+          `;
+            db.query(
+              insertItemQuery,
+              [orderId, item.itemId, item.quantity, item.price],
+              (err4) => {
+                if (err4) {
+                  console.error("Greška pri dodavanju stavke:", err4);
+                  if (!errorOccurred) {
+                    errorOccurred = true;
+                    return res.status(500).json({ error: "Greška na serveru" });
+                  }
+                }
+                completed++;
+                if (completed === items.length && !errorOccurred) {
+                  res.status(200).json({
+                    success: true,
+                    message: "Nalog i stavke ažurirani",
+                  });
+                }
+              }
+            );
+          }
+        });
+      });
+    }
+  );
+});
+
+router.post("/deleteOrder", (req, res) => {
+  const { orderId } = req.body;
+
+  if (!orderId) {
+    return res.status(400).json({ error: "Nedostaje orderId" });
+  }
+
+  const query = `
+    DELETE FROM sales_orders WHERE id = ?
+  `;
+
+  db.query(query, [orderId], (err, result) => {
+    if (err) {
+      console.error("Greška pri brisanju naloga:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    res.status(200).json({ success: true, message: "Nalog obrisan" });
+  });
+});
+
+router.post("/deleteOrderItem", (req, res) => {
+  const { orderId, itemId } = req.body;
+
+  if (!orderId || !itemId) {
+    return res.status(400).json({ error: "Nedostaje orderId ili itemId" });
+  }
+
+  const query = `
+    DELETE FROM sales_order_items 
+    WHERE sales_order_id = ? AND item_id = ?
+  `;
+
+  db.query(query, [orderId, itemId], (err, result) => {
+    if (err) {
+      console.error("Greška pri brisanju stavke:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Stavka uspješno obrisana" });
   });
 });
 
