@@ -10,21 +10,25 @@ router.post("/getOrders", (req, res) => {
   }
 
   let query = `
-    SELECT *
+    SELECT 
+      sales_orders.*,
+      contacts.first_name,
+      contacts.last_name
     FROM sales_orders
-    WHERE user_id = ?
+    LEFT JOIN contacts ON sales_orders.contact_id = contacts.id
+    WHERE sales_orders.user_id = ?
   `;
 
   const params = [userId];
 
   if (organizationId) {
-    query += " AND organization_id = ?";
+    query += " AND sales_orders.organization_id = ?";
     params.push(organizationId);
   } else {
-    query += " AND organization_id IS NULL";
+    query += " AND sales_orders.organization_id IS NULL";
   }
 
-  query += " ORDER BY created_at DESC";
+  query += " ORDER BY sales_orders.created_at DESC";
 
   db.query(query, params, (err, results) => {
     if (err) {
@@ -35,6 +39,7 @@ router.post("/getOrders", (req, res) => {
     res.status(200).json({ success: true, orders: results });
   });
 });
+
 
 router.post("/calculateOrderTotal", (req, res) => {
   const { orderId } = req.body;
