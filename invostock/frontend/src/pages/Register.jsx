@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Card } from "primereact/card";
 import { Message } from "primereact/message";
 import { RadioButton } from "primereact/radiobutton";
+import { Toast } from "primereact/toast";
+
 import "../styles/login.css";
 
 const Register = () => {
@@ -15,6 +19,9 @@ const Register = () => {
   const [orgEmail, setOrgEmail] = useState("");
   const [orgAddress, setOrgAddress] = useState("");
   const [error, setError] = useState("");
+
+  const navigate = useNavigate();
+  const toast = useRef(null);
 
   const handleRegister = (e) => {
     e.preventDefault();
@@ -42,57 +49,80 @@ const Register = () => {
   const handleRegisterAsync = async () => {
     try {
       if (isOrganization) {
-        const orgResponse = await fetch(
-          "http://localhost:3000/registerOrganization",
+        const response = await fetch(
+          "http://localhost:3000/api/users/registerOrganizationUser",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              name: orgName,
-              address: orgAddress,
+              name,
+              email,
+              password,
+              orgName,
+              orgAddress,
             }),
           }
         );
 
-        const orgData = await orgResponse.json();
-        if (!orgData.success) {
-          alert("Greška pri registraciji organizacije!");
-          return;
-        }
-
-        const userResponse = await fetch("http://localhost:3000/registerUser", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name,
-            email,
-            password,
-            organizationId: orgData.organizationId,
-          }),
-        });
-
-        const userData = await userResponse.json();
-        if (userData.success) {
-          alert("Uspješna registracija!");
+        const data = await response.json();
+        if (data.success) {
+          toast.current.show({
+            severity: "success",
+            summary: "Organizacija i korisnik (admin) uspješno registrirani!",
+            life: 3000,
+          });
         } else {
-          alert("Greška pri registraciji korisnika!");
+          toast.current.show({
+            severity: "danger",
+            summary: "Greška pri registraciji organizacije ili korisnika!",
+            life: 3000,
+          });
+          
         }
       } else {
-        const userResponse = await fetch("http://localhost:3000/registerUser", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
-        });
+        const response = await fetch(
+          "http://localhost:3000/api/users/registerUser",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password }),
+          }
+        );
 
-        const userData = await userResponse.json();
-        if (userData.success) {
-          alert("Uspješna registracija!");
+        const data = await response.json();
+        if (data.success) {
+          toast.current.show({
+            severity: "success",
+            summary: "Registracija uspješna!",
+            detail: "Možete se sada prijaviti.",
+            life: 3000,
+          });
+          j;
+          setTimeout(() => {
+            navigate("/login");
+          }, 3000);
         } else {
-          alert("Greška pri registraciji korisnika!");
+          toast.current.show({
+            severity: "danger",
+            summary: "Greška pri registraciji organizacije ili korisnika!",
+            life: 3000,
+          });
         }
       }
+
+      setEmail("");
+      setPassword("");
+      setName("");
+      setOrgName("");
+      setOrgEmail("");
+      setOrgAddress("");
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Greška:", error);
+      toast.current.show({
+        severity: "danger",
+        summary: "Greška pri registraciji organizacije ili korisnika!",
+        life: 3000,
+      });
     }
   };
 
@@ -107,22 +137,62 @@ const Register = () => {
       }}
     >
       <Card title="" style={{ width: "25rem" }}>
-        <div className="r mb-5">
-          <img
-            src="/photos/logo-no-background.svg"
-            alt="Logo"
-            style={{ width: "60%", height: "60%", marginBottom: "20px" }}
-          />
+        <img
+          src="/photos/logo-no-background.svg"
+          alt="Logo"
+          style={{ width: "60%", height: "60%", marginBottom: "20px" }}
+        />
+        <div className="text-900 text-3xl font-medium mb-4">
+          Registrirajte se
+        </div>
+
+        <div className="field" style={{ marginBottom: "25px" }}>
+          <label>Registriram se kao:</label>
           <div
-            className="text-900 text-3xl font-medium mb-3"
-            style={{ marginBottom: "10%" }}
+            style={{
+              display: "flex",
+              gap: "20px",
+              alignItems: "center",
+              justifyContent: "center",
+              marginTop: "5px",
+            }}
           >
-            Registrirajte se!
+            <div>
+              <RadioButton
+                inputId="individual"
+                name="userType"
+                value={false}
+                onChange={() => setIsOrganization(false)}
+                checked={!isOrganization}
+              />
+              <label htmlFor="individual" style={{ marginLeft: "5px" }}>
+                Pojedinac
+              </label>
+            </div>
+            <div>
+              <RadioButton
+                inputId="organization"
+                name="userType"
+                value={true}
+                onChange={() => {
+                  setIsOrganization(true);
+                  setOrgName("");
+                  setOrgEmail("");
+                  setOrgAddress("");
+                }}
+                checked={isOrganization}
+              />
+              <label htmlFor="organization" style={{ marginLeft: "5px" }}>
+                Organizacija
+              </label>
+            </div>
           </div>
         </div>
+
         {error && <Message severity="error" text={error} />}
 
         <form onSubmit={handleRegister}>
+          {/* 🎯 Unos korisnika */}
           <div className="field">
             <label htmlFor="name">Korisničko ime</label>
             <InputText
@@ -135,6 +205,7 @@ const Register = () => {
               className="p-inputtext-m"
             />
           </div>
+
           <div className="field">
             <label htmlFor="email">Email</label>
             <InputText
@@ -147,6 +218,7 @@ const Register = () => {
               className="p-inputtext-m"
             />
           </div>
+
           <div className="field" style={{ marginBottom: "15px" }}>
             <label htmlFor="password">Zaporka</label>
             <InputText
@@ -160,47 +232,15 @@ const Register = () => {
             />
           </div>
 
-          <div className="field" style={{ marginBottom: "15px" }}>
-            <label>Vrsta korisnika</label>
-            <div
-              style={{
-                display: "flex",
-                gap: "20px",
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: "5px",
-              }}
-            >
-              <div>
-                <RadioButton
-                  inputId="individual"
-                  name="userType"
-                  value={false}
-                  onChange={() => setIsOrganization(false)}
-                  checked={!isOrganization}
-                />
-                <label htmlFor="individual" style={{ marginLeft: "5px" }}>
-                  Pojedinac
-                </label>
-              </div>
-              <div>
-                <RadioButton
-                  inputId="organization"
-                  name="userType"
-                  value={true}
-                  onChange={() => setIsOrganization(true)}
-                  checked={isOrganization}
-                />
-                <label htmlFor="organization" style={{ marginLeft: "5px" }}>
-                  Organizacija
-                </label>
-              </div>
-            </div>
-          </div>
-
+          {/* 📦 Ako je organizacija, prikazujemo dodatna polja */}
           {isOrganization && (
             <>
-              <div className="field" style={{ marginBottom: "15px" }}>
+              <Message
+                severity="info"
+                text="Vi ćete biti administrator organizacije."
+                style={{ marginBottom: "15px" }}
+              />
+              <div className="field">
                 <label htmlFor="orgName">Ime organizacije</label>
                 <InputText
                   id="orgName"
@@ -209,10 +249,10 @@ const Register = () => {
                   type="text"
                   placeholder="Unesite ime organizacije"
                   required
-                  className="p-inputtext-m"
                 />
               </div>
-              <div className="field" style={{ marginBottom: "15px" }}>
+
+              <div className="field">
                 <label htmlFor="orgEmail">Email organizacije</label>
                 <InputText
                   id="orgEmail"
@@ -221,9 +261,9 @@ const Register = () => {
                   type="email"
                   placeholder="Unesite email organizacije"
                   required
-                  className="p-inputtext-m"
                 />
               </div>
+
               <div className="field" style={{ marginBottom: "15px" }}>
                 <label htmlFor="orgAddress">Adresa organizacije</label>
                 <InputText
@@ -233,11 +273,11 @@ const Register = () => {
                   type="text"
                   placeholder="Unesite adresu organizacije"
                   required
-                  className="p-inputtext-m"
                 />
               </div>
             </>
           )}
+
           <a href="/login">
             <u>Već ste registrirani? Prijavite se!</u>
           </a>
