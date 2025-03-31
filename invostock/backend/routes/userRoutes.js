@@ -7,17 +7,42 @@ const bcrypt = require("bcrypt");
 const { Resend } = require("resend");
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-router.get("/getUsers", (req, res) => {
-  db.query("SELECT * FROM users", (err, results) => {
+router.post("/getUser", (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email i lozinka su obavezni!" });
+  }
+
+  const query = `SELECT * FROM users WHERE email = ?`;
+  db.query(query, [email], async (err, results) => {
     if (err) {
-      console.error("Greška pri izvršavanju upita:", err);
-      return res.status(500).send("Greška pri izvršavanju upita");
+      console.error("Greška pri izvođenju upita!", err);
+      return res.status(500).send("Internal Server Error!");
     }
-    res.json(results);
+
+    if (results.length === 0) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Neispravan email ili lozinka." });
+    }
+
+    const user = results[0];
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Neispravan email ili lozinka." });
+    }
+
+    delete user.password;
+
+    res.json({ success: true, user, message: "Uspješan login!" });
   });
 });
 
-router.post("/getUser", (req, res) => {
+/*router.post("/getUser", (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -41,7 +66,7 @@ router.post("/getUser", (req, res) => {
       });
     }
   });
-});
+});*/
 
 router.post("/forgot-password", (req, res) => {
   const { email } = req.body;
@@ -131,6 +156,104 @@ router.post("/reset-password/:token", (req, res) => {
       res.status(200).json({ message: "Lozinka je uspješno postavljena." });
     });
   });
+});
+
+router.post("/registerUser", (req, res) => {
+  const { name, email, password } = req.body;
+
+  if (!name || !email || !password) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Sva polja su obavezna." });
+  }
+
+  db.query(
+    "SELECT * FROM users WHERE email = ?",
+    [email],
+    async (err, results) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ success: false, message: "Greška na serveru." });
+      if (results.length > 0)
+        return res
+          .status(409)
+          .json({ success: false, message: "Email već postoji." });
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      db.query(
+        "INSERT INTO users (name, email, password, org_role) VALUES (?, ?, ?, 'member')",
+        [name, email, hashedPassword],
+        (err) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ success: false, message: "Greška pri spremanju." });
+          res
+            .status(201)
+            .json({ success: true, message: "Korisnik registriran." });
+        }
+      );
+    }
+  );
+});
+
+router.post("/registerOrganizationUser", (req, res) => {
+  const { name, email, password, orgName, orgAddress } = req.body;
+
+  if (!name || !email || !password || !orgName || !orgAddress) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Sva polja su obavezna." });
+  }
+
+  db.query(
+    "SELECT * FROM users WHERE email = ?",
+    [email],
+    async (err, results) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ success: false, message: "Greška na serveru." });
+      if (results.length > 0)
+        return res
+          .status(409)
+          .json({ success: false, message: "Email već postoji." });
+
+      db.query(
+        "INSERT INTO organizations (name, address) VALUES (?, ?)",
+        [orgName, orgAddress],
+        async (orgErr, orgResult) => {
+          if (orgErr)
+            return res.status(500).json({
+              success: false,
+              message: "Greška pri kreiranju organizacije.",
+            });
+
+          const organizationId = orgResult.insertId;
+          const hashedPassword = await bcrypt.hash(password, 10);
+
+          db.query(
+            "INSERT INTO users (name, email, password, organization_id, org_role) VALUES (?, ?, ?, ?, 'admin')",
+            [name, email, hashedPassword, organizationId],
+            (userErr) => {
+              if (userErr)
+                return res.status(500).json({
+                  success: false,
+                  message: "Greška pri kreiranju korisnika.",
+                });
+
+              res.status(201).json({
+                success: true,
+                message: "Organizacija i admin korisnik registrirani.",
+                organizationId,
+              });
+            }
+          );
+        }
+      );
+    }
+  );
 });
 
 module.exports = router;
