@@ -120,6 +120,9 @@ const Login = () => {
             <u>Nemate račun? Registrirajte se!</u>
           </a>
           <Button label="Login" className="mt-3 p-button-m" type="submit" />
+          <a href="/password-reset">
+            <u>Zaboravljena lozinka</u>
+          </a>
         </form>
       </Card>
     </div>

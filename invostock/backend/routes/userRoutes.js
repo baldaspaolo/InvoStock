@@ -99,7 +99,7 @@ router.post("/forgot-password", (req, res) => {
           .json({ message: "Greška kod spremanja tokena." });
       }
 
-      const resetLink = `http://localhost:3000/reset-password/${token}`;
+      const resetLink = `http://localhost:5173/reset-password/${token}`;
 
       resend.emails
         .send({

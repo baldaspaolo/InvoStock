@@ -19,6 +19,7 @@ import InvoiceItem from "./pages/UserOrganizationPages/InvoiceItem";
 import InvoiceAdd from "./pages/UserOrganizationPages/InvoiceAdd";
 import Contacts from "./pages/UserOrganizationPages/Contacts";
 import InventoryItem from "./pages/UserOrganizationPages/InventoryItem";
+import ResetPassword from "./pages/UserOrganizationPages/ResetPassword";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           <Route
             element={
