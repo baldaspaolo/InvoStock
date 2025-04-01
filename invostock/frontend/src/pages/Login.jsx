@@ -24,11 +24,14 @@ const Login = () => {
 
   const handleLoginAsync = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/users/getUser", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users/getUser`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
       const data = await response.json();
 
@@ -120,6 +123,9 @@ const Login = () => {
             <u>Nemate račun? Registrirajte se!</u>
           </a>
           <Button label="Login" className="mt-3 p-button-m" type="submit" />
+          <a href="/password-reset">
+            <u>Zaboravljena lozinka</u>
+          </a>
         </form>
       </Card>
     </div>

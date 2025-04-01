@@ -98,6 +98,7 @@ app.use((req, res) => {
   res.status(404).send("Ruta nije pronađena");
 });
 
-app.listen(PORT, () => {
-  console.log(`Server pokrenut na portu ${PORT}`);
+const HOST = "0.0.0.0";
+app.listen(PORT, HOST, () => {
+  console.log(`Server pokrenut na http://${HOST}:${PORT}`);
 });

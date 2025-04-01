@@ -22,7 +22,7 @@ const InvoiceItem = () => {
   const fetchInvoiceItems = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3000/api/invoices/getInvoiceItems",
+        `${import.meta.env.VITE_API_URL}/api/invoices/getInvoiceItems`,
         {
           method: "POST",
           headers: {
@@ -47,7 +47,7 @@ const InvoiceItem = () => {
   const fetchInvoiceData = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3000/api/invoices/getUserInovice",
+        `${import.meta.env.VITE_API_URL}/api/invoices/getUserInovice`,
         {
           method: "POST",
           headers: {
@@ -68,7 +68,7 @@ const InvoiceItem = () => {
   const fetchInvoiceContact = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3000/api/contacts/getInvoiceContact",
+        `${import.meta.env.VITE_API_URL}/api/contacts/getInvoiceContact`,
         {
           method: "POST",
           headers: {

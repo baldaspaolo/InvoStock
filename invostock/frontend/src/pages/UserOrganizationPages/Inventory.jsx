@@ -41,7 +41,7 @@ const Inventory = () => {
     const fetchInventory = async () => {
       try {
         const response = await fetch(
-          "http://localhost:3000/api/inventory/getInventory",
+          `${import.meta.env.VITE_API_URL}/api/inventory/getInventory`,
           {
             method: "POST",
             headers: {
