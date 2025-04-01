@@ -113,14 +113,14 @@ export default function Navbar() {
       icon: "pi pi-shopping-cart",
       items: [
         {
+          label: "Prodajni nalog",
+          icon: "pi pi-book",
+          command: () => (window.location.href = "/sales"),
+        },
+        {
           label: "Fakture",
           icon: "pi pi-file",
           command: () => (window.location.href = "/invoices"),
-        },
-        {
-          label: "Prodajni nalog",
-          icon: "pi pi-book",
-          command: () => (window.location.href = "/sales-orders"),
         },
         {
           label: "Uplate",
