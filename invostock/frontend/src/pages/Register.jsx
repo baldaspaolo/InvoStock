@@ -50,7 +50,7 @@ const Register = () => {
     try {
       if (isOrganization) {
         const response = await fetch(
-          "http://localhost:3000/api/users/registerOrganizationUser",
+          `${import.meta.env.VITE_API_URL}/api/users/registerOrganizationUser`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -77,11 +77,10 @@ const Register = () => {
             summary: "Greška pri registraciji organizacije ili korisnika!",
             life: 3000,
           });
-          
         }
       } else {
         const response = await fetch(
-          "http://localhost:3000/api/users/registerUser",
+          `${import.meta.env.VITE_API_URL}/api/users/registerUser`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

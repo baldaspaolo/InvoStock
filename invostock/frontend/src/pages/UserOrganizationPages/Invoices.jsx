@@ -33,7 +33,7 @@ const Invoices = () => {
   const fetchInvoices = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3000/api/invoices/getUserInvoices",
+        `${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoices`,
         {
           method: "POST",
           headers: {
@@ -59,7 +59,7 @@ const Invoices = () => {
   const fetchStatusData = async () => {
     try {
       const response = await fetch(
-        "http://localhost:3000/api/invoices/getUserInvoicesSummary",
+        `${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoicesSummary`,
         {
           method: "POST",
           headers: {
