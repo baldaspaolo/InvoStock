@@ -18,6 +18,7 @@ const invoiceRoutes = require("./routes/invoiceRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const salesRoutes = require("./routes/salesRoutes");
 
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
@@ -25,6 +26,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/contacts", contactRoutes);
+app.use("/api/sales", salesRoutes);
 
 app.post("/api/sendLowStockNotification", (req, res) => {
   const { itemName, userEmail } = req.body;

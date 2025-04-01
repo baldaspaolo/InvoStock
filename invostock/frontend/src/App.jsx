@@ -20,6 +20,8 @@ import InvoiceAdd from "./pages/UserOrganizationPages/InvoiceAdd";
 import Contacts from "./pages/UserOrganizationPages/Contacts";
 import InventoryItem from "./pages/UserOrganizationPages/InventoryItem";
 import ResetPassword from "./pages/UserOrganizationPages/ResetPassword";
+import Sales from "./pages/UserOrganizationPages/Sales";
+import SalesItem from "./pages/UserOrganizationPages/SalesItem";
 
 function App() {
   return (
@@ -46,6 +48,8 @@ function App() {
             <Route path="/invoices/add" element={<InvoiceAdd />} />
             <Route path="/contacts" element={<Contacts />} />
             <Route path="/inventoryItem" element={<InventoryItem />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/sales/:sale_id" element={<SalesItem />} />
           </Route>
 
           <Route path="*" element={<Login />} />
