@@ -71,6 +71,66 @@ router.post("/getNotifications", (req, res) => {
   });
 });
 
+router.post("/getSingleNotification", (req, res) => {
+  const { notificationId } = req.body;
+
+  if (!notificationId) {
+    return res.status(400).json({ error: "Nedostaje notificationId" });
+  }
+
+  const query = `
+    SELECT * FROM notifications 
+    WHERE id = ?
+    LIMIT 1
+  `;
+
+  db.query(query, [notificationId], (err, result) => {
+    if (err) {
+      console.error("Greška pri izvođenju upita:", err);
+      return res.status(500).send("Greška na serveru!");
+    }
+
+    if (result.length > 0) {
+      res.json({
+        success: true,
+        notification: result[0],
+        message: "Obavijest uspješno dohvaćena.",
+      });
+    } else {
+      res.json({
+        success: false,
+        message: "Obavijest nije pronađena.",
+      });
+    }
+  });
+});
+
+router.post("/markSingleNotificationAsRead", (req, res) => {
+  const { notificationId } = req.body;
+
+  if (!notificationId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Nedostaje notificationId." });
+  }
+
+  const query = "UPDATE notifications SET `read` = 1 WHERE id = ?";
+
+  db.query(query, [notificationId], (err, result) => {
+    if (err) {
+      console.error("Greška kod označavanja obavijesti kao pročitane:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Greška na serveru." });
+    }
+
+    res.json({
+      success: true,
+      message: "Obavijest je označena kao pročitana.",
+    });
+  });
+});
+
 router.post("/markAllNotificationsAsRead", (req, res) => {
   const { userId, organizationId } = req.body;
 
