@@ -22,6 +22,8 @@ import InventoryItem from "./pages/UserOrganizationPages/InventoryItem";
 import ResetPassword from "./pages/UserOrganizationPages/ResetPassword";
 import Sales from "./pages/UserOrganizationPages/Sales";
 import SalesItem from "./pages/UserOrganizationPages/SalesItem";
+import Notifications from "./pages/UserOrganizationPages/Notifications";
+import NotificationItem from "./pages/UserOrganizationPages/NotificationItem";
 
 function App() {
   return (
@@ -50,6 +52,8 @@ function App() {
             <Route path="/inventoryItem" element={<InventoryItem />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/sales/:sale_id" element={<SalesItem />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/notifications/:id" element={<NotificationItem />} />
           </Route>
 
           <Route path="*" element={<Login />} />
