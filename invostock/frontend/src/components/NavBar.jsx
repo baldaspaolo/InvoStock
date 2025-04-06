@@ -39,9 +39,9 @@ export default function Navbar() {
         if (data.success) {
           const transformed = data.notifications.map((n) => ({
             ...n,
-            read: n.read === 1, // Pretvori broj u boolean
+            read: n.read === 1,
           }));
-          setNotifications(transformed); // Postavi state s ispravnim podacima
+          setNotifications(transformed);
         }
       } catch (err) {
         console.error("Greška prilikom dohvaćanja obavijesti:", err);
@@ -223,15 +223,32 @@ export default function Navbar() {
         style={{ width: "300px" }}
         className="notification-overlay"
       >
-        <h3>
-          <i className="pi pi-bell" style={{ marginRight: "0.5rem" }} />{" "}
-          Obavijesti
-        </h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <h3 style={{ marginBottom: "0.5rem" }}>
+            <i className="pi pi-bell" style={{ marginRight: "0.5rem" }} />{" "}
+            Obavijesti
+          </h3>
+          <Button
+            label="Otvori centar"
+            icon="pi pi-external-link"
+            onClick={() => navigate("/notifications")}
+            text
+            size="small"
+            style={{ marginBottom: "8%", fontSize: "0.88rem" }}
+          />
+        </div>
+
         {loading ? (
           <p>Učitavanje...</p>
         ) : notifications.length > 0 ? (
           <ul style={{ listStyle: "none", padding: 0 }}>
-            {notifications.map((n) => (
+            {notifications.slice(0, 10).map((n) => (
               <li
                 key={n.id}
                 style={{
@@ -239,19 +256,39 @@ export default function Navbar() {
                   padding: "0.7rem",
                   borderRadius: "5px",
                   marginBottom: "0.5rem",
+                  cursor: "pointer",
                 }}
+                onClick={() => navigate(`/notifications/${n.id}`)}
               >
                 <strong>{n.title}</strong>
-                <p>{n.message}</p>
-                <small style={{ color: n.read ? "green" : "red" }}>
-                  {n.read ? "Pročitano" : "Nepročitano"}
-                </small>
+                <p style={{ margin: "0.3rem 0" }}>{n.message}</p>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "0.75rem",
+                  }}
+                >
+                  <span style={{ color: n.read ? "green" : "red" }}>
+                    {n.read ? "Pročitano" : "Nepročitano"}
+                  </span>
+                  <span style={{ color: "#555" }}>
+                    {new Date(n.created_at).toLocaleString("hr-HR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
         ) : (
           <p>Nema dostupnih obavijesti.</p>
         )}
+
         <Button
           label="Označi sve kao pročitano"
           icon="pi pi-check"
