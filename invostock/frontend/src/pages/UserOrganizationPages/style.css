@@ -5,6 +5,7 @@
   grid-column-gap: 0px;
   grid-row-gap: 0px;
   grid-template-rows: auto auto;
+  margin-top: 4%;
 }
 
 .div1 {
@@ -120,7 +121,6 @@
   height: 2.5rem;
   margin-top: 6%;
 }
-
 
 .p-datepicker {
   width: 50%;

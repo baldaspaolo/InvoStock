@@ -134,7 +134,7 @@ const Dashboard = () => {
       </Panel>
 
       <div className="dashboard-panels-row">
-        <Panel header="Posljednje fakture" style={{ flex: 1 }}>
+        <Panel header="Posljednje fakture" style={{ flex: 1, marginTop: "1%" }}>
           <DataTable
             value={latestInvoices}
             paginator
