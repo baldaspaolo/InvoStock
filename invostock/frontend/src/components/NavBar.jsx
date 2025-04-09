@@ -214,10 +214,9 @@ export default function Navbar() {
   );
 
   return (
-    <div className="card">
+    <div className="navbar-fixed">
       <Toast ref={toast} />
       <Menubar model={items} start={start} end={end} />
-
       <OverlayPanel
         ref={op}
         style={{ width: "300px" }}
