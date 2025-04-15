@@ -7,6 +7,7 @@ import { Menu } from "primereact/menu";
 import { OverlayPanel } from "primereact/overlaypanel";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
+import { SplitButton } from "primereact/splitbutton";
 import "./NavBar.css";
 
 export default function Navbar() {
@@ -96,7 +97,6 @@ export default function Navbar() {
       detail: "Uspješna odjava!",
       life: 3000,
     });
-    console.log(user);
     setTimeout(() => {
       navigate("/login");
     }, 1500);
@@ -106,7 +106,7 @@ export default function Navbar() {
     {
       label: "Home",
       icon: "pi pi-home",
-      command: () => (window.location.href = "/dashboard"),
+      command: () => navigate("/dashboard"),
     },
     {
       label: "Prodaja",
@@ -115,17 +115,17 @@ export default function Navbar() {
         {
           label: "Prodajni nalog",
           icon: "pi pi-book",
-          command: () => (window.location.href = "/sales"),
+          command: () => navigate("/sales"),
         },
         {
           label: "Fakture",
           icon: "pi pi-file",
-          command: () => (window.location.href = "/invoices"),
+          command: () => navigate("/invoices"),
         },
         {
           label: "Uplate",
           icon: "pi pi-credit-card",
-          command: () => (window.location.href = "/payments"),
+          command: () => navigate("/payments"),
         },
       ],
     },
@@ -136,27 +136,19 @@ export default function Navbar() {
         {
           label: "Narudžbenice",
           icon: "pi pi-shopping-bag",
-          command: () => (window.location.href = "/orders"),
+          command: () => navigate("/orders"),
         },
       ],
     },
     {
       label: "Troškovi",
       icon: "pi pi-money-bill",
-      command: () => (window.location.href = "/expenses"),
+      command: () => navigate("/expenses"),
     },
     {
       label: "Inventar",
       icon: "pi pi-box",
-      command: () => (window.location.href = "/inventory"),
-    },
-  ];
-
-  const rightItems = [
-    {
-      label: "Odjava",
-      icon: "pi pi-sign-out",
-      command: () => logoutUser(),
+      command: () => navigate("/inventory"),
     },
   ];
 
@@ -174,8 +166,6 @@ export default function Navbar() {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "20px",
-        marginRight: "10%",
       }}
     >
       <i
@@ -200,16 +190,29 @@ export default function Navbar() {
           </span>
         )}
       </i>
-      <i className="pi pi-user" style={{ cursor: "pointer" }}></i>
-      <i>{user?.name}</i>
-      <span style={{ cursor: "pointer" }}>Moj račun</span>
 
-      <i
-        className="pi pi-bars"
-        style={{ cursor: "pointer" }}
-        onClick={(e) => menu.current && menu.current.toggle(e)}
+      <SplitButton
+        label={`${user?.name}`}
+        icon="pi pi-user"
+        model={[
+          {
+            label: "Moj račun",
+            icon: "pi pi-cog",
+            command: () => navigate("/account"),
+          },
+          {
+            label: "Odjava",
+            icon: "pi pi-sign-out",
+            command: () => logoutUser(),
+          },
+        ]}
+        className="p-button-text user-splitbutton"
+        style={{
+          fontSize: "0.88rem",
+          height: "36px",
+          padding: "0 0.75rem",
+        }}
       />
-      <Menu model={rightItems} popup ref={menu} />
     </div>
   );
 
