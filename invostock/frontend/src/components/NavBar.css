@@ -1,6 +1,6 @@
 .notification-overlay {
   padding: 1rem;
-  border-radius: 10px;
+  border-radius: 30px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   align-items: center;
 }
@@ -36,7 +36,37 @@
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 999; 
+  z-index: 999;
   background-color: white;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.user-splitbutton .p-button-label {
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.p-menubar {
+  padding: 0.3rem 1rem !important;
+  min-height: 50px !important;
+}
+
+.p-menubar .p-menuitem-link {
+  padding: 0.5rem 0.9rem;
+}
+
+.p-button {
+  margin-top: 0;
+}
+
+.user-splitbutton .p-splitbutton-defaultbutton {
+  min-width: fit-content !important;
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+.user-splitbutton .p-button-label {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
 }
