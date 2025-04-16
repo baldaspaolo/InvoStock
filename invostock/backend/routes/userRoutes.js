@@ -256,4 +256,131 @@ router.post("/registerOrganizationUser", (req, res) => {
   );
 });
 
+router.get("/getUserOrganization/:userId", (req, res) => {
+  const userId = req.params.userId;
+
+  const query = `
+    SELECT 
+      o.name AS name,
+      COUNT(u2.id) AS members
+    FROM users u
+    JOIN organizations o ON u.organization_id = o.id
+    JOIN users u2 ON u2.organization_id = o.id
+    WHERE u.id = ?
+    GROUP BY o.id
+  `;
+
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error("Greška kod dohvaćanja organizacije:", err);
+      return res.status(500).json({ message: "Greška na serveru." });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "Organizacija nije pronađena." });
+    }
+
+    res.status(200).json(results[0]);
+  });
+});
+
+router.get("/getOrganizationUsers/:orgId", (req, res) => {
+  const orgId = req.params.orgId;
+
+  db.query(
+    "SELECT id, name, email, org_role AS role FROM users WHERE organization_id = ?",
+    [orgId],
+    (err, results) => {
+      if (err) {
+        console.error("Greška kod dohvaćanja korisnika organizacije:", err);
+        return res.status(500).json({ message: "Greška na serveru." });
+      }
+
+      res.status(200).json(results);
+    }
+  );
+});
+
+router.put("/updateUserRole/:id", (req, res) => {
+  const userId = req.params.id;
+  const { role, adminId } = req.body; 
+
+  if (!role || !adminId) {
+    return res.status(400).json({ message: "Nedostaju podaci." });
+  }
+
+  const checkQuery = "SELECT * FROM users WHERE id = ? AND org_role = 'admin'";
+  db.query(checkQuery, [adminId], (err, results) => {
+    if (err) return res.status(500).json({ message: "Greška na serveru." });
+    if (results.length === 0)
+      return res.status(403).json({ message: "Nemate prava za ovu radnju." });
+
+    db.query(
+      "UPDATE users SET org_role = ? WHERE id = ?",
+      [role, userId],
+      (err) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ message: "Greška kod ažuriranja uloge." });
+
+        res.status(200).json({ message: "Uloga ažurirana." });
+      }
+    );
+  });
+});
+
+router.delete("/deleteUser/:id", (req, res) => {
+  const userId = req.params.id;
+  const { adminId } = req.query;
+
+  if (!adminId) return res.status(400).json({ message: "Nedostaje adminId." });
+
+  const checkQuery = "SELECT * FROM users WHERE id = ? AND org_role = 'admin'";
+  db.query(checkQuery, [adminId], (err, results) => {
+    if (err) return res.status(500).json({ message: "Greška na serveru." });
+    if (results.length === 0)
+      return res.status(403).json({ message: "Nemate prava za ovu radnju." });
+
+    db.query("DELETE FROM users WHERE id = ?", [userId], (err) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ message: "Greška kod brisanja korisnika." });
+
+      res.status(200).json({ message: "Korisnik obrisan." });
+    });
+  });
+});
+
+router.put("/updateUser/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, email, password } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({ error: "Ime i email su obavezni." });
+  }
+
+  let query = "";
+  let values = [];
+
+  if (password && password.trim() !== "") {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    query = "UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?";
+    values = [name, email, hashedPassword, id];
+  } else {
+    query = "UPDATE users SET name = ?, email = ? WHERE id = ?";
+    values = [name, email, id];
+  }
+
+  db.query(query, values, (err, result) => {
+    if (err) {
+      console.error("Greška kod ažuriranja korisnika:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    res.status(200).json({ message: "Korisnik je ažuriran." });
+  });
+});
+
 module.exports = router;
