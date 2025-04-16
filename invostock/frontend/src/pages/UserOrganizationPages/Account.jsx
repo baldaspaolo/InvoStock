@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
+
 import { Dialog } from "primereact/dialog";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -11,57 +13,193 @@ import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 
 export default function Account() {
+  const { user } = useContext(AuthContext);
   const toast = React.useRef(null);
 
-  const mockUsers = [
-    {
-      id: 1,
-      name: "Ana Horvat",
-      email: "ana@firma.com",
-      role: "Korisnik",
-    },
-    {
-      id: 2,
-      name: "Marko Marić",
-      email: "marko@firma.com",
-      role: "Administrator",
-    },
-    {
-      id: 3,
-      name: "Petra Novak",
-      email: "petra@firma.com",
-      role: "Korisnik",
-    },
-  ];
-
-  const [activeSection, setActiveSection] = useState("profil");
-  const [firstName, setFirstName] = useState("Ivan");
-  const [lastName, setLastName] = useState("Privatnik");
-  const [email, setEmail] = useState("ivan@email.com");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [language, setLanguage] = useState("hr");
   const [notify, setNotify] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [activeSection, setActiveSection] = useState("profil");
+
+  const [organization, setOrganization] = useState(null);
+  const [users, setUsers] = useState([]);
+
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState("");
-  const [users, setUsers] = useState(mockUsers);
+
   const [editUserId, setEditUserId] = useState(null);
   const [editUserEmail, setEditUserEmail] = useState("");
+  const [editUserRole, setEditUserRole] = useState("");
 
-  const organization = {
-    name: "Privatna firma d.o.o.",
-    role: "Administrator",
-    members: users.length,
+  useEffect(() => {
+    const fetchData = async () => {
+      if (user?.name) {
+        const [first, ...last] = user.name.split(" ");
+        setFirstName(first);
+        setLastName(last.join(" "));
+      }
+      setEmail(user.email);
+
+      if (user.organization_id) {
+        try {
+          const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/users/getUserOrganization/${
+              user.id
+            }`
+          );
+          const data = await res.json();
+          setOrganization(data);
+        } catch (err) {
+          console.error("Greška kod organizacije:", err);
+        }
+
+        if (user.org_role === "admin") {
+          try {
+            const res = await fetch(
+              `${import.meta.env.VITE_API_URL}/api/users/getOrganizationUsers/${
+                user.organization_id
+              }`
+            );
+            const data = await res.json();
+            setUsers(data);
+          } catch (err) {
+            console.error("Greška kod korisnika:", err);
+          }
+        }
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
+  const handleSave = async () => {
+    const fullName = `${firstName} ${lastName}`.trim();
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users/updateUser/${user.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: fullName, email, password }),
+        }
+      );
+      await res.json();
+
+      toast.current.show({
+        severity: "success",
+        summary: "Spremanje",
+        detail: "Podaci su uspješno spremljeni.",
+        life: 3000,
+      });
+      setIsEditing(false);
+      setPassword("");
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Došlo je do greške kod spremanja.",
+      });
+    }
   };
 
-  const handleSave = () => {
-    toast.current.show({
-      severity: "success",
-      summary: "Spremanje",
-      detail: "Promjene spremljene",
-      life: 3000,
-    });
+  const handleAddUser = async () => {
+    if (!newUserEmail.includes("@")) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Upozorenje",
+        detail: "Unesite ispravan email.",
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users/addOrganizationUser`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: newUserEmail,
+            organizationId: user.organization_id,
+          }),
+        }
+      );
+      const data = await res.json();
+
+      setUsers([
+        ...users,
+        {
+          id: data.insertId || Date.now(),
+          email: newUserEmail,
+          name: newUserEmail.split("@")[0],
+          role: "Korisnik",
+        },
+      ]);
+      setShowAddUserDialog(false);
+      setNewUserEmail("");
+      toast.current.show({
+        severity: "success",
+        summary: "Dodano",
+        detail: "Korisnik je dodan u organizaciju.",
+      });
+    } catch (err) {
+      console.error("Greška prilikom dodavanja korisnika:", err);
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    try {
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/users/deleteUser/${id}?adminId=${
+          user.id
+        }`,
+        {
+          method: "DELETE",
+        }
+      );
+      setUsers(users.filter((u) => u.id !== id));
+      toast.current.show({
+        severity: "success",
+        summary: "Obrisano",
+        detail: "Korisnik je uspješno obrisan.",
+      });
+    } catch (err) {
+      console.error("Greška kod brisanja korisnika:", err);
+    }
+  };
+
+  const handleUpdateUserRole = async () => {
+    try {
+      await fetch(
+        `${
+          import.meta.env.VITE_API_URL
+        }/api/users/updateUserRole/${editUserId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: editUserRole, adminId: user.id }),
+        }
+      );
+      setUsers(
+        users.map((u) =>
+          u.id === editUserId ? { ...u, role: editUserRole } : u
+        )
+      );
+      setEditUserId(null);
+      setEditUserEmail("");
+      toast.current.show({
+        severity: "success",
+        summary: "Ažurirano",
+        detail: "Uloga korisnika je promijenjena.",
+      });
+    } catch (err) {
+      console.error("Greška kod ažuriranja uloge:", err);
+    }
   };
 
   return (
@@ -137,28 +275,35 @@ export default function Account() {
 
         <div style={{ flex: 1 }}>
           {activeSection === "profil" && (
-            <Panel header="Moj profil" style={{ fontSize: "0.88rem" }}>
+            <Panel header="Moj profil">
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "center",
-                  margin: "1rem 0 2rem",
+                  justifyContent: "space-between",
+                  marginBottom: "1rem",
                 }}
               >
                 <h4 style={{ margin: 0 }}>Osobni podaci</h4>
-                <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
                   <Checkbox
                     inputId="edit"
                     checked={isEditing}
                     onChange={(e) => setIsEditing(e.checked)}
                   />
-                  <label htmlFor="edit">Uredi podatke</label>
+                  <label htmlFor="edit" style={{ margin: 0 }}>
+                    Uredi podatke
+                  </label>
                 </div>
               </div>
-              <div
-                style={{ display: "flex", gap: "2rem", marginBottom: "2rem" }}
-              >
+
+              <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
                 <span className="p-float-label" style={{ flex: 1 }}>
                   <InputText
                     id="firstName"
@@ -170,16 +315,16 @@ export default function Account() {
                 </span>
                 <span className="p-float-label" style={{ flex: 1 }}>
                   <InputText
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    id="firstName"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     disabled={!isEditing}
+                    style={{ width: "100%" }}
                   />
-                  <label htmlFor="lastName">Prezime</label>
+                  <label htmlFor="firstName">Ime</label>
                 </span>
               </div>
-
-              <div className="p-float-label" style={{ marginBottom: "1rem" }}>
+              <div className="p-float-label" style={{ marginTop: "1rem" }}>
                 <InputText
                   id="email"
                   value={email}
@@ -189,9 +334,8 @@ export default function Account() {
                 />
                 <label htmlFor="email">E-mail</label>
               </div>
-
               {isEditing && (
-                <div className="p-float-label" style={{ marginBottom: "1rem" }}>
+                <div className="p-float-label" style={{ marginTop: "1rem" }}>
                   <Password
                     id="password"
                     value={password}
@@ -203,7 +347,6 @@ export default function Account() {
                   <label htmlFor="password">Nova lozinka</label>
                 </div>
               )}
-
               {isEditing && (
                 <div style={{ textAlign: "right", marginTop: "1rem" }}>
                   <Button
@@ -218,47 +361,46 @@ export default function Account() {
           )}
 
           {activeSection === "organizacija" && (
-            <Panel header="Organizacija" style={{ fontSize: "0.88rem" }}>
-              <p>
-                <strong>Naziv:</strong> {organization.name}
-              </p>
-              <p>
-                <strong>Uloga:</strong> {organization.role}
-              </p>
-              <p>
-                <strong>Broj članova:</strong> {organization.members}
-              </p>
-
-              {organization.role === "Administrator" && (
-                <div style={{ marginTop: "1rem" }}>
-                  <Button
-                    label="Upravljaj korisnicima"
-                    icon="pi pi-users"
-                    onClick={() => setShowUserDialog(true)}
-                  />
-                </div>
+            <Panel header="Organizacija">
+              {organization ? (
+                <>
+                  <p>
+                    <strong>Naziv:</strong> {organization.name}
+                  </p>
+                  <p>
+                    <strong>Uloga:</strong>{" "}
+                    {user.org_role === "admin" ? "Administrator" : "Korisnik"}
+                  </p>
+                  <p>
+                    <strong>Broj članova:</strong> {users.length}
+                  </p>
+                  {user.org_role === "admin" && (
+                    <Button
+                      label="Upravljaj korisnicima"
+                      icon="pi pi-users"
+                      onClick={() => setShowUserDialog(true)}
+                      style={{ marginTop: "1rem" }}
+                    />
+                  )}
+                </>
+              ) : (
+                <p>Niste povezani s organizacijom.</p>
               )}
             </Panel>
           )}
 
           {activeSection === "postavke" && (
-            <Panel header="Ostale postavke" style={{ fontSize: "0.88rem" }}>
-              <div style={{ marginBottom: "1rem" }}>
-                <Dropdown
-                  value={language}
-                  options={[
-                    { label: "Hrvatski", value: "hr" },
-                    { label: "Engleski", value: "en" },
-                  ]}
-                  onChange={(e) => setLanguage(e.value)}
-                  placeholder="Odaberi jezik"
-                />
-              </div>
-
-              <div
-                className="p-field-checkbox"
-                style={{ marginBottom: "1rem" }}
-              >
+            <Panel header="Ostale postavke">
+              <Dropdown
+                value={language}
+                options={[
+                  { label: "Hrvatski", value: "hr" },
+                  { label: "Engleski", value: "en" },
+                ]}
+                onChange={(e) => setLanguage(e.value)}
+                placeholder="Odaberi jezik"
+              />
+              <div className="p-field-checkbox" style={{ marginTop: "1rem" }}>
                 <Checkbox
                   inputId="notify"
                   checked={notify}
@@ -268,8 +410,7 @@ export default function Account() {
                   Primaj obavijesti e-mailom
                 </label>
               </div>
-
-              <div style={{ textAlign: "right" }}>
+              <div style={{ textAlign: "right", marginTop: "1rem" }}>
                 <Button
                   label="Spremi postavke"
                   icon="pi pi-check"
@@ -320,6 +461,7 @@ export default function Account() {
                   onClick={() => {
                     setEditUserId(rowData.id);
                     setEditUserEmail(rowData.email);
+                    setEditUserRole(rowData.role);
                   }}
                 />
                 <Button
@@ -327,9 +469,7 @@ export default function Account() {
                   rounded
                   text
                   severity="danger"
-                  onClick={() =>
-                    setUsers(users.filter((u) => u.id !== rowData.id))
-                  }
+                  onClick={() => handleDeleteUser(rowData.id)}
                 />
               </div>
             )}
@@ -360,27 +500,7 @@ export default function Account() {
             <Button
               label="Dodaj"
               icon="pi pi-check"
-              onClick={() => {
-                if (!newUserEmail.includes("@")) {
-                  toast.current.show({
-                    severity: "warn",
-                    summary: "Upozorenje",
-                    detail: "Unesite valjan e-mail.",
-                    life: 3000,
-                  });
-                  return;
-                }
-
-                const newUser = {
-                  id: users.length + 1,
-                  name: newUserEmail.split("@")[0],
-                  email: newUserEmail,
-                  role: "Korisnik",
-                };
-                setUsers([...users, newUser]);
-                setShowAddUserDialog(false);
-                setNewUserEmail("");
-              }}
+              onClick={handleAddUser}
               severity="success"
             />
           </div>
@@ -406,29 +526,21 @@ export default function Account() {
             <label htmlFor="editUserRole">Uloga</label>
             <Dropdown
               id="editUserRole"
-              value={users.find((u) => u.id === editUserId)?.role || "Korisnik"}
+              value={editUserRole}
               options={[
                 { label: "Korisnik", value: "Korisnik" },
                 { label: "Administrator", value: "Administrator" },
               ]}
-              onChange={(e) => {
-                const updatedUsers = users.map((u) =>
-                  u.id === editUserId ? { ...u, role: e.value } : u
-                );
-                setUsers(updatedUsers);
-              }}
+              onChange={(e) => setEditUserRole(e.value)}
               placeholder="Odaberi ulogu"
             />
           </div>
           <div style={{ textAlign: "right", marginTop: "1rem" }}>
             <Button
-              label="Zatvori"
-              icon="pi pi-times"
-              onClick={() => {
-                setEditUserId(null);
-                setEditUserEmail("");
-              }}
-              severity="secondary"
+              label="Spremi"
+              icon="pi pi-check"
+              onClick={handleUpdateUserRole}
+              severity="success"
             />
           </div>
         </div>
