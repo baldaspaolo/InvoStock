@@ -11,15 +11,7 @@ import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 
 export default function Account() {
-  const [activeSection, setActiveSection] = useState("profil");
-  const [firstName, setFirstName] = useState("Ivan");
-  const [lastName, setLastName] = useState("Privatnik");
-  const [email, setEmail] = useState("ivan@email.com");
-  const [password, setPassword] = useState("");
-  const [language, setLanguage] = useState("hr");
-  const [notify, setNotify] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
-  const [showUserDialog, setShowUserDialog] = useState(false);
+  const toast = React.useRef(null);
 
   const mockUsers = [
     {
@@ -42,13 +34,26 @@ export default function Account() {
     },
   ];
 
+  const [activeSection, setActiveSection] = useState("profil");
+  const [firstName, setFirstName] = useState("Ivan");
+  const [lastName, setLastName] = useState("Privatnik");
+  const [email, setEmail] = useState("ivan@email.com");
+  const [password, setPassword] = useState("");
+  const [language, setLanguage] = useState("hr");
+  const [notify, setNotify] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showUserDialog, setShowUserDialog] = useState(false);
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [users, setUsers] = useState(mockUsers);
+  const [editUserId, setEditUserId] = useState(null);
+  const [editUserEmail, setEditUserEmail] = useState("");
+
   const organization = {
     name: "Privatna firma d.o.o.",
     role: "Administrator",
-    members: 3,
+    members: users.length,
   };
-
-  const toast = React.useRef(null);
 
   const handleSave = () => {
     toast.current.show({
@@ -230,7 +235,7 @@ export default function Account() {
                     label="Upravljaj korisnicima"
                     icon="pi pi-users"
                     onClick={() => setShowUserDialog(true)}
-                  />{" "}
+                  />
                 </div>
               )}
             </Panel>
@@ -276,6 +281,7 @@ export default function Account() {
           )}
         </div>
       </div>
+
       <Dialog
         header="Korisnici organizacije"
         visible={showUserDialog}
@@ -289,11 +295,12 @@ export default function Account() {
             label="Dodaj korisnika"
             size="small"
             severity="success"
+            onClick={() => setShowAddUserDialog(true)}
           />
         </div>
 
         <DataTable
-          value={mockUsers}
+          value={users}
           responsiveLayout="scroll"
           stripedRows
           size="small"
@@ -310,19 +317,121 @@ export default function Account() {
                   rounded
                   text
                   severity="primary"
-                  tooltip="Uredi"
+                  onClick={() => {
+                    setEditUserId(rowData.id);
+                    setEditUserEmail(rowData.email);
+                  }}
                 />
                 <Button
                   icon="pi pi-trash"
                   rounded
                   text
                   severity="danger"
-                  tooltip="Obriši"
+                  onClick={() =>
+                    setUsers(users.filter((u) => u.id !== rowData.id))
+                  }
                 />
               </div>
             )}
           />
         </DataTable>
+      </Dialog>
+
+      <Dialog
+        header="Dodaj korisnika"
+        visible={showAddUserDialog}
+        style={{ width: "30vw" }}
+        modal
+        onHide={() => {
+          setShowAddUserDialog(false);
+          setNewUserEmail("");
+        }}
+      >
+        <div className="p-fluid">
+          <div className="p-field">
+            <label htmlFor="newUserEmail">Email korisnika</label>
+            <InputText
+              id="newUserEmail"
+              value={newUserEmail}
+              onChange={(e) => setNewUserEmail(e.target.value)}
+            />
+          </div>
+          <div style={{ textAlign: "right", marginTop: "1rem" }}>
+            <Button
+              label="Dodaj"
+              icon="pi pi-check"
+              onClick={() => {
+                if (!newUserEmail.includes("@")) {
+                  toast.current.show({
+                    severity: "warn",
+                    summary: "Upozorenje",
+                    detail: "Unesite valjan e-mail.",
+                    life: 3000,
+                  });
+                  return;
+                }
+
+                const newUser = {
+                  id: users.length + 1,
+                  name: newUserEmail.split("@")[0],
+                  email: newUserEmail,
+                  role: "Korisnik",
+                };
+                setUsers([...users, newUser]);
+                setShowAddUserDialog(false);
+                setNewUserEmail("");
+              }}
+              severity="success"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Uredi korisnika"
+        visible={editUserId !== null}
+        style={{ width: "30vw" }}
+        modal
+        onHide={() => {
+          setEditUserId(null);
+          setEditUserEmail("");
+        }}
+      >
+        <div className="p-fluid">
+          <div className="p-field">
+            <label htmlFor="editUserEmail">Email</label>
+            <InputText id="editUserEmail" value={editUserEmail} disabled />
+          </div>
+          <div className="p-field">
+            <label htmlFor="editUserRole">Uloga</label>
+            <Dropdown
+              id="editUserRole"
+              value={users.find((u) => u.id === editUserId)?.role || "Korisnik"}
+              options={[
+                { label: "Korisnik", value: "Korisnik" },
+                { label: "Administrator", value: "Administrator" },
+              ]}
+              onChange={(e) => {
+                const updatedUsers = users.map((u) =>
+                  u.id === editUserId ? { ...u, role: e.value } : u
+                );
+                setUsers(updatedUsers);
+              }}
+              placeholder="Odaberi ulogu"
+            />
+          </div>
+          <div style={{ textAlign: "right", marginTop: "1rem" }}>
+            <Button
+              label="Zatvori"
+              icon="pi pi-times"
+              onClick={() => {
+                setEditUserId(null);
+                setEditUserEmail("");
+              }}
+              severity="secondary"
+            />
+          </div>
+        </div>
       </Dialog>
     </div>
   );
