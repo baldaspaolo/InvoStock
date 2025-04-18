@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../context/AuthContext";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -18,31 +19,9 @@ const statusOptions = [
 
 const Orders = () => {
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
-  const [orders, setOrders] = useState([
-    {
-      id: 1,
-      order_date: "2025-04-01",
-      supplier: "ABC Supply",
-      items: [
-        { name: "Item A", quantity: 5, price: 10, description: "Opis A" },
-        { name: "Item B", quantity: 3, price: 15, description: "Opis B" },
-      ],
-      total_price: 95,
-      status: "pending",
-    },
-    {
-      id: 2,
-      order_date: "2025-03-25",
-      supplier: "XYZ Market",
-      items: [
-        { name: "Item C", quantity: 10, price: 7, description: "Opis C" },
-      ],
-      total_price: 70,
-      status: "delivered",
-    },
-  ]);
-
+  const [orders, setOrders] = useState([]);
   const [expandedRows, setExpandedRows] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -52,18 +31,90 @@ const Orders = () => {
   const menuRef = useRef(null);
   const currentRowRef = useRef(null);
 
-  const handleReceiveOrder = (orderId) => {
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId ? { ...order, status: "delivered" } : order
-    );
-    setOrders(updatedOrders);
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/orders/getOrders`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              organizationId: user.organization_id,
+            }),
+          }
+        );
+
+        const data = await res.json();
+        if (data.success) {
+          setOrders(data.orders);
+        }
+      } catch (err) {
+        console.error("Greška kod dohvaćanja narudžbi:", err);
+      }
+    };
+
+    fetchOrders();
+  }, [user]);
+
+  const handleReceiveOrder = async (orderId) => {
+    const receivedDate = new Date().toISOString().slice(0, 10);
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/orders/markAsReceived`,
+        {
+          method: "PUT", 
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId,
+            userId: user.id,
+            organizationId: user.organization_id,
+            receivedDate,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (data.success) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? { ...o, status: "delivered", received_date: receivedDate }
+              : o
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Greška kod označavanja kao primljeno:", err);
+    }
   };
 
-  const handleCancelOrder = (orderId) => {
-    const updatedOrders = orders.map((order) =>
-      order.id === orderId ? { ...order, status: "cancelled" } : order
-    );
-    setOrders(updatedOrders);
+  const handleCancelOrder = async (orderId) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/orders/cancelOrder/${orderId}`,
+        {
+          method: "DELETE",
+        }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  status: "cancelled",
+                }
+              : o
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Greška kod otkazivanja narudžbe:", err);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -73,7 +124,7 @@ const Orders = () => {
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch = order.supplier
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(search.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || order.status === statusFilter;
@@ -88,15 +139,14 @@ const Orders = () => {
   const inputStyle = { height: "2.5rem", width: "100%" };
 
   const itemTable = (rowData) => {
-    const total = rowData.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-
     return (
       <div style={{ padding: "1rem" }}>
-        <DataTable value={rowData.items} responsiveLayout="scroll" size="small">
-          <Column field="name" header="Artikl" />
+        <DataTable
+          value={rowData.items || []}
+          responsiveLayout="scroll"
+          size="small"
+        >
+          <Column field="item_name" header="Artikl" />
           <Column field="price" header="Cijena po komadu (€)" />
           <Column field="quantity" header="Količina" />
           <Column field="description" header="Opis" />
@@ -105,10 +155,22 @@ const Orders = () => {
             body={(item) => (item.price * item.quantity).toFixed(2)}
           />
         </DataTable>
+        {rowData.received_date && (
+          <div
+            style={{
+              textAlign: "right",
+              marginTop: "0.25rem",
+              fontStyle: "italic",
+              color: "#555",
+            }}
+          >
+            Primljeno: {formatDate(rowData.received_date)}
+          </div>
+        )}
         <div
           style={{ textAlign: "right", marginTop: "1rem", fontWeight: "bold" }}
         >
-          Ukupna cijena narudžbe: {total.toFixed(2)} €
+          Ukupna cijena narudžbe: {parseFloat(rowData.total_price).toFixed(2)} €
         </div>
       </div>
     );
@@ -126,7 +188,7 @@ const Orders = () => {
             severity="success"
           />
         )}
-        {rowData.status !== "cancelled" && (
+        {rowData.status !== "cancelled" && rowData.status !== "delivered" && (
           <Button
             icon="pi pi-ellipsis-h"
             text
