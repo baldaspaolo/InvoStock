@@ -20,6 +20,8 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const salesRoutes = require("./routes/salesRoutes");
 const expenses = require("./routes/expensesRoutes");
+const suppliers = require("./routes/suppliersRoutes");
+const orders = require("./routes/ordersRoutes");
 
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
@@ -29,6 +31,8 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/contacts", contactRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/expenses", expenses);
+app.use("/api/suppliers", suppliers);
+app.use("/api/orders", orders);
 
 app.post("/api/sendLowStockNotification", (req, res) => {
   const { itemName, userEmail } = req.body;
