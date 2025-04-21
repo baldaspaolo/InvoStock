@@ -138,3 +138,7 @@
 .p-divider-horizontal:before {
   width: 165%;
 }
+
+.p-dropdown-panel {
+  width: 50%;
+}
