@@ -254,12 +254,6 @@ router.put("/markAsReceived", (req, res) => {
   }
 
   console.log("➡️ Početak obrade /markAsReceived");
-  console.log("Primljeni podaci:", {
-    orderId,
-    userId,
-    organizationId,
-    receivedDate,
-  });
 
   const updateOrderQuery = `
     UPDATE orders 
@@ -273,111 +267,188 @@ router.put("/markAsReceived", (req, res) => {
       return res.status(500).json({ error: "Greška na serveru" });
     }
 
-
-    const getOrderQuery = `
-      SELECT o.total_price, s.name AS supplier_name
-      FROM orders o
-      LEFT JOIN suppliers s ON o.supplier_id = s.id
-      WHERE o.id = ?
+    const getOrderItemsQuery = `
+      SELECT item_name, quantity, price, description 
+      FROM order_items 
+      WHERE order_id = ?
     `;
 
-    db.query(getOrderQuery, [orderId], (err2, results) => {
-      if (err2 || results.length === 0) {
-        console.error("❌ Greška kod dohvaćanja narudžbe:", err2);
-        return res
-          .status(500)
-          .json({ error: "Greška kod dohvaćanja narudžbe" });
+    db.query(getOrderItemsQuery, [orderId], (err2, items) => {
+      if (err2) {
+        console.error("❌ Greška pri dohvaćanju stavki narudžbe:", err2);
+        return res.status(500).json({ error: "Greška kod stavki" });
       }
 
-      const { total_price, supplier_name } = results[0];
-      console.log("📦 Dohvaćena narudžba:", { total_price, supplier_name });
-
-      const categoryQuery = `
-        SELECT id FROM expense_categories 
-        WHERE name = 'Nabava dijelova' 
-        AND (user_id = ? OR organization_id = ?)
-        LIMIT 1
+      const getOrderQuery = `
+        SELECT o.total_price, s.name AS supplier_name
+        FROM orders o
+        LEFT JOIN suppliers s ON o.supplier_id = s.id
+        WHERE o.id = ?
       `;
 
-      db.query(
-        categoryQuery,
-        [userId, organizationId],
-        (errCat, catResults) => {
-          if (errCat) {
-            console.error("Greška kod traženja kategorije:", errCat);
-            return res
-              .status(500)
-              .json({ error: "Greška kod traženja kategorije" });
-          }
+      db.query(getOrderQuery, [orderId], (err3, orderResults) => {
+        if (err3 || orderResults.length === 0) {
+          console.error("❌ Greška kod dohvaćanja narudžbe:", err3);
+          return res
+            .status(500)
+            .json({ error: "Greška kod dohvaćanja narudžbe" });
+        }
 
-          const handleInsertExpense = (categoryId) => {
-            console.log("🧾 Unos troška sa categoryId:", categoryId);
+        const { total_price, supplier_name } = orderResults[0];
 
-            const insertExpenseQuery = `
-            INSERT INTO expenses (user_id, organization_id, category_id, expense_date, amount, name, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `;
+        const categoryQuery = `
+          SELECT id FROM expense_categories 
+          WHERE name = 'Nabava dijelova' 
+          AND (user_id = ? OR organization_id = ?)
+          LIMIT 1
+        `;
 
-            const expenseParams = [
-              userId,
-              organizationId || null,
-              categoryId,
-              receivedDate,
-              total_price,
-              `Nabava - ${supplier_name}`,
-              `Automatski trošak za narudžbu #${orderId}`,
-            ];
+        db.query(
+          categoryQuery,
+          [userId, organizationId],
+          (err4, catResults) => {
+            if (err4) {
+              console.error("❌ Greška kod traženja kategorije:", err4);
+              return res
+                .status(500)
+                .json({ error: "Greška kod traženja kategorije" });
+            }
 
-            db.query(insertExpenseQuery, expenseParams, (err3) => {
-              if (err3) {
-                console.error("Greška kod unosa troška:", err3);
-                return res
-                  .status(500)
-                  .json({ error: "Greška kod unosa troška" });
-              }
+            const insertExpense = (categoryId) => {
+              const insertExpenseQuery = `
+                INSERT INTO expenses (user_id, organization_id, category_id, expense_date, amount, name, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+              `;
 
-              console.log("✅ Trošak uspješno unesen");
-              res.status(200).json({
-                success: true,
-                message: "Narudžba primljena i trošak zabilježen.",
-              });
-            });
-          };
+              const expenseParams = [
+                userId,
+                organizationId || null,
+                categoryId,
+                receivedDate,
+                total_price,
+                `Nabava - ${supplier_name}`,
+                `Automatski trošak za narudžbu #${orderId}`,
+              ];
 
-          if (catResults.length > 0) {
-            console.log("✅ Kategorija pronađena:", catResults[0].id);
-            handleInsertExpense(catResults[0].id);
-          } else {
-            console.log("⚠️ Kategorija ne postoji, kreiram novu...");
-
-            const insertCategoryQuery = `
-            INSERT INTO expense_categories (user_id, organization_id, name)
-            VALUES (?, ?, 'Nabava dijelova')
-          `;
-
-            db.query(
-              insertCategoryQuery,
-              [userId, organizationId || null],
-              (errIns, resultCat) => {
-                if (errIns) {
-                  console.error("Greška kod unosa kategorije:", errIns);
+              db.query(insertExpenseQuery, expenseParams, (err5) => {
+                if (err5) {
+                  console.error("❌ Greška kod unosa troška:", err5);
                   return res
                     .status(500)
-                    .json({ error: "Greška kod dodavanja kategorije" });
+                    .json({ error: "Greška kod unosa troška" });
                 }
 
-                console.log(
-                  "✅ Nova kategorija kreirana s ID:",
-                  resultCat.insertId
-                );
-                handleInsertExpense(resultCat.insertId);
-              }
-            );
+                // ➕ Ažuriranje inventara
+                let completed = 0;
+                items.forEach((item) => {
+                  const checkQuery = `
+                    SELECT id, stock_quantity FROM inventory_items
+                    WHERE item_name = ? AND ${
+                      organizationId
+                        ? "organization_id = ?"
+                        : "user_id = ? AND organization_id IS NULL"
+                    }
+                  `;
+                  const checkParams = organizationId
+                    ? [item.item_name, organizationId]
+                    : [item.item_name, userId];
+
+                  db.query(checkQuery, checkParams, (err6, found) => {
+                    if (err6) {
+                      console.error("Greška kod provjere inventara:", err6);
+                      return;
+                    }
+
+                    if (found.length > 0) {
+                      const newQuantity =
+                        found[0].stock_quantity + item.quantity;
+                      db.query(
+                        "UPDATE inventory_items SET stock_quantity = ? WHERE id = ?",
+                        [newQuantity, found[0].id],
+                        (err7) => {
+                          if (err7) {
+                            console.error(
+                              "Greška kod ažuriranja zalihe:",
+                              err7
+                            );
+                          }
+                          completed++;
+                          if (completed === items.length) {
+                            res.status(200).json({
+                              success: true,
+                              message:
+                                "Narudžba primljena, trošak zabilježen i zaliha ažurirana.",
+                            });
+                          }
+                        }
+                      );
+                    } else {
+                      // Dodaj novi artikl ako ne postoji
+                      db.query(
+                        `INSERT INTO inventory_items (item_name, category, description, stock_quantity, reorder_level, price, user_id, organization_id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                          item.item_name,
+                          item.category || "Nedefinirano",
+                          item.description || "",
+                          item.quantity,
+                          1,
+                          item.price,
+                          userId,
+                          organizationId || null,
+                        ],
+                        (err8) => {
+                          if (err8) {
+                            console.error(
+                              "Greška kod dodavanja artikla:",
+                              err8
+                            );
+                          }
+                          completed++;
+                          if (completed === items.length) {
+                            res.status(200).json({
+                              success: true,
+                              message:
+                                "Narudžba primljena, trošak zabilježen i artikli dodani.",
+                            });
+                          }
+                        }
+                      );
+                    }
+                  });
+                });
+              });
+            };
+
+            if (catResults.length > 0) {
+              insertExpense(catResults[0].id);
+            } else {
+              // Kreiraj novu kategoriju ako ne postoji
+              const insertCategoryQuery = `
+                INSERT INTO expense_categories (user_id, organization_id, name)
+                VALUES (?, ?, 'Nabava dijelova')
+              `;
+
+              db.query(
+                insertCategoryQuery,
+                [userId, organizationId || null],
+                (errIns, resultCat) => {
+                  if (errIns) {
+                    console.error("❌ Greška kod unosa kategorije:", errIns);
+                    return res
+                      .status(500)
+                      .json({ error: "Greška kod dodavanja kategorije" });
+                  }
+                  insertExpense(resultCat.insertId);
+                }
+              );
+            }
           }
-        }
-      );
+        );
+      });
     });
   });
 });
+
 
 module.exports = router;
