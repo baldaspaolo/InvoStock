@@ -24,6 +24,7 @@ import Sales from "./pages/UserOrganizationPages/Sales";
 import SalesItem from "./pages/UserOrganizationPages/SalesItem";
 import Notifications from "./pages/UserOrganizationPages/Notifications";
 import NotificationItem from "./pages/UserOrganizationPages/NotificationItem";
+import Account from "./pages/UserOrganizationPages/Account";
 import Orders from "./pages/UserOrganizationPages/Orders";
 import OrdersAdd from "./pages/UserOrganizationPages/OrdersAdd";
 
@@ -56,6 +57,7 @@ function App() {
             <Route path="/sales/:sale_id" element={<SalesItem />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/notifications/:id" element={<NotificationItem />} />
+            <Route path="/account" element={<Account />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/add" element={<OrdersAdd />} />
           </Route>
