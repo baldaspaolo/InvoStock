@@ -255,4 +255,37 @@ router.post("/increaseStock", async (req, res) => {
   }
 });
 
+router.post("/getCategories", (req, res) => {
+  const { userId, organizationId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: "Nedostaje userId" });
+  }
+
+  let query, params;
+  if (organizationId) {
+    query = `SELECT DISTINCT category FROM inventory_items WHERE organization_id = ?`;
+    params = [organizationId];
+  } else {
+    query = `SELECT DISTINCT category FROM inventory_items WHERE user_id = ? AND organization_id IS NULL`;
+    params = [userId];
+  }
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("Greška pri dohvatu kategorija:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    const categories = results.map((r) => ({
+      label: r.category,
+      value: r.category,
+    }));
+
+    categories.unshift({ label: "Sve kategorije", value: null });
+
+    res.status(200).json({ success: true, categories });
+  });
+});
+
 module.exports = router;

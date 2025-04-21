@@ -5,6 +5,7 @@
   grid-column-gap: 0px;
   grid-row-gap: 0px;
   grid-template-rows: auto auto;
+  margin-top: 4%;
 }
 
 .div1 {
@@ -121,8 +122,6 @@
   margin-top: 6%;
 }
 
-.p-button {
-}
 
 .p-datepicker {
   width: 50%;
@@ -139,4 +138,8 @@
 
 .p-divider-horizontal:before {
   width: 165%;
+}
+
+.p-dropdown-panel {
+  width: 50%;
 }
