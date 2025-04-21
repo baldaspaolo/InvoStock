@@ -8,6 +8,7 @@ import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
+import { RadioButton } from "primereact/radiobutton";
 
 const OrdersAdd = () => {
   const { user } = useContext(AuthContext);
@@ -18,6 +19,13 @@ const OrdersAdd = () => {
   const [orderDate, setOrderDate] = useState(null);
   const [orderItems, setOrderItems] = useState([]);
   const [showItemSearchDialog, setShowItemSearchDialog] = useState(false);
+  const [itemAddMode, setItemAddMode] = useState("inventory");
+  const [manualItem, setManualItem] = useState({
+    name: "",
+    category: "",
+    quantity: 1,
+    price: 0,
+  });
 
   useEffect(() => {
     const fetchSuppliers = async () => {
@@ -93,6 +101,7 @@ const OrdersAdd = () => {
               quantity: item.quantity,
               price: item.price,
               description: item.item_description,
+              category: item.category || null,
             })),
           }),
         }
@@ -181,97 +190,175 @@ const OrdersAdd = () => {
       </div>
 
       <Dialog
-        header="Odaberi artikl za narudžbu"
+        header="Dodaj artikl u narudžbu"
         visible={showItemSearchDialog}
         style={{ width: "60vw" }}
         onHide={() => setShowItemSearchDialog(false)}
       >
-        <DataTable
-          value={inventoryItems}
-          responsiveLayout="scroll"
-          style={{ fontSize: "0.9rem" }}
-          dataKey="id"
-        >
-          <Column field="item_name" header="Naziv artikla" />
-          <Column field="category" header="Kategorija" />
-          <Column
-            header="Količina"
-            body={(rowData) => (
-              <InputText
-                type="number"
-                value={rowData.quantity}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  const updatedItems = inventoryItems.map((item) =>
-                    item.id === rowData.id
-                      ? { ...item, quantity: isNaN(val) || val < 1 ? 1 : val }
-                      : item
-                  );
-                  setInventoryItems(updatedItems);
-                }}
-                style={{ width: "4rem" }}
-              />
-            )}
-          />
-          <Column
-            header="Cijena (€)"
-            body={(rowData) => (
-              <InputText
-                type="number"
-                value={rowData.customPrice}
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  const updatedItems = inventoryItems.map((item) =>
-                    item.id === rowData.id
-                      ? {
-                          ...item,
-                          customPrice: isNaN(val) || val < 0 ? item.price : val,
-                        }
-                      : item
-                  );
-                  setInventoryItems(updatedItems);
-                }}
-                style={{ width: "5rem" }}
-              />
-            )}
-          />
-          <Column
-            header=""
-            body={(rowData) => (
-              <Button
-                label="Dodaj"
-                icon="pi pi-plus"
-                onClick={() => {
-                  const existingIndex = orderItems.findIndex(
-                    (item) => item.item_name === rowData.item_name
-                  );
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+          <div>
+            <RadioButton
+              inputId="inventory"
+              name="mode"
+              value="inventory"
+              onChange={(e) => setItemAddMode(e.value)}
+              checked={itemAddMode === "inventory"}
+            />
+            <label htmlFor="inventory">Iz inventara</label>
+          </div>
+          <div>
+            <RadioButton
+              inputId="manual"
+              name="mode"
+              value="manual"
+              onChange={(e) => setItemAddMode(e.value)}
+              checked={itemAddMode === "manual"}
+            />
+            <label htmlFor="manual">Ručni unos</label>
+          </div>
+        </div>
 
-                  if (existingIndex >= 0) {
-                    const updatedItems = [...orderItems];
-                    updatedItems[existingIndex].quantity += rowData.quantity;
-                    updatedItems[existingIndex].total_price =
-                      updatedItems[existingIndex].quantity *
-                      updatedItems[existingIndex].price;
-                    setOrderItems(updatedItems);
-                  } else {
+        {itemAddMode === "inventory" ? (
+          <DataTable
+            value={inventoryItems}
+            responsiveLayout="scroll"
+            style={{ fontSize: "0.9rem" }}
+            dataKey="id"
+          >
+            <Column field="item_name" header="Naziv artikla" />
+            <Column field="category" header="Kategorija" />
+            <Column
+              header="Količina"
+              body={(rowData) => (
+                <InputText
+                  type="number"
+                  value={rowData.quantity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    const updatedItems = inventoryItems.map((item) =>
+                      item.id === rowData.id
+                        ? { ...item, quantity: isNaN(val) || val < 1 ? 1 : val }
+                        : item
+                    );
+                    setInventoryItems(updatedItems);
+                  }}
+                  style={{ width: "4rem" }}
+                />
+              )}
+            />
+            <Column
+              header="Cijena (€)"
+              body={(rowData) => (
+                <InputText
+                  type="number"
+                  value={rowData.customPrice}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    const updatedItems = inventoryItems.map((item) =>
+                      item.id === rowData.id
+                        ? {
+                            ...item,
+                            customPrice:
+                              isNaN(val) || val < 0 ? item.price : val,
+                          }
+                        : item
+                    );
+                    setInventoryItems(updatedItems);
+                  }}
+                  style={{ width: "5rem" }}
+                />
+              )}
+            />
+            <Column
+              header=""
+              body={(rowData) => (
+                <Button
+                  label="Dodaj"
+                  icon="pi pi-plus"
+                  onClick={() => {
                     const total_price = rowData.quantity * rowData.customPrice;
                     const newItem = {
                       id: orderItems.length + 1,
                       item_name: rowData.item_name,
                       item_description: rowData.category,
+                      category: rowData.category,
                       quantity: rowData.quantity,
                       price: rowData.customPrice,
                       total_price,
                     };
                     setOrderItems([...orderItems, newItem]);
-                  }
-
-                  setShowItemSearchDialog(false);
-                }}
-              />
-            )}
-          />
-        </DataTable>
+                    setShowItemSearchDialog(false);
+                  }}
+                />
+              )}
+            />
+          </DataTable>
+        ) : (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
+            <InputText
+              placeholder="Naziv artikla"
+              value={manualItem.name}
+              onChange={(e) =>
+                setManualItem({ ...manualItem, name: e.target.value })
+              }
+            />
+            <InputText
+              placeholder="Kategorija"
+              value={manualItem.category}
+              onChange={(e) =>
+                setManualItem({ ...manualItem, category: e.target.value })
+              }
+            />
+            <InputText
+              placeholder="Količina"
+              type="number"
+              value={manualItem.quantity}
+              onChange={(e) =>
+                setManualItem({
+                  ...manualItem,
+                  quantity: parseInt(e.target.value) || 1,
+                })
+              }
+            />
+            <InputText
+              placeholder="Cijena (€)"
+              type="number"
+              value={manualItem.price}
+              onChange={(e) =>
+                setManualItem({
+                  ...manualItem,
+                  price: parseFloat(e.target.value) || 0,
+                })
+              }
+            />
+            <Button
+              label="Dodaj ručno"
+              icon="pi pi-plus"
+              onClick={() => {
+                const total_price = manualItem.quantity * manualItem.price;
+                const newItem = {
+                  id: orderItems.length + 1,
+                  item_name: manualItem.name,
+                  item_description: manualItem.category,
+                  category: manualItem.category,
+                  quantity: manualItem.quantity,
+                  price: manualItem.price,
+                  total_price,
+                };
+                setOrderItems([...orderItems, newItem]);
+                setManualItem({
+                  name: "",
+                  category: "",
+                  quantity: 1,
+                  price: 0,
+                });
+                setShowItemSearchDialog(false);
+              }}
+            />
+          </div>
+        )}
       </Dialog>
     </div>
   );
