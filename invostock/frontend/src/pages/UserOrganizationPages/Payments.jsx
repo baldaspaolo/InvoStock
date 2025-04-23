@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Panel } from "primereact/panel";
@@ -10,6 +10,7 @@ import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { Toast } from "primereact/toast";
+import { AuthContext } from "../../context/AuthContext";
 
 const Payments = () => {
   const [search, setSearch] = useState("");
@@ -20,58 +21,52 @@ const Payments = () => {
   const [amount, setAmount] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [expandedRows, setExpandedRows] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const toast = React.useRef(null);
+  const { user } = useContext(AuthContext);
 
-  const payments = [
-    {
-      id: 1,
-      invoice_id: 15,
-      custom_invoice_code: "FK-15022025-O2-1",
-      amount_paid: 500,
-      payment_date: "2025-02-26",
-      payment_method: "online_payment",
-      status: "partially_paid",
-    },
-    {
-      id: 2,
-      invoice_id: 14,
-      custom_invoice_code: "FK-10022025-O1-1",
-      amount_paid: 600,
-      payment_date: "2025-02-18",
-      payment_method: "cash",
-      status: "partially_paid",
-    },
-    {
-      id: 3,
-      invoice_id: 16,
-      custom_invoice_code: "FK-15022025-O2-1",
-      amount_paid: 200,
-      payment_date: "2025-02-26",
-      payment_method: "cash",
-      status: "partially_paid",
-    },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res1 = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/getUserPayments`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              organizationId: user.organization_id,
+            }),
+          }
+        );
+        const data1 = await res1.json();
+        if (data1.success) setPayments(data1.payments);
+        console.log("Šaljem na getUnpaidInvoices:", {
+          userId: user.id,
+          organizationId: user.organization_id,
+        });
 
-  const invoices = [
-    {
-      id: 15,
-      custom_invoice_code: "FK-15022025-O2-1",
-      status: "partially_paid",
-      remaining_amount: 500,
-      client_name: "Ana Barić",
-      final_amount: 1000,
-      invoice_date: "2025-02-15",
-    },
-    {
-      id: 14,
-      custom_invoice_code: "FK-10022025-O1-1",
-      status: "partially_paid",
-      remaining_amount: 120,
-      client_name: "Luka Novak",
-      final_amount: 720,
-      invoice_date: "2025-02-10",
-    },
-  ];
+        const res2 = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/payments/getUnpaidInvoices`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              organizationId: user.organization_id,
+            }),
+          }
+        );
+        const data2 = await res2.json();
+        if (data2.success) setInvoices(data2.invoices);
+      } catch (err) {
+        console.error("Greška kod dohvaćanja uplata ili faktura:", err);
+      }
+    };
+
+    fetchData();
+  }, [user]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -102,7 +97,7 @@ const Payments = () => {
     return <Tag value={s.label} severity={s.severity} />;
   };
 
-  const handleAddPayment = () => {
+  const handleAddPayment = async () => {
     if (!selectedInvoice || !amount || !paymentMethod) {
       toast.current.show({
         severity: "warn",
@@ -121,20 +116,52 @@ const Payments = () => {
       return;
     }
 
-    toast.current.show({
-      severity: "success",
-      summary: "Uspjeh",
-      detail: `Uplata zabilježena za fakturu ${selectedInvoice.custom_invoice_code}`,
-    });
-    setShowDialog(false);
-    setAmount(null);
-    setPaymentMethod(null);
-    setSelectedInvoice(null);
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/payments/addPayment`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            invoiceId: selectedInvoice.id,
+            userId: user.id,
+            amount_paid: amount,
+            payment_method: paymentMethod,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (data.success) {
+        toast.current.show({
+          severity: "success",
+          summary: "Uspjeh",
+          detail: `Uplata zabilježena za fakturu ${selectedInvoice.custom_invoice_code}`,
+        });
+        setShowDialog(false);
+        setAmount(null);
+        setPaymentMethod(null);
+        setSelectedInvoice(null);
+      } else {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: data.error || "Neuspješno",
+        });
+      }
+    } catch (err) {
+      console.error("Greška kod slanja uplate:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Greška kod slanja zahtjeva.",
+      });
+    }
   };
 
   const filteredPayments = payments.filter((payment) => {
     const matchesSearch = payment.custom_invoice_code
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(search.toLowerCase());
     const paymentDate = new Date(payment.payment_date);
     const matchesDateRange =
@@ -219,7 +246,11 @@ const Payments = () => {
             <Column
               field="amount_paid"
               header="Iznos uplate (€)"
-              body={(rowData) => rowData.amount_paid.toFixed(2)}
+              body={(rowData) =>
+                !isNaN(parseFloat(rowData.amount_paid))
+                  ? parseFloat(rowData.amount_paid).toFixed(2)
+                  : "-"
+              }
               sortable
             />
             <Column
@@ -255,20 +286,21 @@ const Payments = () => {
                   <strong>Klijent:</strong> {data.client_name}
                 </p>
                 <p>
-                  <strong>Iznos fakture:</strong> {data.final_amount.toFixed(2)}{" "}
-                  €
+                  <strong>Iznos fakture:</strong>{" "}
+                  {Number(data.final_amount).toFixed(2)} €
                 </p>
                 <p>
                   <strong>Preostalo za platiti:</strong>{" "}
-                  {data.remaining_amount.toFixed(2)} €
+                  {Number(data.remaining_amount).toFixed(2)} €
                 </p>
+
                 <p>
                   <strong>Datum fakture:</strong>{" "}
                   {formatDate(data.invoice_date)}
                 </p>
               </div>
             )}
-            rowKey="id"
+            dataKey="id"
             style={{ fontSize: "0.9rem" }}
           >
             <Column expander style={{ width: "3em" }} />
@@ -294,7 +326,9 @@ const Payments = () => {
             </p>
             <p>
               Preostalo za platiti:{" "}
-              <strong>{selectedInvoice.remaining_amount.toFixed(2)} €</strong>
+              <strong>
+                {Number(selectedInvoice.remaining_amount).toFixed(2)} €
+              </strong>
             </p>
             <InputNumber
               value={amount}
