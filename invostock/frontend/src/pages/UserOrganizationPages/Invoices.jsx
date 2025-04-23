@@ -9,6 +9,7 @@ import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 import { Calendar } from "primereact/calendar";
+import { Tag } from "primereact/tag";
 
 import "./style.css";
 
@@ -109,6 +110,17 @@ const Invoices = () => {
   const handleRowClick = (e) => {
     console.log(e.data);
     navigate(`/invoices/${e.data.id}/${e.data.user_id}`);
+  };
+
+  const getStatusTag = (status) => {
+    const statusMap = {
+      paid: { label: "Plaćeno", severity: "success" },
+      partially_paid: { label: "Djelomično", severity: "warning" },
+      pending: { label: "Neplaćeno", severity: "danger" },
+    };
+
+    const s = statusMap[status] || { label: "Nepoznato", severity: "info" };
+    return <Tag value={s.label} severity={s.severity} />;
   };
 
   const inputStyle = { height: "2.5rem", width: "100%" };
@@ -224,7 +236,12 @@ const Invoices = () => {
               header="Konačni iznos (€)"
               sortable
             ></Column>
-            <Column field="status" header="Status" sortable></Column>
+            <Column
+              field="status"
+              header="Status"
+              body={(rowData) => getStatusTag(rowData.status)}
+              sortable
+            />{" "}
           </DataTable>
         </div>
       </div>

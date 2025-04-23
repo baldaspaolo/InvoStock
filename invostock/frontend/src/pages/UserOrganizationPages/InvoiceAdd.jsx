@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
@@ -8,6 +8,7 @@ import { Column } from "primereact/column";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
+import { AuthContext } from "../../context/AuthContext";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -24,6 +25,8 @@ const InvoicesAdd = () => {
   const [availableItems, setAvailableItems] = useState([]);
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
+
+  const { user } = useContext(AuthContext);
 
   const toast = useRef(null);
 
@@ -55,8 +58,8 @@ const InvoicesAdd = () => {
   );
 
   const handleInvoiceSubmit = async () => {
-    const userId = 1;
-    const organizationId = 2;
+    const userId = user.id;
+    const organizationId = user.organization_id;
     const contact_id = selectedClient?.id || null;
 
     if (!contact_id || !invoiceDate || !dueDate || invoiceItems.length === 0) {
