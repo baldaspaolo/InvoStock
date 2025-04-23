@@ -125,6 +125,7 @@ const Payments = () => {
           body: JSON.stringify({
             invoiceId: selectedInvoice.id,
             userId: user.id,
+            organizationId: user.organization_id,
             amount_paid: amount,
             payment_method: paymentMethod,
           }),

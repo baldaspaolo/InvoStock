@@ -35,25 +35,36 @@ router.post("/getUserPayments", (req, res) => {
 });
 
 router.post("/addPayment", (req, res) => {
-  const { invoiceId, amount_paid, payment_method } = req.body;
+  const { invoiceId, amount_paid, payment_method, userId, organizationId } =
+    req.body;
 
   if (!invoiceId || !amount_paid || !payment_method) {
-    return res.status(400).json({ error: "Nedostaju podaci" });
+    return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
   const query = `
-    INSERT INTO payments (invoice_id, amount_paid, payment_method, payment_date)
-    VALUES (?, ?, ?, NOW())
+    INSERT INTO payments (invoice_id, amount_paid, payment_method, payment_date, user_id, organization_id)
+    VALUES (?, ?, ?, NOW(), ?, ?)
   `;
 
-  db.query(query, [invoiceId, amount_paid, payment_method], (err, result) => {
-    if (err) {
-      console.error("Greška kod unosa uplate:", err);
-      return res.status(500).json({ error: "Greška na serveru" });
-    }
+  db.query(
+    query,
+    [
+      invoiceId,
+      amount_paid,
+      payment_method,
+      userId || null,
+      organizationId || null,
+    ],
+    (err, result) => {
+      if (err) {
+        console.error("Greška kod unosa uplate:", err);
+        return res.status(500).json({ error: "Greška na serveru" });
+      }
 
-    res.status(201).json({ success: true, message: "Uplata zabilježena" });
-  });
+      res.status(201).json({ success: true, message: "Uplata zabilježena" });
+    }
+  );
 });
 
 router.post("/getUnpaidInvoices", (req, res) => {
