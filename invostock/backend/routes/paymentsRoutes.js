@@ -1,0 +1,111 @@
+const express = require("express");
+const router = express.Router();
+const db = require("../db");
+
+router.post("/getUserPayments", (req, res) => {
+  const { userId, organizationId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: "Nedostaje userId" });
+  }
+
+  const query = `
+    SELECT 
+      p.id,
+      p.invoice_id,
+      i.custom_invoice_code,
+      p.amount_paid,
+      p.payment_date,
+      p.payment_method,
+      i.status
+    FROM payments p
+    LEFT JOIN invoices i ON p.invoice_id = i.id
+    WHERE (i.user_id = ? OR i.organization_id = ?)
+    ORDER BY p.payment_date DESC
+  `;
+
+  db.query(query, [userId, organizationId], (err, results) => {
+    if (err) {
+      console.error("Greška kod dohvaćanja uplata:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    res.status(200).json({ success: true, payments: results });
+  });
+});
+
+router.post("/addPayment", (req, res) => {
+  const { invoiceId, amount_paid, payment_method, userId, organizationId } =
+    req.body;
+
+  if (!invoiceId || !amount_paid || !payment_method) {
+    return res.status(400).json({ error: "Nedostaju obavezni podaci" });
+  }
+
+  const query = `
+    INSERT INTO payments (invoice_id, amount_paid, payment_method, payment_date, user_id, organization_id)
+    VALUES (?, ?, ?, NOW(), ?, ?)
+  `;
+
+  db.query(
+    query,
+    [
+      invoiceId,
+      amount_paid,
+      payment_method,
+      userId || null,
+      organizationId || null,
+    ],
+    (err, result) => {
+      if (err) {
+        console.error("Greška kod unosa uplate:", err);
+        return res.status(500).json({ error: "Greška na serveru" });
+      }
+
+      res.status(201).json({ success: true, message: "Uplata zabilježena" });
+    }
+  );
+});
+
+router.post("/getUnpaidInvoices", (req, res) => {
+  const { userId, organizationId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: "Nedostaje userId" });
+  }
+
+  const query = `
+    SELECT 
+      i.id, 
+      i.custom_invoice_code, 
+      i.status, 
+      i.remaining_amount, 
+      i.final_amount, 
+      i.invoice_date, 
+      CONCAT(c.first_name, ' ', c.last_name) AS client_name
+    FROM invoices i
+    LEFT JOIN contacts c ON i.contact_id = c.id
+    WHERE 
+      i.status IN ('pending', 'partially_paid')
+      AND (
+        ${
+          organizationId
+            ? "i.organization_id = ?"
+            : "i.organization_id IS NULL AND i.user_id = ?"
+        }
+      )
+  `;
+
+  const params = organizationId ? [organizationId] : [userId];
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("Greška kod dohvaćanja faktura:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    res.status(200).json({ success: true, invoices: results });
+  });
+});
+
+module.exports = router;

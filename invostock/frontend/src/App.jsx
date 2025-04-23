@@ -27,6 +27,7 @@ import NotificationItem from "./pages/UserOrganizationPages/NotificationItem";
 import Account from "./pages/UserOrganizationPages/Account";
 import Orders from "./pages/UserOrganizationPages/Orders";
 import OrdersAdd from "./pages/UserOrganizationPages/OrdersAdd";
+import Payments from "./pages/UserOrganizationPages/Payments";
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
             <Route path="/account" element={<Account />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/add" element={<OrdersAdd />} />
+            <Route path="/payments" element={<Payments />} />
           </Route>
 
           <Route path="*" element={<Login />} />
