@@ -12,6 +12,8 @@ import { Dropdown } from "primereact/dropdown";
 import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 
+import SuppliersManagement from "../../components/SuppliersManagement";
+
 export default function Account() {
   const { user } = useContext(AuthContext);
   const toast = React.useRef(null);
@@ -255,6 +257,44 @@ export default function Account() {
                   padding: "0.5rem",
                   cursor: "pointer",
                   backgroundColor:
+                    activeSection === "kontatkti" ? "#f0f0f0" : "transparent",
+                  borderRadius: "5px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+                onClick={() => setActiveSection("kontakti")}
+              >
+                <i
+                  className="pi pi-users"
+                  style={{ width: "20px", textAlign: "center" }}
+                ></i>
+                Kontakti
+              </li>
+              <li
+                style={{
+                  padding: "0.5rem",
+                  cursor: "pointer",
+                  backgroundColor:
+                    activeSection === "dobavljaci" ? "#f0f0f0" : "transparent",
+                  borderRadius: "5px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                }}
+                onClick={() => setActiveSection("dobavljaci")}
+              >
+                <i
+                  className="pi pi-shopping-cart"
+                  style={{ width: "20px", textAlign: "center" }}
+                ></i>
+                Dobavljači
+              </li>
+              <li
+                style={{
+                  padding: "0.5rem",
+                  cursor: "pointer",
+                  backgroundColor:
                     activeSection === "postavke" ? "#f0f0f0" : "transparent",
                   borderRadius: "5px",
                   display: "flex",
@@ -419,6 +459,10 @@ export default function Account() {
                 />
               </div>
             </Panel>
+          )}
+
+          {activeSection === "dobavljaci" && (
+            <SuppliersManagement user={user} />
           )}
         </div>
       </div>
