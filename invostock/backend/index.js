@@ -23,6 +23,7 @@ const expenses = require("./routes/expensesRoutes");
 const suppliers = require("./routes/suppliersRoutes");
 const orders = require("./routes/ordersRoutes");
 const payments = require("./routes/paymentsRoutes");
+const packages = require("./routes/packageRoutes");
 
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
@@ -35,6 +36,7 @@ app.use("/api/expenses", expenses);
 app.use("/api/suppliers", suppliers);
 app.use("/api/orders", orders);
 app.use("/api/payments", payments);
+app.use("/api/packages", packages);
 
 app.post("/api/sendLowStockNotification", (req, res) => {
   const { itemName, userEmail } = req.body;

@@ -28,6 +28,7 @@ import Account from "./pages/UserOrganizationPages/Account";
 import Orders from "./pages/UserOrganizationPages/Orders";
 import OrdersAdd from "./pages/UserOrganizationPages/OrdersAdd";
 import Payments from "./pages/UserOrganizationPages/Payments";
+import Packages from "./pages/UserOrganizationPages/Packages";
 
 function App() {
   return (
@@ -62,6 +63,7 @@ function App() {
             <Route path="/orders" element={<Orders />} />
             <Route path="/orders/add" element={<OrdersAdd />} />
             <Route path="/payments" element={<Payments />} />
+            <Route path="/packages" element={<Packages />} />
           </Route>
 
           <Route path="*" element={<Login />} />
