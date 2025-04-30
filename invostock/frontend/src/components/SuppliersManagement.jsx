@@ -155,8 +155,8 @@ const SuppliersManagement = ({ user }) => {
         onHide={() => setEditDialog(false)}
       >
         {editSupplier && (
-          <div className="p-fluid">
-            <div className="p-field">
+          <div>
+            <div>
               <label htmlFor="name">Naziv</label>
               <InputText
                 id="name"
@@ -166,7 +166,7 @@ const SuppliersManagement = ({ user }) => {
                 }
               />
             </div>
-            <div className="p-field">
+            <div>
               <label htmlFor="address">Adresa</label>
               <InputText
                 id="address"
@@ -176,7 +176,7 @@ const SuppliersManagement = ({ user }) => {
                 }
               />
             </div>
-            <div className="p-field">
+            <div>
               <label htmlFor="phone">Telefon</label>
               <InputText
                 id="phone"
