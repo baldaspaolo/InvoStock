@@ -13,6 +13,7 @@ import { Checkbox } from "primereact/checkbox";
 import { Toast } from "primereact/toast";
 
 import SuppliersManagement from "../../components/SuppliersManagement";
+import ContactsManagement from "../../components/ContactsManagement";
 
 export default function Account() {
   const { user } = useContext(AuthContext);
@@ -460,6 +461,8 @@ export default function Account() {
               </div>
             </Panel>
           )}
+
+          {activeSection === "kontakti" && <ContactsManagement user={user} />}
 
           {activeSection === "dobavljaci" && (
             <SuppliersManagement user={user} />
