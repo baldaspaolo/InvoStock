@@ -10,6 +10,8 @@ import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { RadioButton } from "primereact/radiobutton";
 
+import SupplierAdd from "../../components/SupplierAdd";
+
 const OrdersAdd = () => {
   const { user } = useContext(AuthContext);
 
@@ -26,6 +28,7 @@ const OrdersAdd = () => {
     quantity: 1,
     price: 0,
   });
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false);
 
   useEffect(() => {
     const fetchSuppliers = async () => {
@@ -132,13 +135,29 @@ const OrdersAdd = () => {
       <div className="div4">
         <div style={{ marginLeft: "3%", marginRight: "3%", marginTop: "2%" }}>
           <Panel header="Nova narudžbenica" style={{ fontSize: "0.88rem" }}>
-            <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                marginBottom: "1rem",
+              }}
+            >
               <Dropdown
                 value={selectedSupplier}
                 options={suppliers}
                 onChange={(e) => setSelectedSupplier(e.value)}
                 optionLabel="name"
                 placeholder="Odaberi dobavljača"
+                style={{ flexGrow: 1 }}
+              />
+              <Button
+                icon="pi pi-plus"
+    
+                severity="success"
+                size="small"
+                style={{ width: "2.5rem", height: "2.5rem" }}
+                onClick={() => setShowSupplierDialog(true)}
               />
             </div>
 
@@ -359,6 +378,19 @@ const OrdersAdd = () => {
             />
           </div>
         )}
+      </Dialog>
+      <Dialog
+        header="Dodaj dobavljača"
+        visible={showSupplierDialog}
+        style={{ width: "40vw" }}
+        onHide={() => setShowSupplierDialog(false)}
+      >
+        <SupplierAdd
+          onSuccess={() => {
+            setShowSupplierDialog(false);
+            fetchSuppliers();
+          }}
+        />
       </Dialog>
     </div>
   );

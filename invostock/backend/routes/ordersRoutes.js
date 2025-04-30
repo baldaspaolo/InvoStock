@@ -253,7 +253,7 @@ router.put("/markAsReceived", (req, res) => {
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
-  console.log("➡️ Početak obrade /markAsReceived");
+  console.log("/markAsReceived");
 
   const updateOrderQuery = `
     UPDATE orders 
@@ -308,7 +308,7 @@ router.put("/markAsReceived", (req, res) => {
           [userId, organizationId],
           (err4, catResults) => {
             if (err4) {
-              console.error("❌ Greška kod traženja kategorije:", err4);
+              console.error("Greška kod traženja kategorije:", err4);
               return res
                 .status(500)
                 .json({ error: "Greška kod traženja kategorije" });
@@ -383,7 +383,6 @@ router.put("/markAsReceived", (req, res) => {
                         }
                       );
                     } else {
-                      // Dodaj novi artikl ako ne postoji
                       db.query(
                         `INSERT INTO inventory_items (item_name, category, description, stock_quantity, reorder_level, price, user_id, organization_id)
                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -423,7 +422,6 @@ router.put("/markAsReceived", (req, res) => {
             if (catResults.length > 0) {
               insertExpense(catResults[0].id);
             } else {
-              // Kreiraj novu kategoriju ako ne postoji
               const insertCategoryQuery = `
                 INSERT INTO expense_categories (user_id, organization_id, name)
                 VALUES (?, ?, 'Nabava dijelova')
