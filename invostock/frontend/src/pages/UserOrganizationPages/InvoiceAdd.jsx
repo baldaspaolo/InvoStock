@@ -9,6 +9,7 @@ import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { Toast } from "primereact/toast";
 import { AuthContext } from "../../context/AuthContext";
+import ContactsAdd from "../../components/ContactsAdd";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -20,19 +21,91 @@ const InvoicesAdd = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [discount, setDiscount] = useState(0);
-
+  const [showAddContactDialog, setShowAddContactDialog] = useState(false);
   const [clients, setClients] = useState([]);
   const [availableItems, setAvailableItems] = useState([]);
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
-
-  const { user } = useContext(AuthContext);
-
-  const toast = useRef(null);
-
   const [categoryOptions, setCategoryOptions] = useState([
     { label: "Sve kategorije", value: null },
   ]);
+
+  const { user } = useContext(AuthContext);
+  const toast = useRef(null);
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user.id }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setClients(
+            data.contacts.map((c) => ({
+              ...c,
+              name: `${c.first_name} ${c.last_name}`,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching contacts:", error);
+      }
+    };
+    fetchContacts();
+  }, [user.id]);
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/inventory/getInventory`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setAvailableItems(
+            data.inventory.map((item) => ({
+              ...item,
+              name: item.item_name,
+              stock: item.stock_quantity,
+              price: item.price,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching inventory:", error);
+      }
+    };
+
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/inventory/getCategories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          setCategoryOptions([...categoryOptions, ...data.categories]);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+
+    fetchInventory();
+    fetchCategories();
+  }, [user.id, user.organization_id]);
 
   const handleAddItem = (item) => {
     const quantity = item.tempQty || 1;
@@ -46,7 +119,6 @@ const InvoicesAdd = () => {
       total_price,
     };
     setInvoiceItems([...invoiceItems, newItem]);
-
     setAvailableItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, tempQty: 1 } : i))
     );
@@ -58,11 +130,12 @@ const InvoicesAdd = () => {
   );
 
   const handleInvoiceSubmit = async () => {
-    const userId = user.id;
-    const organizationId = user.organization_id;
-    const contact_id = selectedClient?.id || null;
-
-    if (!contact_id || !invoiceDate || !dueDate || invoiceItems.length === 0) {
+    if (
+      !selectedClient ||
+      !invoiceDate ||
+      !dueDate ||
+      invoiceItems.length === 0
+    ) {
       toast.current.show({
         severity: "warn",
         summary: "Upozorenje",
@@ -81,12 +154,13 @@ const InvoicesAdd = () => {
     }));
 
     const payload = {
-      userId,
-      organizationId,
-      contactId: contact_id,
+      userId: user.id,
+      organizationId: user.organization_id,
+      contactId: selectedClient.id,
       invoiceDate: invoiceDate.toISOString(),
       dueDate: dueDate.toISOString(),
       discount,
+      final_amount,
       items,
     };
 
@@ -116,7 +190,7 @@ const InvoicesAdd = () => {
         toast.current.show({
           severity: "error",
           summary: "Greška",
-          detail: data.error,
+          detail: data.error || "Došlo je do greške pri kreiranju fakture",
           life: 3000,
         });
       }
@@ -131,12 +205,12 @@ const InvoicesAdd = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchContacts = async () => {
+  const refreshContacts = async () => {
+    try {
       const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: 1 }),
+        body: JSON.stringify({ userId: user.id }),
       });
       const data = await res.json();
       if (data.success) {
@@ -147,59 +221,17 @@ const InvoicesAdd = () => {
           }))
         );
       }
-    };
-    fetchContacts();
-  }, []);
-
-  useEffect(() => {
-    const fetchInventory = async () => {
-      const res = await fetch(`${API_URL}/api/inventory/getInventory`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: 1, organizationId: 2 }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setAvailableItems(
-          data.inventory.map((item) => ({
-            ...item,
-            name: item.item_name,
-            stock: item.stock_quantity,
-            price: item.price,
-          }))
-        );
-      }
-    };
-    fetchInventory();
-  }, []);
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const res = await fetch(`${API_URL}/api/inventory/getCategories`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: 1, organizationId: 2 }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCategoryOptions(data.categories);
-      }
-    };
-
-    fetchCategories();
-  }, []);
+    } catch (error) {
+      console.error("Error refreshing contacts:", error);
+    }
+  };
 
   return (
     <div style={{ padding: "2% 5%", marginTop: "3%" }}>
       <Toast ref={toast} />
       <Panel header="Nova faktura" style={{ fontSize: "0.88rem" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
-        >
+        {/* Client Selection */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Dropdown
             value={selectedClient}
             options={clients}
@@ -212,7 +244,7 @@ const InvoicesAdd = () => {
           <Button
             icon="pi pi-plus"
             title="Dodaj novi kontakt"
-            onClick={() => console.log("Dodaj kontakt")}
+            onClick={() => setShowAddContactDialog(true)}
             severity="info"
             style={{
               width: "40px",
@@ -440,6 +472,36 @@ const InvoicesAdd = () => {
             )}
           />
         </DataTable>
+      </Dialog>
+
+      <Dialog
+        header="Dodaj novi kontakt"
+        visible={showAddContactDialog}
+        style={{ width: "50vw" }}
+        onHide={() => setShowAddContactDialog(false)}
+      >
+        <ContactsAdd
+          userId={user.id}
+          organizationId={user.organization_id}
+          onSuccess={() => {
+            toast.current.show({
+              severity: "success",
+              summary: "Uspjeh",
+              detail: "Kontakt uspješno dodan",
+              life: 3000,
+            });
+            setShowAddContactDialog(false);
+            refreshContacts();
+          }}
+          onError={(error) => {
+            toast.current.show({
+              severity: "error",
+              summary: "Greška",
+              detail: error || "Došlo je do greške pri dodavanju kontakta",
+              life: 3000,
+            });
+          }}
+        />
       </Dialog>
     </div>
   );
