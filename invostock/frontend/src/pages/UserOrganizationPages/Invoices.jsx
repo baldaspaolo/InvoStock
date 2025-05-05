@@ -1,4 +1,10 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+} from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -25,94 +31,96 @@ const Invoices = () => {
   const navigate = useNavigate();
 
   const [invoices, setInvoices] = useState([]);
-  const [status, setStatus] = useState([]);
+  const [status, setStatus] = useState({});
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("sve");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
 
-  const fetchInvoices = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoices`,
-        {
+      const [invoicesRes, statusRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoices`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user.id }),
-        }
-      );
+        }),
+        fetch(
+          `${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoicesSummary`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id }),
+          }
+        ),
+      ]);
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch invoices");
-      }
+      const invoicesData = await invoicesRes.json();
+      const statusData = await statusRes.json();
 
-      const data = await response.json();
-      setInvoices(data.invoices);
-      console.log(data);
-      console.log(invoices);
+      setInvoices(invoicesData.invoices || []);
+      setStatus(statusData || {});
     } catch (error) {
-      console.error("Error fetching invoices:", error);
+      console.error("Error fetching data:", error);
     }
-  };
-
-  const fetchStatusData = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoicesSummary`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ userId: user.id }),
-        }
-      );
-
-      const data = await response.json();
-      setStatus(data);
-      console.log(data);
-    } catch (error) {
-      console.log("Greška u izvršavanju zahtjeva!", error);
-    }
-  };
+  }, [user.id]);
 
   useEffect(() => {
-    fetchInvoices();
-    fetchStatusData();
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("hr-HR");
   };
 
-  const filteredInvoices = statusFilter
-    ? invoices.filter((invoice) => {
-        const matchesSearch = invoice.client_name
-          .toLowerCase()
-          .includes(search.toLowerCase());
-        const matchesStatus =
-          statusFilter === "sve" || invoice.status === statusFilter;
-        const invoiceDate = new Date(invoice.invoice_date);
-        const matchesDateRange =
-          (!startDate || invoiceDate >= new Date(startDate)) &&
-          (!endDate || invoiceDate <= new Date(endDate));
-        return matchesSearch && matchesStatus && matchesDateRange;
-      })
-    : [];
+  const filteredInvoices = useMemo(() => {
+    return statusFilter === "sve"
+      ? invoices.filter((invoice) => {
+          const fullName =
+            invoice.first_name || invoice.last_name
+              ? `${invoice.first_name || ""} ${
+                  invoice.last_name || ""
+                }`.toLowerCase()
+              : invoice.client_name?.toLowerCase() || "";
 
-  const handleStatusChange = (e) => {
+          const matchesSearch = fullName.includes(search.toLowerCase());
+          const invoiceDate = new Date(invoice.invoice_date);
+          const matchesDateRange =
+            (!startDate || invoiceDate >= new Date(startDate)) &&
+            (!endDate || invoiceDate <= new Date(endDate));
+          return matchesSearch && matchesDateRange;
+        })
+      : invoices.filter((invoice) => {
+          const fullName =
+            invoice.first_name || invoice.last_name
+              ? `${invoice.first_name || ""} ${
+                  invoice.last_name || ""
+                }`.toLowerCase()
+              : invoice.client_name?.toLowerCase() || "";
+
+          const matchesSearch = fullName.includes(search.toLowerCase());
+          const matchesStatus = invoice.status === statusFilter;
+          const invoiceDate = new Date(invoice.invoice_date);
+          const matchesDateRange =
+            (!startDate || invoiceDate >= new Date(startDate)) &&
+            (!endDate || invoiceDate <= new Date(endDate));
+          return matchesSearch && matchesStatus && matchesDateRange;
+        });
+  }, [invoices, statusFilter, search, startDate, endDate]);
+
+  const handleStatusChange = useCallback((e) => {
     setStatusFilter(e.value);
-  };
+  }, []);
 
-  const handleRowClick = (e) => {
-    console.log(e.data);
-    navigate(`/invoices/${e.data.id}/${e.data.user_id}`);
-  };
+  const handleRowClick = useCallback(
+    (e) => {
+      navigate(`/invoices/${e.data.id}/${e.data.user_id}`);
+    },
+    [navigate]
+  );
 
-  const getStatusTag = (status) => {
+  const getStatusTag = useCallback((status) => {
     const statusMap = {
       paid: { label: "Plaćeno", severity: "success" },
       partially_paid: { label: "Djelomično", severity: "warning" },
@@ -121,7 +129,7 @@ const Invoices = () => {
 
     const s = statusMap[status] || { label: "Nepoznato", severity: "info" };
     return <Tag value={s.label} severity={s.severity} />;
-  };
+  }, []);
 
   const inputStyle = { height: "2.5rem", width: "100%" };
 
@@ -154,16 +162,16 @@ const Invoices = () => {
           <Panel header="Status faktura" style={{ fontSize: "0.88rem" }}>
             <div style={{ display: "flex", gap: "2rem" }}>
               <div>
-                <h3>{invoices.remaining_amount}</h3>
-                <h3>{status.total_receivables}€</h3>
+                <h3>{status.remaining_amount || 0}</h3>
+                <h3>{status.total_receivables || 0}€</h3>
                 <p>Ukupna potražnja</p>
               </div>
               <div>
-                <h3>{status.unpaid_invoices}</h3>
+                <h3>{status.unpaid_invoices || 0}</h3>
                 <p>Neplaćene fakture</p>
               </div>
               <div>
-                <h3>{status.partially_paid_invoices}</h3>
+                <h3>{status.partially_paid_invoices || 0}</h3>
                 <p>Djelomično plaćene</p>
               </div>
             </div>
@@ -214,9 +222,21 @@ const Invoices = () => {
             style={{ fontSize: "0.9rem" }}
             onRowClick={handleRowClick}
             selectionMode="single"
+            sortMode="single"
+            removableSort
           >
             <Column field="id" header="ID" sortable></Column>
-            <Column field="client_name" header="Klijent" sortable></Column>
+            <Column
+              header="Klijent"
+              body={(rowData) =>
+                rowData.first_name || rowData.last_name
+                  ? `${rowData.first_name || ""} ${
+                      rowData.last_name || ""
+                    }`.trim()
+                  : rowData.client_name || "—"
+              }
+              sortable
+            />
             <Column
               field="invoice_date"
               header="Datum fakture"
@@ -241,7 +261,7 @@ const Invoices = () => {
               header="Status"
               body={(rowData) => getStatusTag(rowData.status)}
               sortable
-            />{" "}
+            />
           </DataTable>
         </div>
       </div>
