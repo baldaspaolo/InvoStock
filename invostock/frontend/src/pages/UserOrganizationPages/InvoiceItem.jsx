@@ -1,19 +1,21 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-
+import React, { useContext, useEffect, useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
-
+import { Toast } from "primereact/toast";
+import ExportUtility from "../../components/ExportUtility";
 import "./style.css";
 
 const InvoiceItem = () => {
   const { user } = useContext(AuthContext);
   const { id, user_id } = useParams();
+  const toastRef = useRef(null);
+  const invoiceRef = useRef(null);
+  const navigate = useNavigate();
 
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [invoiceData, setInvoiceData] = useState([]);
@@ -38,7 +40,6 @@ const InvoiceItem = () => {
 
       const data = await response.json();
       setInvoiceItems(data.items);
-      console.log("Na invoice itemi: " + data);
     } catch (error) {
       console.error("Error fetching invoices:", error);
     }
@@ -59,7 +60,6 @@ const InvoiceItem = () => {
 
       const data = await response.json();
       setInvoiceData(data.invoice);
-      console.log("Podaci fakture: " + data);
     } catch (error) {
       console.log("Greška u izvršavanju zahtjeva!", error);
     }
@@ -67,20 +67,21 @@ const InvoiceItem = () => {
 
   const fetchInvoiceContact = async () => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/contacts/getInvoiceContact`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ contactId: invoiceData[0].contact_id }),
-        }
-      );
+      if (invoiceData.length > 0 && invoiceData[0].contact_id) {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/contacts/getInvoiceContact`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ contactId: invoiceData[0].contact_id }),
+          }
+        );
 
-      const data = await response.json();
-      setContact(data.contact);
-      console.log(data);
+        const data = await response.json();
+        setContact(data.contact);
+      }
     } catch (error) {
       console.log("Greška u izvršavanju zahtjeva!", error);
     }
@@ -99,10 +100,6 @@ const InvoiceItem = () => {
     if (invoiceData.length > 0) {
       fetchInvoiceContact();
     }
-    console.log(id, user_id);
-    console.log("State invoice data: ", invoiceData);
-    console.log("State items: ", invoiceItems);
-    console.log("State contact: ", contact);
   }, [invoiceData]);
 
   const formatDate = (dateString) => {
@@ -110,21 +107,73 @@ const InvoiceItem = () => {
     return date.toLocaleDateString("hr-HR");
   };
 
+  const getExcelData = () => {
+    return [
+      ["Faktura br.", invoiceData?.[0]?.custom_invoice_code || "N/A"],
+      ["Datum izdavanja", formatDate(invoiceData?.[0]?.invoice_date)],
+      ["Datum dospijeća", formatDate(invoiceData?.[0]?.due_date)],
+      [
+        "Klijent",
+        `${contact?.[0]?.first_name || ""} ${contact?.[0]?.last_name || ""}`,
+      ],
+      ["Adresa", contact?.[0]?.address || "N/A"],
+      [
+        "Mjesto",
+        `${contact?.[0]?.zip_code || ""} ${contact?.[0]?.place || ""}`,
+      ],
+      [],
+      ["Stavke fakture"],
+      ["Naziv", "Opis", "Količina", "Cijena (€)", "Ukupno (€)"],
+      ...invoiceItems.map((item) => [
+        item.item_name,
+        item.item_description,
+        item.quantity,
+        item.price,
+        item.total_price,
+      ]),
+      [],
+      ["Ukupno bez poreza:", invoiceData?.[0]?.total_amount || "0"],
+      ["Porez:", "0"],
+      ["Popust:", invoiceData?.[0]?.discount || "0"],
+      ["Ukupan iznos:", invoiceData?.[0]?.total_amount || "0"],
+    ];
+  };
+
+  const excelColumns = [
+    { width: 30 }, // Naziv
+    { width: 50 }, // Opis
+    { width: 10 }, // Količina
+    { width: 15 }, // Cijena
+    { width: 15 }, // Ukupno
+  ];
+
   return (
     <div className="parent" style={{ margin: "5rem" }}>
-      <div className="div1"></div>
-      <div className="div3">
+      <Toast ref={toastRef} />
+      <div className="div1" style={{ marginRight: "15%" }}>
         <Button
-          icon="pi pi-ellipsis-h"
+          icon="pi pi-arrow-left"
           text
           raised
-          severity="info"
-          aria-label="User"
-          style={{ width: "30%", marginLeft: "70%", marginBottom: "5%" }}
+          severity="secondary"
+          aria-label="Natrag"
+          onClick={() => navigate("/invoices")}
+          style={{ width: "30%" }}
+        />
+      </div>
+      <div className="div3">
+        <ExportUtility
+          refElement={invoiceRef}
+          toastRef={toastRef}
+          fileName={`faktura_${
+            invoiceData?.[0]?.custom_invoice_code || "unknown"
+          }`}
+          excelData={getExcelData()}
+          excelColumns={excelColumns}
         />
       </div>
 
-      <div className="div4">
+      <div className="div4" ref={invoiceRef}>
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
           <Panel
             header={"Faktura: " + invoiceData?.[0]?.custom_invoice_code}

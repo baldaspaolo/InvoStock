@@ -1,19 +1,21 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-
+import React, { useContext, useEffect, useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import { Divider } from "primereact/divider";
-
+import { Toast } from "primereact/toast";
+import ExportUtility from "../../components/ExportUtility";
 import "./style.css";
 
 const SalesItem = () => {
   const { user } = useContext(AuthContext);
   const { sale_id } = useParams();
+  const toastRef = useRef(null);
+  const salesRef = useRef(null);
+  const navigate = useNavigate();
 
   const [orderItems, setOrderItems] = useState([]);
   const [orderData, setOrderData] = useState(null);
@@ -24,7 +26,7 @@ const SalesItem = () => {
     const fetchOrderData = async () => {
       try {
         const res1 = await fetch(
-          "http://localhost:3000/api/sales/getOrderDetails",
+          `${import.meta.env.VITE_API_URL}/api/sales/getOrderDetails`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -51,7 +53,7 @@ const SalesItem = () => {
     const fetchPrice = async () => {
       try {
         const res = await fetch(
-          "http://localhost:3000/api/sales/calculateOrderTotal",
+          `${import.meta.env.VITE_API_URL}/api/sales/calculateOrderTotal`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -60,7 +62,6 @@ const SalesItem = () => {
         );
         const data = await res.json();
         setSalePrice(data);
-        console.log("Response", data);
       } catch (error) {
         console.error("Greška na serveru!", error);
       }
@@ -75,21 +76,65 @@ const SalesItem = () => {
     return date.toLocaleDateString("hr-HR");
   };
 
+  const getExcelData = () => {
+    return [
+      ["Nalog br.", orderData?.id || "N/A"],
+      ["Datum", formatDate(orderData?.created_at)],
+      ["Status", orderData?.status || "N/A"],
+      ["Klijent", `${contact?.first_name || ""} ${contact?.last_name || ""}`],
+      ["Adresa", contact?.address || "N/A"],
+      ["Mjesto", `${contact?.zip_code || ""} ${contact?.place || ""}`],
+      ["Telefon", contact?.phone_number || "N/A"],
+      ["Email", contact?.email || "N/A"],
+      ["Napomena", orderData?.notes || ""],
+      [],
+      ["Stavke naloga"],
+      ["Naziv", "Količina", "Cijena (€)", "Ukupno (€)"],
+      ...orderItems.map((item) => [
+        item.item_name,
+        item.quantity,
+        item.price,
+        (item.quantity * item.price).toFixed(2),
+      ]),
+      [],
+      ["Zbroj:", salePrice?.subtotal || 0],
+      ["Popust:", salePrice?.discount || 0],
+      ["Ukupno:", salePrice?.total || 0],
+    ];
+  };
+
+  const excelColumns = [
+    { width: 30 }, // Naziv
+    { width: 10 }, // Količina
+    { width: 15 }, // Cijena
+    { width: 15 }, // Ukupno
+  ];
+
   return (
     <div className="parent" style={{ margin: "5rem" }}>
-      <div className="div1"></div>
-      <div className="div3">
+      <Toast ref={toastRef} />
+      <div className="div1" style={{ marginRight: "15%" }}>
         <Button
-          icon="pi pi-ellipsis-h"
+          icon="pi pi-arrow-left"
           text
           raised
-          severity="info"
-          aria-label="Opcije"
-          style={{ width: "30%", marginLeft: "70%", marginBottom: "5%" }}
+          severity="secondary"
+          aria-label="Natrag"
+          onClick={() => navigate("/sales")}
+          style={{ width: "30%" }}
+        />
+      </div>
+      <div className="div3">
+        <ExportUtility
+          refElement={salesRef}
+          toastRef={toastRef}
+          fileName={`nalog_${orderData?.id || "unknown"}`}
+          excelData={getExcelData()}
+          excelColumns={excelColumns}
         />
       </div>
 
-      <div className="div4">
+      <div className="div4" ref={salesRef}>
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
           <Panel
             header={"Nalog ID: " + orderData?.id}
@@ -109,7 +154,7 @@ const SalesItem = () => {
                   justifyContent: "space-between",
                   width: "100%",
                   alignItems: "flex-start",
-                  marginBottom: "1rem",
+                  marginBottom: "0.5rem",
                 }}
               >
                 <div style={{ width: "60%", textAlign: "left" }}>
@@ -154,8 +199,17 @@ const SalesItem = () => {
                   </h4>
                 </div>
               </div>
+              <div style={{ width: "60%" }}>
+                <Divider />
+              </div>
+              <div style={{ margin: "0" }}>
+                <h4>Napomena</h4>
+                {orderData?.notes}
+              </div>
 
-              <Divider />
+              <div style={{ width: "60%" }}>
+                <Divider />
+              </div>
               <h3 style={{ margin: "0 0 1rem 0" }}>Stavke</h3>
             </div>
 
@@ -169,6 +223,12 @@ const SalesItem = () => {
                 <Column field="item_name" header="Naziv stavke"></Column>
                 <Column field="quantity" header="Količina"></Column>
                 <Column field="price" header="Jedinična cijena (€)"></Column>
+                <Column
+                  header="Ukupno (€)"
+                  body={(rowData) =>
+                    (rowData.quantity * rowData.price).toFixed(2)
+                  }
+                />
               </DataTable>
             </div>
             <div style={{ textAlign: "right", fontSize: "0.9rem" }}>
