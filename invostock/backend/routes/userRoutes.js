@@ -106,7 +106,7 @@ router.post("/forgot-password", (req, res) => {
           from: "Acme <onboarding@resend.dev>",
           to: [email],
           subject: "Resetiranje lozinke",
-          html: `<p>Kliknite <a href="${resetLink}">ovdje</a> kako biste resetirali lozinku.</p> <p>Vaš token: ${token}</p>`,
+          html: `<p>Kliknite <a href="${resetLink}">ovdje</a> kako biste resetirali lozinku.</p> <p>Vaš token: ${token}</p> <p><i>Token je važeći 1 sat od vremena dobivanja ove email poruke.</i></p>`,
         })
         .then(() => {
           res
@@ -303,7 +303,7 @@ router.get("/getOrganizationUsers/:orgId", (req, res) => {
 
 router.put("/updateUserRole/:id", (req, res) => {
   const userId = req.params.id;
-  const { role, adminId } = req.body; 
+  const { role, adminId } = req.body;
 
   if (!role || !adminId) {
     return res.status(400).json({ message: "Nedostaju podaci." });
