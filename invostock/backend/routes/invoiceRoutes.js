@@ -9,7 +9,16 @@ router.post("/getUserInvoices", (req, res) => {
     return res.status(400).json({ error: "Nedostaje UserID!" });
   }
 
-  const query = "SELECT * FROM invoices WHERE user_id = ?";
+  const query = `
+    SELECT 
+      invoices.*, 
+      contacts.first_name, 
+      contacts.last_name
+    FROM invoices
+    LEFT JOIN contacts ON invoices.contact_id = contacts.id
+    WHERE invoices.user_id = ?
+  `;
+
   db.query(query, [userId], (err, result) => {
     if (err) {
       console.log("Greška pri dohvaćanju faktura!");
@@ -154,7 +163,7 @@ router.post("/createInvoice", async (req, res) => {
     dueDate,
     discount,
     items,
-    salesOrderId, 
+    salesOrderId,
   } = req.body;
 
   if (
@@ -231,7 +240,6 @@ router.post("/createInvoice", async (req, res) => {
           db.query(updateOrderQuery, [invoiceId, salesOrderId], (err4) => {
             if (err4) {
               console.error("Greška pri povezivanju naloga s fakturom:", err4);
-              
             }
           });
         }
@@ -282,6 +290,5 @@ router.post("/createInvoice", async (req, res) => {
     res.status(500).json({ error: "Interna greška na serveru." });
   }
 });
-
 
 module.exports = router;

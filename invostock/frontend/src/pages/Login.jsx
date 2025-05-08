@@ -7,6 +7,9 @@ import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { Card } from "primereact/card";
 import { Message } from "primereact/message";
+
+import ForgotPasswordDialog from "../components/ForgotPasswordDialog";
+
 import "../styles/login.css";
 
 const Login = () => {
@@ -123,9 +126,7 @@ const Login = () => {
             <u>Nemate račun? Registrirajte se!</u>
           </a>
           <Button label="Login" className="mt-3 p-button-m" type="submit" />
-          <a href="/password-reset">
-            <u>Zaboravljena lozinka</u>
-          </a>
+          <ForgotPasswordDialog />
         </form>
       </Card>
     </div>

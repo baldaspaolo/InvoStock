@@ -149,7 +149,7 @@ const Sales = () => {
         invoiceDate: new Date().toISOString().slice(0, 10),
         dueDate: dueDate.toISOString().slice(0, 10),
         discount: selectedOrder.discount,
-        salesOrderId: selectedOrder.id, 
+        salesOrderId: selectedOrder.id,
         items: data.items.map((item) => ({
           itemId: item.item_id,
           itemName: item.item_name,
@@ -181,7 +181,7 @@ const Sales = () => {
         setInvoiceDialogVisible(false);
         setDueDate(null);
         setSelectedOrder(null);
-        fetchOrders(); 
+        fetchOrders();
       } else {
         throw new Error(result.error || "Neuspješno kreiranje fakture.");
       }
@@ -369,11 +369,12 @@ const Sales = () => {
             onHide={() => setDialogVisible(false)}
           >
             <p>Odaberite što želite napraviti s ovim nalogom:</p>
-            <div className="flex flex-column gap-2 mt-4">
+            <div className="">
               <Button
                 label="Kreiraj fakturu"
                 icon="pi pi-file"
                 onClick={handleCreateInvoice}
+                style={{ marginBottom: "3%" }}
               />
               <Button
                 label="Kreiraj paket"
@@ -398,17 +399,19 @@ const Sales = () => {
               dateFormat="dd.mm.yy"
               style={{ width: "100%", marginTop: "1rem" }}
             />
-            <div className="flex justify-content-end gap-2 mt-4">
+            <div>
               <Button
                 label="Odustani"
                 icon="pi pi-times"
                 severity="secondary"
                 onClick={() => setInvoiceDialogVisible(false)}
+                style={{ marginBottom: "3%" }}
               />
               <Button
                 label="Samo faktura"
                 icon="pi pi-check"
                 onClick={() => confirmCreateInvoice(false)}
+                style={{ marginBottom: "3%" }}
               />
               <Button
                 label="Faktura + Paket"

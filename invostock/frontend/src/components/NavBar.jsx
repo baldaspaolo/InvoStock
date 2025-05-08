@@ -194,6 +194,7 @@ export default function Navbar() {
       <SplitButton
         label={`${user?.name}`}
         icon="pi pi-user"
+        onClick={() => navigate("/account")}
         model={[
           {
             label: "Moj račun",
