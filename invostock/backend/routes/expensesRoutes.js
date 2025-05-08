@@ -2,6 +2,14 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+function generateCustomCode(prefix, date, orgOrUserCode, count) {
+  const formattedDate = new Date(date)
+    .toLocaleDateString("hr-HR")
+    .split(".")
+    .reverse()
+    .join(""); 
+  return `${prefix}-${formattedDate}-${orgOrUserCode}-${count}`;
+}
 
 router.post("/getUserExpenses", (req, res) => {
   const { userId } = req.body;
@@ -14,6 +22,7 @@ router.post("/getUserExpenses", (req, res) => {
       e.amount,
       e.description,
       e.category_id,             
+      e.custom_expense_code,
       ec.name AS category
     FROM expenses e
     LEFT JOIN expense_categories ec ON e.category_id = ec.id
@@ -43,19 +52,71 @@ router.post("/addExpense", (req, res) => {
     name,
     description,
   } = req.body;
-  db.query(
-    "INSERT INTO expenses (user_id, organization_id, category_id, expense_date, amount, name, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    [userId, organizationId, categoryId, date, amount, name, description],
-    (err, result) => {
-      if (err)
+
+  if (!userId || !categoryId || !date || !amount || !name) {
+    return res.status(400).json({ error: "Nedostaju obavezni podaci" });
+  }
+
+  const countQuery = `
+    SELECT COUNT(*) AS expense_count
+    FROM expenses
+    WHERE ${
+      organizationId
+        ? "organization_id = ?"
+        : "organization_id IS NULL AND user_id = ?"
+    }
+  `;
+  const params = organizationId ? [organizationId] : [userId];
+
+  db.query(countQuery, params, (err1, result1) => {
+    if (err1) {
+      console.error("Greška pri brojanju troškova:", err1);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    const count = result1[0].expense_count + 1;
+    const prefix = "EXP";
+    const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
+    const customCode = generateCustomCode(
+      prefix,
+      new Date(date),
+      codePrefix,
+      count
+    );
+
+    const insertQuery = `
+      INSERT INTO expenses (user_id, organization_id, category_id, expense_date, amount, name, description, custom_expense_code)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const insertParams = [
+      userId,
+      organizationId || null,
+      categoryId,
+      date,
+      amount,
+      name,
+      description || null,
+      customCode,
+    ];
+
+    db.query(insertQuery, insertParams, (err2, result) => {
+      if (err2) {
+        console.error("Greška kod spremanja:", err2);
         return res
           .status(500)
           .json({ success: false, message: "Greška kod spremanja." });
-      res.status(201).json({ success: true, expenseId: result.insertId });
-    }
-  );
+      }
+      res
+        .status(201)
+        .json({
+          success: true,
+          expenseId: result.insertId,
+          custom_expense_code: customCode,
+        });
+    });
+  });
 });
-
 
 router.put("/updateExpense/:id", (req, res) => {
   const { id } = req.params;
@@ -73,7 +134,6 @@ router.put("/updateExpense/:id", (req, res) => {
   );
 });
 
-
 router.delete("/deleteExpense/:id", (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM expenses WHERE id = ?", [id], (err) => {
@@ -84,7 +144,6 @@ router.delete("/deleteExpense/:id", (req, res) => {
     res.json({ success: true });
   });
 });
-
 
 router.post("/getExpenseCategories", (req, res) => {
   const { userId } = req.body;

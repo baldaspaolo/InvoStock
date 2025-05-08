@@ -153,7 +153,7 @@ const Inventory = () => {
         style={{ fontSize: "0.9rem" }}
         onRowClick={onRowClick}
       >
-        <Column field="id" header="ID" sortable></Column>
+        <Column field="custom_inventory_code" header="ID" sortable></Column>
         <Column field="item_name" header="Naziv artikla" sortable></Column>
         <Column field="category" header="Kategorija" sortable></Column>
         <Column

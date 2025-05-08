@@ -333,7 +333,7 @@ const Sales = () => {
             onRowClick={handleRowClick}
             selectionMode="single"
           >
-            <Column field="id" header="ID" sortable></Column>
+            <Column field="custom_order_code" header="ID" sortable></Column>
             <Column
               header="Kontakt"
               body={(rowData) => `${rowData.first_name} ${rowData.last_name}`}

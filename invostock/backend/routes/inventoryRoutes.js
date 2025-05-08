@@ -2,6 +2,12 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+function generateInventoryCode(orgOrUserCode, count) {
+  const padded = String(count).padStart(3, "0");
+  return `INV-${orgOrUserCode}-${padded}`;
+}
+
+
 router.post("/getInventory", (req, res) => {
   const { userId, organizationId } = req.body;
 
@@ -34,14 +40,8 @@ router.post("/addInventoryItem", async (req, res) => {
   try {
     const { userId, organizationId, itemData } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ error: "Nedostaje userId" });
-    }
-
-    if (!itemData || !itemData.item_name || !itemData.category) {
-      return res
-        .status(400)
-        .json({ error: "Nedostaju obavezni podaci o artiklu" });
+    if (!userId || !itemData || !itemData.item_name || !itemData.category) {
+      return res.status(400).json({ error: "Nedostaju podaci" });
     }
 
     const [existingItem] = await db.query(
@@ -52,20 +52,25 @@ router.post("/addInventoryItem", async (req, res) => {
     if (existingItem.length > 0) {
       return res
         .status(400)
-        .json({ error: "Artikal sa ovim nazivom već postoji" });
+        .json({ error: "Artikal s tim nazivom već postoji" });
     }
+
+    const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
+    const [countResult] = await db.query(
+      `SELECT COUNT(*) AS count FROM inventory_items WHERE ${
+        organizationId ? "organization_id = ?" : "user_id = ?"
+      }`,
+      [organizationId || userId]
+    );
+
+    const count = countResult[0].count + 1;
+    const customInventoryCode = generateInventoryCode(codePrefix, count);
 
     const [result] = await db.query(
       `INSERT INTO inventory_items (
-                organization_id, 
-                user_id,
-                item_name, 
-                category, 
-                description, 
-                stock_quantity, 
-                reorder_level, 
-                price
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        organization_id, user_id, item_name, category, description,
+        stock_quantity, reorder_level, price, custom_inventory_code
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         organizationId || null,
         userId,
@@ -75,6 +80,7 @@ router.post("/addInventoryItem", async (req, res) => {
         itemData.stock_quantity || 0,
         itemData.reorder_level || 1,
         itemData.price || 0,
+        customInventoryCode,
       ]
     );
 
@@ -84,14 +90,16 @@ router.post("/addInventoryItem", async (req, res) => {
     );
 
     res.status(201).json({
-      message: "Artikal uspješno dodan",
+      message: "Artikal dodan",
       item: addedItem[0],
+      custom_inventory_code: customInventoryCode,
     });
-  } catch (error) {
-    console.error("Greška pri dodavanju artikla:", error);
-    res.status(500).json({ error: "Interna server greška" });
+  } catch (err) {
+    console.error("Greška kod dodavanja artikla:", err);
+    res.status(500).json({ error: "Greška na serveru." });
   }
 });
+
 
 router.post("/lowStock", (req, res) => {
   const { userId, organizationId } = req.body;
