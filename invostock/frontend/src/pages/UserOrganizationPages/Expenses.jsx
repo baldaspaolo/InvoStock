@@ -3,13 +3,11 @@ import React, { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { Button } from "primereact/button";
-import { Card } from "primereact/card";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Panel } from "primereact/panel";
-import { Chart } from "primereact/chart";
 import { Menu } from "primereact/menu";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
@@ -230,12 +228,6 @@ const Expenses = () => {
           onClick={() => navigate("/expenses/add")}
         />
         <Button
-          label={showCharts ? "Sakrij grafove" : "Prikaži grafove"}
-          icon="pi pi-chart-bar"
-          onClick={() => setShowCharts(!showCharts)}
-          className="ml-2"
-        />
-        <Button
           icon="pi pi-ellipsis-h"
           text
           onClick={(e) => categoryMenuRef.current.toggle(e)}
@@ -315,7 +307,8 @@ const Expenses = () => {
             )}
             style={{ fontSize: "0.9rem" }}
           >
-            <Column expander style={{ width: "3em" }} />
+            <Column expander style={{ width: "3em" }} /> //custom_expense_code
+            <Column field="custom_expense_code" header="ID" sortable />
             <Column field="name" header="Naslov" sortable />
             <Column
               field="date"
@@ -456,52 +449,6 @@ const Expenses = () => {
               )}
             </div>
           </Dialog>
-
-          {showCharts && (
-            <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-              <Card style={{ flex: 1 }}>
-                <h5>Troškovi po mjesecima (2024)</h5>
-                <Chart
-                  type="line"
-                  data={{
-                    labels: ["Sij", "Velj", "Ožu", "Tra", "Svi", "Lip"],
-                    datasets: [
-                      {
-                        label: "Troškovi 2024",
-                        data: [250, 900, 400, 0, 0, 0],
-                        fill: false,
-                        borderColor: "#42A5F5",
-                        tension: 0.4,
-                      },
-                    ],
-                  }}
-                  style={{ height: "300px" }}
-                />
-              </Card>
-              <Card style={{ flex: 1 }}>
-                <h5>Top troškovne kategorije</h5>
-                <Chart
-                  type="bar"
-                  data={{
-                    labels: ["Materijal", "Marketing", "Web", "Servis"],
-                    datasets: [
-                      {
-                        label: "Top kategorije",
-                        backgroundColor: [
-                          "#42A5F5",
-                          "#66BB6A",
-                          "#FFA726",
-                          "#AB47BC",
-                        ],
-                        data: [900, 550, 250, 320],
-                      },
-                    ],
-                  }}
-                  style={{ height: "300px" }}
-                />
-              </Card>
-            </div>
-          )}
         </div>
       </div>
     </div>
