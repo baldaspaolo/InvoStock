@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
@@ -32,6 +33,7 @@ const InvoicesAdd = () => {
 
   const { user } = useContext(AuthContext);
   const toast = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchContacts = async () => {
@@ -227,7 +229,18 @@ const InvoicesAdd = () => {
   };
 
   return (
-    <div style={{ padding: "2% 5%", marginTop: "3%" }}>
+    <div style={{ padding: "2% 5%", marginTop: "2%" }}>
+      <div style={{ display: "flex" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          aria-label="Natrag"
+          onClick={() => navigate("/inventory")}
+          style={{ width: "8%", marginBottom: "0.5%" }}
+        />
+      </div>
       <Toast ref={toast} />
       <Panel header="Nova faktura" style={{ fontSize: "0.88rem" }}>
         {/* Client Selection */}
