@@ -7,7 +7,7 @@ function generateCustomCode(prefix, date, orgOrUserCode, count) {
     .toLocaleDateString("hr-HR")
     .split(".")
     .reverse()
-    .join(""); 
+    .join("");
   return `${prefix}-${formattedDate}-${orgOrUserCode}-${count}`;
 }
 
@@ -107,13 +107,11 @@ router.post("/addExpense", (req, res) => {
           .status(500)
           .json({ success: false, message: "Greška kod spremanja." });
       }
-      res
-        .status(201)
-        .json({
-          success: true,
-          expenseId: result.insertId,
-          custom_expense_code: customCode,
-        });
+      res.status(201).json({
+        success: true,
+        expenseId: result.insertId,
+        custom_expense_code: customCode,
+      });
     });
   });
 });
@@ -200,6 +198,37 @@ router.delete("/deleteExpenseCategory/:id", (req, res) => {
         .status(500)
         .json({ success: false, message: "Greška kod brisanja kategorije." });
     res.json({ success: true });
+  });
+});
+
+router.post("/getExpenseSummary", (req, res) => {
+  const { userId, organizationId, startDate, endDate } = req.body;
+
+  if (!userId || !startDate || !endDate) {
+    return res.status(400).json({ error: "Nedostaju podaci" });
+  }
+
+  const where = organizationId
+    ? "organization_id = ?"
+    : "organization_id IS NULL AND user_id = ?";
+
+  const query = `
+    SELECT SUM(amount) AS total
+    FROM expenses
+    WHERE ${where}
+    AND expense_date BETWEEN ? AND ?
+  `;
+
+  const params = organizationId
+    ? [organizationId, startDate, endDate]
+    : [userId, startDate, endDate];
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error("Greška kod sažetka troškova:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+    res.json({ success: true, total: result[0].total || 0 });
   });
 });
 
