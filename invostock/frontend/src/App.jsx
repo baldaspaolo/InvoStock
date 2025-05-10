@@ -30,6 +30,8 @@ import OrdersAdd from "./pages/UserOrganizationPages/OrdersAdd";
 import Payments from "./pages/UserOrganizationPages/Payments";
 import Packages from "./pages/UserOrganizationPages/Packages";
 import SalesAdd from "./pages/UserOrganizationPages/SalesAdd";
+import InventoryAdd from "./pages/UserOrganizationPages/InventoryAdd";
+import ExpensesAdd from "./pages/UserOrganizationPages/ExpensesAdd";
 
 function App() {
   return (
@@ -66,6 +68,8 @@ function App() {
             <Route path="/payments" element={<Payments />} />
             <Route path="/packages" element={<Packages />} />
             <Route path="/sales/add" element={<SalesAdd />} />
+            <Route path="/inventory/add" element={<InventoryAdd />} />
+            <Route path="/expenses/add" element={<ExpensesAdd />} />
           </Route>
 
           <Route path="*" element={<Login />} />
