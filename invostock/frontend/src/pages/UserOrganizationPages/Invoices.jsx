@@ -162,7 +162,6 @@ const Invoices = () => {
           <Panel header="Status faktura" style={{ fontSize: "0.88rem" }}>
             <div style={{ display: "flex", gap: "2rem" }}>
               <div>
-                <h3>{status.remaining_amount || 0}</h3>
                 <h3>{status.total_receivables || 0}€</h3>
                 <p>Ukupna potražnja</p>
               </div>

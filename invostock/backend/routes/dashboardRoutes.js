@@ -11,7 +11,7 @@ router.post("/getDashboardStats", (req, res) => {
 
   const timeRange = req.body.timeRange || "30days";
 
-  // Izračun datuma na osnovu timeRange
+  
   let dateCondition = "";
   const now = new Date();
   let startDate = new Date();

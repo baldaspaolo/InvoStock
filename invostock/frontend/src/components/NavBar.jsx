@@ -123,6 +123,11 @@ export default function Navbar() {
           command: () => navigate("/invoices"),
         },
         {
+          label: "Paketi",
+          icon: "pi pi-box",
+          command: () => navigate("/packages"),
+        },
+        {
           label: "Uplate",
           icon: "pi pi-credit-card",
           command: () => navigate("/payments"),

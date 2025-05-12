@@ -65,7 +65,7 @@ const Orders = () => {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/orders/markAsReceived`,
         {
-          method: "PUT", 
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             orderId,
@@ -278,7 +278,7 @@ const Orders = () => {
             rowExpansionTemplate={itemTable}
           >
             <Column expander style={{ width: "3em" }} />
-            <Column field="id" header="ID" sortable />
+            <Column field="custom_order_code" header="ID" sortable />
             <Column
               field="order_date"
               header="Datum narudžbe"

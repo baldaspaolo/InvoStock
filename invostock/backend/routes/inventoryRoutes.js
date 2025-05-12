@@ -2,6 +2,12 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+function generateInventoryCode(orgOrUserCode, count) {
+  const padded = String(count).padStart(3, "0");
+  return `INV-${orgOrUserCode}-${padded}`;
+}
+
+
 router.post("/getInventory", (req, res) => {
   const { userId, organizationId } = req.body;
 
@@ -30,68 +36,91 @@ router.post("/getInventory", (req, res) => {
   });
 });
 
-router.post("/addInventoryItem", async (req, res) => {
-  try {
-    const { userId, organizationId, itemData } = req.body;
+router.post("/addInventoryItem", (req, res) => {
+  const { userId, organizationId, itemData } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ error: "Nedostaje userId" });
-    }
-
-    if (!itemData || !itemData.item_name || !itemData.category) {
-      return res
-        .status(400)
-        .json({ error: "Nedostaju obavezni podaci o artiklu" });
-    }
-
-    const [existingItem] = await db.query(
-      "SELECT * FROM inventory_items WHERE item_name = ? AND organization_id = ?",
-      [itemData.item_name, organizationId || null]
-    );
-
-    if (existingItem.length > 0) {
-      return res
-        .status(400)
-        .json({ error: "Artikal sa ovim nazivom već postoji" });
-    }
-
-    const [result] = await db.query(
-      `INSERT INTO inventory_items (
-                organization_id, 
-                user_id,
-                item_name, 
-                category, 
-                description, 
-                stock_quantity, 
-                reorder_level, 
-                price
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        organizationId || null,
-        userId,
-        itemData.item_name,
-        itemData.category,
-        itemData.description || null,
-        itemData.stock_quantity || 0,
-        itemData.reorder_level || 1,
-        itemData.price || 0,
-      ]
-    );
-
-    const [addedItem] = await db.query(
-      "SELECT * FROM inventory_items WHERE id = ?",
-      [result.insertId]
-    );
-
-    res.status(201).json({
-      message: "Artikal uspješno dodan",
-      item: addedItem[0],
-    });
-  } catch (error) {
-    console.error("Greška pri dodavanju artikla:", error);
-    res.status(500).json({ error: "Interna server greška" });
+  if (!userId || !itemData || !itemData.item_name || !itemData.category) {
+    return res.status(400).json({ error: "Nedostaju podaci" });
   }
+
+  const checkQuery =
+    "SELECT * FROM inventory_items WHERE item_name = ? AND organization_id = ?";
+  db.query(
+    checkQuery,
+    [itemData.item_name, organizationId || null],
+    (err, existingItem) => {
+      if (err) {
+        console.error("Greška kod provjere:", err);
+        return res.status(500).json({ error: "Greška na serveru." });
+      }
+
+      if (existingItem.length > 0) {
+        return res
+          .status(400)
+          .json({ error: "Artikal s tim nazivom već postoji" });
+      }
+
+      const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
+      const countQuery = `SELECT COUNT(*) AS count FROM inventory_items WHERE ${
+        organizationId ? "organization_id = ?" : "user_id = ?"
+      }`;
+
+      db.query(countQuery, [organizationId || userId], (err2, countResult) => {
+        if (err2) {
+          console.error("Greška kod brojanja:", err2);
+          return res.status(500).json({ error: "Greška na serveru." });
+        }
+
+        const count = countResult[0].count + 1;
+        const customInventoryCode = generateInventoryCode(codePrefix, count);
+
+        const insertQuery = `
+        INSERT INTO inventory_items (
+          organization_id, user_id, item_name, category, description,
+          stock_quantity, reorder_level, price, custom_inventory_code
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+        const values = [
+          organizationId || null,
+          userId,
+          itemData.item_name,
+          itemData.category,
+          itemData.description || null,
+          itemData.stock_quantity || 0,
+          itemData.reorder_level || 1,
+          itemData.price || 0,
+          customInventoryCode,
+        ];
+
+        db.query(insertQuery, values, (err3, result) => {
+          if (err3) {
+            console.error("Greška kod unosa:", err3);
+            return res.status(500).json({ error: "Greška kod dodavanja" });
+          }
+
+          db.query(
+            "SELECT * FROM inventory_items WHERE id = ?",
+            [result.insertId],
+            (err4, addedItem) => {
+              if (err4) {
+                console.error("Greška kod dohvata unesenog artikla:", err4);
+                return res.status(500).json({ error: "Greška na serveru." });
+              }
+
+              res.status(201).json({
+                message: "Artikal dodan",
+                item: addedItem[0],
+                custom_inventory_code: customInventoryCode,
+              });
+            }
+          );
+        });
+      });
+    }
+  );
 });
+
 
 router.post("/lowStock", (req, res) => {
   const { userId, organizationId } = req.body;

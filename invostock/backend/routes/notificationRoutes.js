@@ -2,40 +2,67 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
-router.post("/addNotification", (req, res) => {
+function generateNotificationCode(orgOrUserCode, count) {
+  return `NOTIF-${orgOrUserCode}-${String(count).padStart(3, "0")}`;
+}
+
+
+router.post("/addNotification", async (req, res) => {
   const { userId, organizationId, sender, title, message, type } = req.body;
 
   if (!title || !message) {
     return res.status(400).json({ error: "Nedostaju podaci notifikacije!" });
   }
 
-  const query = `
-    INSERT INTO notifications (title, message, type, user_id, organization_id, sender)
-    VALUES (?, ?, ?, ?, ?, ?)
+  const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
+  const idParam = organizationId || userId;
+
+  const countQuery = `
+    SELECT COUNT(*) AS notif_count
+    FROM notifications
+    WHERE ${organizationId ? "organization_id = ?" : "user_id = ?"}
   `;
 
-  const queryParams = [
-    title,
-    message,
-    type || "info",
-    userId || null,
-    organizationId || null,
-    sender || "system",
-  ];
-
-  db.query(query, queryParams, (err, result) => {
-    if (err) {
-      console.error("Greška prilikom izvođenja zahtjeva:", err);
+  db.query(countQuery, [idParam], (err1, result1) => {
+    if (err1) {
+      console.error("Greška kod broja obavijesti:", err1);
       return res.status(500).json({ error: "Greška na serveru!" });
     }
 
-    res.status(201).json({
-      success: true,
-      message: "Obavijest uspješno dodana!",
-      notificationId: result.insertId,
+    const count = result1[0].notif_count + 1;
+    const customCode = generateNotificationCode(codePrefix, count);
+
+    const insertQuery = `
+      INSERT INTO notifications (title, message, type, user_id, organization_id, sender, custom_notification_code)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+      title,
+      message,
+      type || "info",
+      userId || null,
+      organizationId || null,
+      sender || "system",
+      customCode,
+    ];
+
+    db.query(insertQuery, params, (err2, result2) => {
+      if (err2) {
+        console.error("Greška kod dodavanja obavijesti:", err2);
+        return res.status(500).json({ error: "Greška na serveru!" });
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Obavijest uspješno dodana!",
+        notificationId: result2.insertId,
+        custom_notification_code: customCode,
+      });
     });
   });
 });
+
 
 router.post("/getNotifications", (req, res) => {
   const { userId, organizationId } = req.body;

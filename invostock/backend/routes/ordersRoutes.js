@@ -151,6 +151,15 @@ router.post("/getOrderDetails", (req, res) => {
   });
 });
 
+function generateCustomCode(prefix, date, orgOrUserCode, count) {
+  const formattedDate = new Date(date)
+    .toLocaleDateString("hr-HR")
+    .split(".")
+    .reverse()
+    .join(""); // npr. 20250508
+  return `${prefix}-${formattedDate}-${orgOrUserCode}-${count}`;
+}
+
 router.post("/createOrder", (req, res) => {
   const { userId, organizationId, supplierId, orderDate, items, totalPrice } =
     req.body;
@@ -166,62 +175,92 @@ router.post("/createOrder", (req, res) => {
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
-  const insertOrderQuery = `
-    INSERT INTO orders (user_id, organization_id, supplier_id, order_date, total_price, status)
-    VALUES (?, ?, ?, ?, ?, 'pending')
+  const countQuery = `
+    SELECT COUNT(*) AS order_count
+    FROM orders
+    WHERE ${
+      organizationId
+        ? "organization_id = ?"
+        : "organization_id IS NULL AND user_id = ?"
+    }
   `;
+  const countParams = organizationId ? [organizationId] : [userId];
 
-  const params = [
-    userId,
-    organizationId || null,
-    supplierId,
-    orderDate,
-    totalPrice,
-  ];
-
-  db.query(insertOrderQuery, params, (err, result) => {
-    if (err) {
-      console.error("Greška pri unosu narudžbe:", err);
-      return res.status(500).json({ error: "Greška pri unosu narudžbe" });
+  db.query(countQuery, countParams, (err1, result1) => {
+    if (err1) {
+      console.error("Greška pri brojanju narudžbi:", err1);
+      return res.status(500).json({ error: "Greška na serveru" });
     }
 
-    const orderId = result.insertId;
+    const count = result1[0].order_count + 1;
+    const prefix = "ORD";
+    const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
+    const customCode = generateCustomCode(
+      prefix,
+      new Date(orderDate),
+      codePrefix,
+      count
+    );
 
-    let completed = 0;
-    let errorOccurred = false;
+    const insertOrderQuery = `
+      INSERT INTO orders (user_id, organization_id, supplier_id, order_date, total_price, status, custom_order_code)
+      VALUES (?, ?, ?, ?, ?, 'pending', ?)
+    `;
 
-    items.forEach((item) => {
-      const insertItemQuery = `
-        INSERT INTO order_items (order_id, item_name, quantity, price, description)
-        VALUES (?, ?, ?, ?, ?)
-      `;
+    const params = [
+      userId,
+      organizationId || null,
+      supplierId,
+      orderDate,
+      totalPrice,
+      customCode,
+    ];
 
-      const itemParams = [
-        orderId,
-        item.name,
-        item.quantity,
-        item.price,
-        item.description || null,
-      ];
+    db.query(insertOrderQuery, params, (err2, result2) => {
+      if (err2) {
+        console.error("Greška pri unosu narudžbe:", err2);
+        return res.status(500).json({ error: "Greška pri unosu narudžbe" });
+      }
 
-      db.query(insertItemQuery, itemParams, (err2) => {
-        if (err2) {
-          console.error("Greška pri unosu artikla:", err2);
-          if (!errorOccurred) {
-            errorOccurred = true;
-            return res.status(500).json({ error: "Greška pri unosu artikla" });
+      const orderId = result2.insertId;
+      let completed = 0;
+      let errorOccurred = false;
+
+      items.forEach((item) => {
+        const insertItemQuery = `
+          INSERT INTO order_items (order_id, item_name, quantity, price, description)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+        const itemParams = [
+          orderId,
+          item.name,
+          item.quantity,
+          item.price,
+          item.description || null,
+        ];
+
+        db.query(insertItemQuery, itemParams, (err3) => {
+          if (err3) {
+            console.error("Greška pri unosu artikla:", err3);
+            if (!errorOccurred) {
+              errorOccurred = true;
+              return res
+                .status(500)
+                .json({ error: "Greška pri unosu artikla" });
+            }
           }
-        }
 
-        completed++;
-        if (completed === items.length && !errorOccurred) {
-          res.status(201).json({
-            success: true,
-            message: "Narudžba uspješno spremljena",
-            orderId,
-            totalPrice,
-          });
-        }
+          completed++;
+          if (completed === items.length && !errorOccurred) {
+            res.status(201).json({
+              success: true,
+              message: "Narudžba uspješno spremljena",
+              orderId,
+              totalPrice,
+              custom_order_code: customCode,
+            });
+          }
+        });
       });
     });
   });
@@ -447,6 +486,5 @@ router.put("/markAsReceived", (req, res) => {
     });
   });
 });
-
 
 module.exports = router;

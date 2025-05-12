@@ -1,15 +1,13 @@
 // Expenses.jsx
-import React, { useState, useRef, useEffect, useContext } from "react";
+import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { Button } from "primereact/button";
-import { Card } from "primereact/card";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Panel } from "primereact/panel";
-import { Chart } from "primereact/chart";
 import { Menu } from "primereact/menu";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
@@ -35,6 +33,8 @@ const Expenses = () => {
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [showCategoryListDialog, setShowCategoryListDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [summary, setSummary] = useState(null);
+  const [interval, setInterval] = useState("last_30_days");
 
   const [form, setForm] = useState({
     name: "",
@@ -45,6 +45,69 @@ const Expenses = () => {
     date: null,
   });
 
+  const getRange = (type) => {
+    const today = new Date();
+    const toISO = (d) => d.toISOString().split("T")[0];
+
+    switch (type) {
+      case "last_15_days":
+        return [
+          toISO(new Date(today.setDate(today.getDate() - 15))),
+          toISO(new Date()),
+        ];
+      case "last_30_days":
+        return [
+          toISO(new Date(today.setDate(today.getDate() - 30))),
+          toISO(new Date()),
+        ];
+      case "this_month":
+        return [
+          toISO(new Date(today.getFullYear(), today.getMonth(), 1)),
+          toISO(new Date()),
+        ];
+      case "this_quarter":
+        const qStart = new Date(
+          today.getFullYear(),
+          Math.floor(today.getMonth() / 3) * 3,
+          1
+        );
+        return [toISO(qStart), toISO(new Date())];
+      case "this_year":
+        return [toISO(new Date(today.getFullYear(), 0, 1)), toISO(new Date())];
+      default:
+        return [null, null];
+    }
+  };
+
+  useEffect(() => {
+    const [start, end] = getRange(interval);
+    if (!start || !end) return;
+
+    const fetchSummary = async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/expenses/getExpenseSummary`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              organizationId: user.organization_id,
+              startDate: start,
+              endDate: end,
+            }),
+          }
+        );
+        const data = await res.json();
+        if (data.success) setSummary((parseFloat(data.total) || 0).toFixed(2));
+      } catch (err) {
+        console.error("Greška kod sažetka:", err);
+      }
+    };
+
+    fetchSummary();
+  }, [interval, user]);
+
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
@@ -53,7 +116,7 @@ const Expenses = () => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user.id }),
+            body: JSON.stringify({ userId: user?.id }),
           }
         );
         const data = await res.json();
@@ -62,8 +125,11 @@ const Expenses = () => {
         console.error("Greška kod dohvata troškova:", err);
       }
     };
-    fetchExpenses();
-  }, [user.id]);
+
+    if (user?.id) {
+      fetchExpenses();
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -73,7 +139,7 @@ const Expenses = () => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user.id }),
+            body: JSON.stringify({ userId: user?.id }),
           }
         );
         const data = await res.json();
@@ -82,8 +148,26 @@ const Expenses = () => {
         console.error("Greška kod dohvata kategorija:", err);
       }
     };
-    fetchCategories();
-  }, [user.id]);
+
+    if (user?.id) {
+      fetchCategories();
+    }
+  }, [user?.id]);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((e) => {
+      const lower = searchTerm.toLowerCase();
+      const matches =
+        e.name.toLowerCase().includes(lower) ||
+        e.category.toLowerCase().includes(lower) ||
+        e.description.toLowerCase().includes(lower);
+      const date = new Date(e.expense_date);
+      const dateInRange =
+        (!startDate || date >= new Date(startDate)) &&
+        (!endDate || date <= new Date(endDate));
+      return matches && dateInRange;
+    });
+  }, [expenses, searchTerm, startDate, endDate]);
 
   const menuItems = [
     {
@@ -189,19 +273,6 @@ const Expenses = () => {
     }
   };
 
-  const filteredExpenses = expenses.filter((e) => {
-    const lower = searchTerm.toLowerCase();
-    const matches =
-      e.name.toLowerCase().includes(lower) ||
-      e.category.toLowerCase().includes(lower) ||
-      e.description.toLowerCase().includes(lower);
-    const date = new Date(e.expense_date);
-    const dateInRange =
-      (!startDate || date >= new Date(startDate)) &&
-      (!endDate || date <= new Date(endDate));
-    return matches && dateInRange;
-  });
-
   const inputStyle = { height: "2.5rem", width: "100%" };
 
   const actionBodyTemplate = (rowData) => (
@@ -230,12 +301,6 @@ const Expenses = () => {
           onClick={() => navigate("/expenses/add")}
         />
         <Button
-          label={showCharts ? "Sakrij grafove" : "Prikaži grafove"}
-          icon="pi pi-chart-bar"
-          onClick={() => setShowCharts(!showCharts)}
-          className="ml-2"
-        />
-        <Button
           icon="pi pi-ellipsis-h"
           text
           onClick={(e) => categoryMenuRef.current.toggle(e)}
@@ -245,6 +310,32 @@ const Expenses = () => {
 
       <div className="div4">
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
+          <Panel
+            header="Ukupni trošak"
+            style={{ marginBottom: "1rem", fontSize: "0.9rem" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h3 style={{ margin: 0 }}>{summary} €</h3>
+              <Dropdown
+                value={interval}
+                options={[
+                  { label: "15 dana", value: "last_15_days" },
+                  { label: "30 dana", value: "last_30_days" },
+                  { label: "Ovaj mjesec", value: "this_month" },
+                  { label: "Ovaj kvartal", value: "this_quarter" },
+                  { label: "Ova godina", value: "this_year" },
+                ]}
+                onChange={(e) => setInterval(e.value)}
+                style={{ width: "12rem" }}
+              />
+            </div>
+          </Panel>
           <div
             style={{
               display: "grid",
@@ -292,6 +383,7 @@ const Expenses = () => {
             paginator
             rows={5}
             emptyMessage="Nema pronađenih troškova."
+            dataKey="id"
             expandedRows={expandedRows}
             onRowToggle={(e) => setExpandedRows(e.data)}
             rowExpansionTemplate={(data) => (
@@ -316,6 +408,7 @@ const Expenses = () => {
             style={{ fontSize: "0.9rem" }}
           >
             <Column expander style={{ width: "3em" }} />
+            <Column field="custom_expense_code" header="ID" sortable />
             <Column field="name" header="Naslov" sortable />
             <Column
               field="date"
@@ -456,52 +549,6 @@ const Expenses = () => {
               )}
             </div>
           </Dialog>
-
-          {showCharts && (
-            <div style={{ display: "flex", gap: "1rem", marginTop: "1.5rem" }}>
-              <Card style={{ flex: 1 }}>
-                <h5>Troškovi po mjesecima (2024)</h5>
-                <Chart
-                  type="line"
-                  data={{
-                    labels: ["Sij", "Velj", "Ožu", "Tra", "Svi", "Lip"],
-                    datasets: [
-                      {
-                        label: "Troškovi 2024",
-                        data: [250, 900, 400, 0, 0, 0],
-                        fill: false,
-                        borderColor: "#42A5F5",
-                        tension: 0.4,
-                      },
-                    ],
-                  }}
-                  style={{ height: "300px" }}
-                />
-              </Card>
-              <Card style={{ flex: 1 }}>
-                <h5>Top troškovne kategorije</h5>
-                <Chart
-                  type="bar"
-                  data={{
-                    labels: ["Materijal", "Marketing", "Web", "Servis"],
-                    datasets: [
-                      {
-                        label: "Top kategorije",
-                        backgroundColor: [
-                          "#42A5F5",
-                          "#66BB6A",
-                          "#FFA726",
-                          "#AB47BC",
-                        ],
-                        data: [900, 550, 250, 320],
-                      },
-                    ],
-                  }}
-                  style={{ height: "300px" }}
-                />
-              </Card>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -232,7 +232,7 @@ const Payments = () => {
             rowsPerPageOptions={[5, 10, 25, 50]}
             style={{ fontSize: "0.9rem" }}
           >
-            <Column field="id" header="ID" sortable />
+            <Column field="custom_payment_code" header="ID" sortable />
             <Column
               field="custom_invoice_code"
               header="Broj fakture"

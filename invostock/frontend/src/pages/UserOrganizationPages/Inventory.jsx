@@ -1,4 +1,5 @@
 import React, { useState, useContext, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 
 import { DataTable } from "primereact/datatable";
@@ -28,6 +29,7 @@ const categoryOptions = [
 
 const Inventory = () => {
   const menu = useRef(null);
+  const navigate = useNavigate();
   const [inventoryItems, setInventoryItems] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -153,7 +155,7 @@ const Inventory = () => {
         style={{ fontSize: "0.9rem" }}
         onRowClick={onRowClick}
       >
-        <Column field="id" header="ID" sortable></Column>
+        <Column field="custom_inventory_code" header="ID" sortable></Column>
         <Column field="item_name" header="Naziv artikla" sortable></Column>
         <Column field="category" header="Kategorija" sortable></Column>
         <Column
@@ -184,6 +186,7 @@ const Inventory = () => {
           icon="pi pi-plus"
           iconPos="right"
           size="small"
+          onClick={() => navigate("/inventory/add")}
         />
         <Button
           icon="pi pi-ellipsis-h"
