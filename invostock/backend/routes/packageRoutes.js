@@ -104,9 +104,19 @@ router.post("/updatePackageStatus", (req, res) => {
   if (!packageId || !status)
     return res.status(400).json({ error: "Nedostaju podaci" });
 
-  const query = `UPDATE packages SET status = ? WHERE id = ?`;
+  let query = "UPDATE packages SET status = ?";
+  const params = [status];
 
-  db.query(query, [status, packageId], (err, result) => {
+  if (status === "shipped") {
+    query += ", delivery_date = NOW()";
+  } else if (status === "delivered") {
+    query += ", received_date = NOW()";
+  }
+
+  query += " WHERE id = ?";
+  params.push(packageId);
+
+  db.query(query, params, (err, result) => {
     if (err) {
       console.error("Greška kod ažuriranja statusa paketa:", err);
       return res.status(500).json({ error: "Greška na serveru." });
@@ -114,5 +124,6 @@ router.post("/updatePackageStatus", (req, res) => {
     res.status(200).json({ success: true });
   });
 });
+
 
 module.exports = router;

@@ -28,6 +28,7 @@ const Packages = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [expandedRows, setExpandedRows] = useState(null);
   const [courier, setCourier] = useState("");
+  const [showAllDelivered, setShowAllDelivered] = useState(false);
 
   const fetchPackages = async () => {
     const res = await fetch(`${API_URL}/api/packages/getUserPackages`, {
@@ -44,17 +45,15 @@ const Packages = () => {
 
   useEffect(() => {
     if (packages.length && salesOrders.length) {
-      
       const usedSalesOrderIds = new Set(
-        packages.map((pkg) => pkg.sales_order_id).filter((id) => id !== null) 
+        packages.map((pkg) => pkg.sales_order_id).filter((id) => id !== null)
       );
 
-      
       const availableOrders = salesOrders.filter(
         (order) => !usedSalesOrderIds.has(order.id)
       );
 
-      setSalesOrders(availableOrders); 
+      setSalesOrders(availableOrders);
     }
   }, [packages, salesOrders]);
 
@@ -133,7 +132,7 @@ const Packages = () => {
         addMode === "manual" ? selectedContact : selectedOrder.contact_id,
       salesOrderId: addMode === "order" ? selectedOrder.id : null,
       description,
-      courier, // ➕ nova vrijednost
+      courier,
     };
     await fetch(`${API_URL}/api/packages/createPackage`, {
       method: "POST",
@@ -158,7 +157,12 @@ const Packages = () => {
     shipped: [],
     delivered: [],
   };
-  packages.forEach((pkg) => grouped[pkg.status]?.push(pkg));
+
+  const sortedPackages = [...packages].sort(
+    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+  );
+
+  sortedPackages.forEach((pkg) => grouped[pkg.status]?.push(pkg));
 
   const cardStyle = {
     maxWidth: "90%",
@@ -225,27 +229,91 @@ const Packages = () => {
                   borderBottomRightRadius: "10px",
                 }}
               >
-                {grouped[key].map((pkg) => (
-                  <Card
-                    key={pkg.id}
-                    onClick={() => handlePackageClick(pkg)}
-                    style={cardStyle}
-                  >
-                    <p>
-                      <strong>
-                        {pkg.first_name} {pkg.last_name}
-                      </strong>
-                    </p>
-                    <p>{pkg.code}</p>
-                    <p>
-                      {pkg.courier || "-"} | {pkg.created_at?.split("T")[0]}
-                    </p>
-                  </Card>
-                ))}
+                {key !== "delivered" ? (
+                  grouped[key].map((pkg) => (
+                    <Card
+                      key={pkg.id}
+                      onClick={() => handlePackageClick(pkg)}
+                      style={cardStyle}
+                    >
+                      <p>
+                        <strong>
+                          {pkg.first_name} {pkg.last_name}
+                        </strong>
+                      </p>
+                      <p>{pkg.code}</p>
+                      <p>
+                        {pkg.courier || "-"} | {pkg.created_at?.split("T")[0]}
+                      </p>
+                    </Card>
+                  ))
+                ) : (
+                  <>
+                    {grouped[key].slice(0, 4).map((pkg) => (
+                      <Card
+                        key={pkg.id}
+                        onClick={() => handlePackageClick(pkg)}
+                        style={cardStyle}
+                      >
+                        <p>
+                          <strong>
+                            {pkg.first_name} {pkg.last_name}
+                          </strong>
+                        </p>
+                        <p>{pkg.code}</p>
+                        <p>
+                          {pkg.courier || "-"} | {pkg.created_at?.split("T")[0]}
+                        </p>
+                      </Card>
+                    ))}
+                    {grouped[key].length > 4 && (
+                      <Button
+                        label="Prikaži sve"
+                        onClick={() => setShowAllDelivered(true)}
+                        style={{
+                          width: "100%",
+                          marginTop: "1rem",
+                        }}
+                      />
+                    )}
+                  </>
+                )}
               </div>
             </div>
           ))}
         </div>
+
+        <Dialog
+          header="Svi dostavljeni paketi"
+          visible={showAllDelivered}
+          style={{ width: "70vw" }}
+          onHide={() => setShowAllDelivered(false)}
+        >
+          <DataTable
+            value={grouped.delivered}
+            paginator
+            rows={10}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            style={{ width: "100%" }}
+          >
+            <Column
+              field="created_at"
+              header="Datum"
+              body={(rowData) => rowData.created_at?.split("T")[0] || "-"}
+              sortable
+            />
+            <Column
+              header="Klijent"
+              body={(rowData) => `${rowData.first_name} ${rowData.last_name}`}
+            />
+            <Column field="code" header="Broj paketa" />
+            <Column field="courier" header="Način slanja" />
+            <Column
+              header="Prodajni nalog"
+              body={(rowData) => rowData.order_code || "-"}
+            />
+          </DataTable>
+        </Dialog>
 
         <Dialog
           header="Dodaj paket"
@@ -391,8 +459,18 @@ const Packages = () => {
                 {selectedPackage.created_at?.split("T")[0]}
               </p>
               <p>
-                <strong>Status:</strong> <Tag value={selectedPackage.status} />
+                <strong>Status:</strong>{" "}
+                <Tag
+                  value={
+                    {
+                      not_shipped: "Potrebno zapakirati",
+                      shipped: "Poslano",
+                      delivered: "Dostavljeno",
+                    }[selectedPackage.status] || selectedPackage.status
+                  }
+                />
               </p>
+
               {selectedPackage.status === "not_shipped" && (
                 <Button
                   label="Isporuci"
