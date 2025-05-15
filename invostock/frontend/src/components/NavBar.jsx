@@ -15,6 +15,8 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  if (user?.role === "systemadmin") return null;
+
   const menu = useRef(null);
   const op = useRef(null);
   const toast = useRef(null);

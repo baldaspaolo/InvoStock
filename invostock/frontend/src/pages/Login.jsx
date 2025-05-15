@@ -39,7 +39,7 @@ const Login = () => {
       const data = await response.json();
 
       if (data.success) {
-        login(data.user); //ls
+        login(data.user); 
 
         window.toast.show({
           severity: "success",
@@ -49,7 +49,11 @@ const Login = () => {
         });
 
         setTimeout(() => {
-          navigate("/dashboard");
+          if (data.user.role === "systemadmin") {
+            navigate("/admin/dashboard");
+          } else {
+            navigate("/dashboard");
+          }
         }, 1500);
       } else {
         window.toast.show({
@@ -69,6 +73,7 @@ const Login = () => {
       });
     }
   };
+
 
   return (
     <div
