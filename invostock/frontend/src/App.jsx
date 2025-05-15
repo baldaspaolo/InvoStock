@@ -32,6 +32,11 @@ import Packages from "./pages/UserOrganizationPages/Packages";
 import SalesAdd from "./pages/UserOrganizationPages/SalesAdd";
 import InventoryAdd from "./pages/UserOrganizationPages/InventoryAdd";
 import ExpensesAdd from "./pages/UserOrganizationPages/ExpensesAdd";
+import SystemAdminPanel from "./pages/AdminPages/SystemAdminPanel";
+import UsersItem from "./pages/AdminPages/UsersItem";
+
+import Users from "./pages/AdminPages/Users";
+import AdminProtectedRoutes from "./AdminProtectedRoutes";
 
 function App() {
   return (
@@ -71,6 +76,30 @@ function App() {
             <Route path="/inventory/add" element={<InventoryAdd />} />
             <Route path="/expenses/add" element={<ExpensesAdd />} />
           </Route>
+          <Route
+            path="/admin/dashboard"
+            element={
+              <AdminProtectedRoutes>
+                <SystemAdminPanel />
+              </AdminProtectedRoutes>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <AdminProtectedRoutes>
+                <Users />
+              </AdminProtectedRoutes>
+            }
+          />
+          <Route
+            path="/admin/users/:id"
+            element={
+              <AdminProtectedRoutes>
+                <UsersItem />
+              </AdminProtectedRoutes>
+            }
+          />
 
           <Route path="*" element={<Login />} />
         </Routes>
