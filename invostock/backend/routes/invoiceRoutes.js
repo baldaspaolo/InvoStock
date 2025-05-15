@@ -3,27 +3,54 @@ const router = express.Router();
 const db = require("../db");
 
 router.post("/getUserInvoices", (req, res) => {
-  const { userId } = req.body;
+  const { userId, organizationId } = req.body;
+  console.log("REQ BODY:", req.body);
 
   if (!userId) {
-    return res.status(400).json({ error: "Nedostaje UserID!" });
+    return res.status(400).json({ error: "Nedostaje userId!" });
   }
 
-  const query = `
-    SELECT 
-      invoices.*, 
-      contacts.first_name, 
-      contacts.last_name
-    FROM invoices
-    LEFT JOIN contacts ON invoices.contact_id = contacts.id
-    WHERE invoices.user_id = ?
-  `;
+  let query;
+  let params;
 
-  db.query(query, [userId], (err, result) => {
+  const hasValidOrgId =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    organizationId !== "null" &&
+    !isNaN(organizationId);
+
+  if (hasValidOrgId) {
+    query = `
+      SELECT 
+        invoices.*, 
+        contacts.first_name, 
+        contacts.last_name
+      FROM invoices
+      LEFT JOIN contacts ON invoices.contact_id = contacts.id
+      WHERE invoices.organization_id = ?
+      ORDER BY invoices.invoice_date DESC
+    `;
+    params = [organizationId];
+  } else {
+    query = `
+      SELECT 
+        invoices.*, 
+        contacts.first_name, 
+        contacts.last_name
+      FROM invoices
+      LEFT JOIN contacts ON invoices.contact_id = contacts.id
+      WHERE invoices.user_id = ? AND invoices.organization_id IS NULL
+      ORDER BY invoices.invoice_date DESC
+    `;
+    params = [userId];
+  }
+
+  db.query(query, params, (err, result) => {
     if (err) {
-      console.log("Greška pri dohvaćanju faktura!");
+      console.log("Greška pri dohvaćanju faktura:", err);
       return res.status(500).json({ error: "Greška na serveru!" });
     }
+
     res.status(200).json({ success: true, invoices: result });
   });
 });
