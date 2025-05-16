@@ -9,6 +9,11 @@ import { Toast } from "primereact/toast";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
 
+import EditUserDialog from "../../components/EditUserDialog";
+import { ConfirmDialog } from "primereact/confirmdialog";
+import { confirmDialog } from "primereact/confirmdialog";
+
+
 const Users = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -18,6 +23,8 @@ const Users = () => {
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [nameSearch, setNameSearch] = useState("");
   const [orgSearch, setOrgSearch] = useState("");
+  const [editDialogVisible, setEditDialogVisible] = useState(false);
+  const [organizations, setOrganizations] = useState([]);
   const menu = useRef(null);
   const toast = useRef(null);
 
@@ -70,6 +77,20 @@ const Users = () => {
     fetchUsers();
   }, [API_URL]);
 
+  useEffect(() => {
+    const fetchOrganizations = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/admin/organizations`);
+        const data = await res.json();
+        setOrganizations(data);
+      } catch (err) {
+        console.error("Greška kod dohvaćanja organizacija:", err);
+      }
+    };
+
+    fetchOrganizations();
+  }, [API_URL]);
+
   const applyFilters = (usersToFilter, filter, nameQuery, orgQuery) => {
     let result = [...usersToFilter];
 
@@ -111,21 +132,79 @@ const Users = () => {
   };
 
   const handleEdit = () => {
-    toast.current.show({
-      severity: "info",
-      summary: "Uredi",
-      detail: `Uredi korisnika: ${selectedUser.name}`,
-      life: 3000,
-    });
+    setEditDialogVisible(true);
   };
 
   const handleDelete = () => {
-    toast.current.show({
-      severity: "warn",
-      summary: "Brisanje",
-      detail: `Obrisan korisnik: ${selectedUser.name}`,
-      life: 3000,
+    confirmDialog({
+      message: `Jeste li sigurni da želite obrisati korisnika "${selectedUser.name}" i sve njegove podatke?`,
+      header: "Potvrda brisanja",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Da, obriši",
+      rejectLabel: "Odustani",
+      accept: async () => {
+        try {
+          const res = await fetch(
+            `${API_URL}/api/admin/users/${selectedUser.id}`,
+            {
+              method: "DELETE",
+            }
+          );
+          if (res.ok) {
+            toast.current.show({
+              severity: "success",
+              summary: "Obrisano",
+              detail: "Korisnik je uspješno obrisan",
+              life: 3000,
+            });
+            setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+          } else {
+            throw new Error();
+          }
+        } catch (err) {
+          toast.current.show({
+            severity: "error",
+            summary: "Greška",
+            detail: "Greška pri brisanju korisnika",
+            life: 3000,
+          });
+        }
+      },
     });
+  };
+
+  const handleUserSave = async (updatedUser) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users/${updatedUser.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedUser),
+      });
+
+      if (res.ok) {
+        toast.current.show({
+          severity: "success",
+          summary: "Uspjeh",
+          detail: "Korisnik je ažuriran",
+          life: 3000,
+        });
+        const updatedList = users.map((u) =>
+          u.id === updatedUser.id ? { ...u, ...updatedUser } : u
+        );
+        setUsers(updatedList);
+      } else {
+        throw new Error();
+      }
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Ažuriranje nije uspjelo",
+        life: 3000,
+      });
+    }
   };
 
   const handleRowClick = (event) => {
@@ -239,6 +318,15 @@ const Users = () => {
         </div>
       </Card>
       <Toast ref={toast} position="top-right" />
+      <EditUserDialog
+        visible={editDialogVisible}
+        onHide={() => setEditDialogVisible(false)}
+        user={selectedUser}
+        onSave={handleUserSave}
+        organizations={organizations}
+      />
+
+      <ConfirmDialog />
     </div>
   );
 };
