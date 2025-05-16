@@ -15,7 +15,6 @@ router.get("/users/no-organization", (req, res) => {
   });
 });
 
-
 router.get("/users/with-organization", (req, res) => {
   const query = `
     SELECT u.id, u.name, u.email, u.created_at, o.id AS organization_id, o.name AS organization_name
@@ -28,7 +27,6 @@ router.get("/users/with-organization", (req, res) => {
     res.json(results);
   });
 });
-
 
 router.get("/organizations", (req, res) => {
   const query = `
@@ -60,7 +58,6 @@ router.get("/users/:id", (req, res) => {
     }
   );
 });
-
 
 router.get("/users/:id/invoices", (req, res) => {
   const userId = req.params.id;
@@ -206,7 +203,7 @@ router.get("/users/:id/inventory", (req, res) => {
   );
 });
 
-// POJEDINAČNA FAKTURA 
+// POJEDINAČNA FAKTURA
 router.get("/users/:userId/invoices/:invoiceId", (req, res) => {
   const { userId, invoiceId } = req.params;
 
@@ -278,7 +275,6 @@ router.get("/users/:userId/invoices/:invoiceId", (req, res) => {
   );
 });
 
-
 // POJEDINAČNI TROŠAK
 router.get("/users/:userId/expenses/:expenseId", (req, res) => {
   const { userId, expenseId } = req.params;
@@ -314,8 +310,7 @@ router.get("/users/:userId/expenses/:expenseId", (req, res) => {
   );
 });
 
-
-// OJEDINAČNA NARUDŽBENICA 
+// OJEDINAČNA NARUDŽBENICA
 router.get("/users/:userId/orders/:orderId", (req, res) => {
   const { userId, orderId } = req.params;
 
@@ -365,8 +360,7 @@ router.get("/users/:userId/orders/:orderId", (req, res) => {
   );
 });
 
-
-// POJEDINAČNA UPLATA 
+// POJEDINAČNA UPLATA
 router.get("/users/:userId/payments/:paymentId", (req, res) => {
   const { userId, paymentId } = req.params;
 
@@ -407,8 +401,7 @@ router.get("/users/:userId/payments/:paymentId", (req, res) => {
   );
 });
 
-
-// POJEDINAČNI PAKET 
+// POJEDINAČNI PAKET
 router.get("/users/:userId/packages/:packageId", (req, res) => {
   const { userId, packageId } = req.params;
 
@@ -447,8 +440,7 @@ router.get("/users/:userId/packages/:packageId", (req, res) => {
   );
 });
 
-
-// POJEDINAČNI INVENTAR 
+// POJEDINAČNI INVENTAR
 router.get("/users/:userId/inventory/:inventoryId", (req, res) => {
   const { userId, inventoryId } = req.params;
 
@@ -478,12 +470,34 @@ router.get("/users/:userId/inventory/:inventoryId", (req, res) => {
 
 router.get("/organizations/:id", (req, res) => {
   const orgId = req.params.id;
-  const query = `SELECT * FROM organizations WHERE id = ?`;
+
+  const query = `
+    SELECT 
+      o.*,
+      (SELECT COUNT(*) FROM users u WHERE u.organization_id = o.id) AS member_count
+    FROM organizations o
+    WHERE o.id = ?
+  `;
+
   db.query(query, [orgId], (err, results) => {
-    if (err) return res.status(500).json({ error: "Greška kod organizacije." });
-    if (results.length === 0)
+    if (err) {
+      console.error("MySQL error:", err);
+      return res.status(500).json({
+        error: "Database error",
+        details: err.sqlMessage,
+      });
+    }
+
+    if (results.length === 0) {
       return res.status(404).json({ error: "Organizacija nije pronađena." });
-    res.json({ organization: results[0] });
+    }
+
+    const organization = {
+      ...results[0],
+      member_count: parseInt(results[0].member_count) || 0,
+    };
+
+    res.json({ organization });
   });
 });
 
@@ -773,8 +787,112 @@ router.delete("/organizations/:id", (req, res) => {
   });
 });
 
+router.get("/statistics", (req, res) => {
+  const statisticsQuery = `
+    SELECT 
+      -- Osnovne statistike
+      (SELECT COUNT(*) FROM users) AS total_users,
+      (SELECT COUNT(*) FROM users WHERE organization_id IS NULL) AS individual_users,
+      (SELECT COUNT(*) FROM users WHERE organization_id IS NOT NULL) AS organization_users,
+      (SELECT COUNT(*) FROM organizations) AS total_organizations,
+      
+      -- Financijske statistike
+      (SELECT COALESCE(SUM(final_amount), 0) FROM invoices) AS total_invoice_amount,
+      (SELECT COALESCE(SUM(amount), 0) FROM expenses) AS total_expenses,
+      (SELECT COALESCE(SUM(amount_paid), 0) FROM payments) AS total_payments,
+      
+      -- Transakcijske statistike
+      (SELECT COUNT(*) FROM invoices) AS total_invoices,
+      (SELECT COUNT(*) FROM invoices WHERE status = 'paid') AS paid_invoices,
+      (SELECT COUNT(*) FROM invoices WHERE status = 'pending') AS pending_invoices,
+      (SELECT COUNT(*) FROM invoices WHERE status = 'partially_paid') AS partially_paid_invoices,
+      
+      -- Inventar statistike
+      (SELECT COUNT(*) FROM inventory_items) AS total_inventory_items,
+      (SELECT COALESCE(SUM(stock_quantity), 0) FROM inventory_items) AS total_stock_quantity,
+      (SELECT COALESCE(SUM(stock_quantity * price), 0) FROM inventory_items) AS total_inventory_value,
+      
+      -- Narudžbe i paketi
+      (SELECT COUNT(*) FROM orders) AS total_orders,
+      (SELECT COUNT(*) FROM orders WHERE status = 'pending') AS pending_orders,
+      (SELECT COUNT(*) FROM orders WHERE status = 'delivered') AS delivered_orders,
+      (SELECT COUNT(*) FROM orders WHERE status = 'cancelled') AS cancelled_orders,
+      (SELECT COUNT(*) FROM packages) AS total_packages,
+      
+      -- Organizacijske statistike
+      (SELECT COALESCE(AVG(member_count), 0) FROM (
+        SELECT COUNT(*) AS member_count 
+        FROM users 
+        WHERE organization_id IS NOT NULL 
+        GROUP BY organization_id
+      ) AS subquery) AS avg_members_per_org,
+      (SELECT COALESCE(MAX(member_count), 0) FROM (
+        SELECT COUNT(*) AS member_count 
+        FROM users 
+        WHERE organization_id IS NOT NULL 
+        GROUP BY organization_id
+      ) AS subquery) AS max_members_in_org
+  `;
 
+  db.query(statisticsQuery, (err, results) => {
+    if (err) {
+      console.error("Greška kod dohvaćanja statistike:", err);
+      return res
+        .status(500)
+        .json({ error: "Greška kod dohvaćanja statistike." });
+    }
 
+    
+    const stats = results[0];
 
+    // Izračun postotaka
+    stats.paid_invoices_percentage =
+      stats.total_invoices > 0
+        ? ((stats.paid_invoices / stats.total_invoices) * 100).toFixed(2)
+        : 0;
+
+    stats.pending_invoices_percentage =
+      stats.total_invoices > 0
+        ? ((stats.pending_invoices / stats.total_invoices) * 100).toFixed(2)
+        : 0;
+
+    stats.organization_users_percentage =
+      stats.total_users > 0
+        ? ((stats.organization_users / stats.total_users) * 100).toFixed(2)
+        : 0;
+
+    
+    stats.average_invoice_amount =
+      stats.total_invoices > 0
+        ? (stats.total_invoice_amount / stats.total_invoices).toFixed(2)
+        : 0;
+
+    // Broj troškova za prosječni iznos troška
+    db.query(
+      "SELECT COUNT(*) AS expense_count FROM expenses",
+      (err, expenseRes) => {
+        if (err) {
+          console.error("Greška kod dohvaćanja broja troškova:", err);
+          stats.average_expense_amount = 0;
+        } else {
+          const expenseCount = expenseRes[0]?.expense_count || 0;
+          stats.average_expense_amount =
+            expenseCount > 0
+              ? (stats.total_expenses / expenseCount).toFixed(2)
+              : 0;
+        }
+
+        stats.inventory_turnover_ratio =
+          stats.total_inventory_value > 0
+            ? (
+                stats.total_invoice_amount / stats.total_inventory_value
+              ).toFixed(2)
+            : 0;
+
+        res.json(stats);
+      }
+    );
+  });
+});
 
 module.exports = router;
