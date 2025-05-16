@@ -32,10 +32,15 @@ router.get("/users/with-organization", (req, res) => {
 
 router.get("/organizations", (req, res) => {
   const query = `
-    SELECT o.id, o.name,
+  SELECT 
+    o.id, 
+    o.name, 
+    o.email, 
+    o.address,
     (SELECT COUNT(*) FROM users u WHERE u.organization_id = o.id) AS member_count
-    FROM organizations o
-  `;
+  FROM organizations o
+`;
+
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: "Greška kod organizacija." });
     res.json(results);
@@ -215,20 +220,21 @@ router.get("/users/:userId/invoices/:invoiceId", (req, res) => {
       const orgId = results[0].organization_id;
 
       const query = `
-  SELECT 
-    i.*, 
-    c.first_name AS contact_first_name,
-    c.last_name AS contact_last_name,
-    c.email AS client_email,
-    c.company_name AS client_company
-  FROM invoices i
-  LEFT JOIN contacts c ON i.contact_id = c.id
-  WHERE i.id = ? AND ${
-    orgId
-      ? "i.organization_id = ?"
-      : "i.user_id = ? AND i.organization_id IS NULL"
-  }
-`;
+        SELECT 
+          i.*, 
+          c.first_name AS contact_first_name,
+          c.last_name AS contact_last_name,
+          c.email AS client_email,
+          c.company_name AS client_company
+        FROM invoices i
+        LEFT JOIN contacts c ON i.contact_id = c.id
+        WHERE i.id = ? AND ${
+          orgId
+            ? "i.organization_id = ?"
+            : "i.user_id = ? AND i.organization_id IS NULL"
+        }
+      `;
+
       const params = [invoiceId, orgId || userId];
 
       db.query(query, params, (err, invoiceResults) => {
@@ -251,13 +257,27 @@ router.get("/users/:userId/invoices/:invoiceId", (req, res) => {
                 .json({ error: "Greška kod dohvaćanja stavki fakture." });
 
             invoice.items = itemResults;
-            res.json(invoice);
+
+            db.query(
+              "SELECT * FROM payments WHERE invoice_id = ?",
+              [invoiceId],
+              (err, paymentsRes) => {
+                if (err)
+                  return res
+                    .status(500)
+                    .json({ error: "Greška kod dohvaćanja uplata." });
+
+                invoice.payments = paymentsRes;
+                res.json(invoice);
+              }
+            );
           }
         );
       });
     }
   );
 });
+
 
 // POJEDINAČNI TROŠAK
 router.get("/users/:userId/expenses/:expenseId", (req, res) => {
@@ -455,5 +475,306 @@ router.get("/users/:userId/inventory/:inventoryId", (req, res) => {
     }
   );
 });
+
+router.get("/organizations/:id", (req, res) => {
+  const orgId = req.params.id;
+  const query = `SELECT * FROM organizations WHERE id = ?`;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod organizacije." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Organizacija nije pronađena." });
+    res.json({ organization: results[0] });
+  });
+});
+
+router.get("/organizations/:id/members", (req, res) => {
+  const orgId = req.params.id;
+  const query = `
+    SELECT id, name, email, role, created_at,
+           CASE WHEN role = 'organization' THEN 'admin' ELSE 'member' END AS org_role
+    FROM users
+    WHERE organization_id = ?
+  `;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod članova." });
+    res.json(results);
+  });
+});
+
+router.get("/organizations/:id/invoices", (req, res) => {
+  const orgId = req.params.id;
+  const query = `
+    SELECT i.*, c.first_name AS contact_first_name, c.last_name AS contact_last_name
+    FROM invoices i
+    LEFT JOIN contacts c ON i.contact_id = c.id
+    WHERE i.organization_id = ?
+  `;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod faktura." });
+    res.json(results);
+  });
+});
+
+router.get("/organizations/:id/orders", (req, res) => {
+  const orgId = req.params.id;
+  const query = `
+    SELECT o.*, s.name AS supplier_name
+    FROM orders o
+    LEFT JOIN suppliers s ON o.supplier_id = s.id
+    WHERE o.organization_id = ?
+  `;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod narudžbi." });
+    res.json(results);
+  });
+});
+
+router.get("/organizations/:id/expenses", (req, res) => {
+  const orgId = req.params.id;
+  const query = `
+    SELECT e.*, ec.name AS category_name
+    FROM expenses e
+    LEFT JOIN expense_categories ec ON e.category_id = ec.id
+    WHERE e.organization_id = ?
+  `;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod troškova." });
+    res.json(results);
+  });
+});
+
+router.get("/organizations/:id/packages", (req, res) => {
+  const orgId = req.params.id;
+  const query = `
+    SELECT p.*, c.first_name AS contact_first_name, c.last_name AS contact_last_name, p.courier
+    FROM packages p
+    LEFT JOIN contacts c ON p.contact_id = c.id
+    WHERE p.organization_id = ?
+  `;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod paketa." });
+    res.json(results);
+  });
+});
+
+router.get("/organizations/:id/payments", (req, res) => {
+  const orgId = req.params.id;
+  const query = `
+    SELECT p.*, i.custom_invoice_code AS invoice_code, CONCAT(c.first_name, ' ', c.last_name) AS client_name,
+           i.final_amount AS invoice_amount
+    FROM payments p
+    LEFT JOIN invoices i ON p.invoice_id = i.id
+    LEFT JOIN contacts c ON i.contact_id = c.id
+    WHERE p.organization_id = ?
+  `;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod uplata." });
+    res.json(results);
+  });
+});
+
+router.get("/organizations/:id/inventory", (req, res) => {
+  const orgId = req.params.id;
+  const query = `SELECT * FROM inventory_items WHERE organization_id = ?`;
+  db.query(query, [orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod inventara." });
+    res.json(results);
+  });
+});
+
+router.get("/organizations/:orgId/invoices/:invoiceId", (req, res) => {
+  const { orgId, invoiceId } = req.params;
+  const query = `
+    SELECT i.*, c.first_name AS contact_first_name, c.last_name AS contact_last_name,
+           c.email AS client_email, c.company_name AS client_company
+    FROM invoices i
+    LEFT JOIN contacts c ON i.contact_id = c.id
+    WHERE i.id = ? AND i.organization_id = ?
+  `;
+  db.query(query, [invoiceId, orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod fakture." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Faktura nije pronađena." });
+    const invoice = results[0];
+    db.query(
+      "SELECT * FROM invoice_items WHERE invoice_id = ?",
+      [invoiceId],
+      (err, items) => {
+        if (err) return res.status(500).json({ error: "Greška kod stavki." });
+        invoice.items = items;
+        db.query(
+          "SELECT * FROM payments WHERE invoice_id = ?",
+          [invoiceId],
+          (err, payments) => {
+            if (err)
+              return res.status(500).json({ error: "Greška kod uplata." });
+            invoice.payments = payments;
+            res.json(invoice);
+          }
+        );
+      }
+    );
+  });
+});
+
+router.get("/organizations/:orgId/orders/:orderId", (req, res) => {
+  const { orgId, orderId } = req.params;
+  const query = `
+    SELECT o.*, s.name AS supplier_name, s.email AS supplier_email, s.phone AS supplier_phone
+    FROM orders o
+    LEFT JOIN suppliers s ON o.supplier_id = s.id
+    WHERE o.id = ? AND o.organization_id = ?
+  `;
+  db.query(query, [orderId, orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod narudžbe." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Narudžba nije pronađena." });
+    const order = results[0];
+    db.query(
+      "SELECT * FROM order_items WHERE order_id = ?",
+      [orderId],
+      (err, items) => {
+        if (err) return res.status(500).json({ error: "Greška kod stavki." });
+        order.items = items;
+        res.json(order);
+      }
+    );
+  });
+});
+
+router.get("/organizations/:orgId/expenses/:expenseId", (req, res) => {
+  const { orgId, expenseId } = req.params;
+  const query = `
+    SELECT e.*, ec.name AS category_name
+    FROM expenses e
+    LEFT JOIN expense_categories ec ON e.category_id = ec.id
+    WHERE e.id = ? AND e.organization_id = ?
+  `;
+  db.query(query, [expenseId, orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod troška." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Trošak nije pronađen." });
+    res.json(results[0]);
+  });
+});
+
+router.get("/organizations/:orgId/packages/:packageId", (req, res) => {
+  const { orgId, packageId } = req.params;
+  const query = `
+    SELECT p.*, c.first_name AS contact_first_name, c.last_name AS contact_last_name,
+           c.address AS contact_address, c.phone_number AS contact_phone
+    FROM packages p
+    LEFT JOIN contacts c ON p.contact_id = c.id
+    WHERE p.id = ? AND p.organization_id = ?
+  `;
+  db.query(query, [packageId, orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod paketa." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Paket nije pronađen." });
+    res.json(results[0]);
+  });
+});
+
+router.get("/organizations/:orgId/payments/:paymentId", (req, res) => {
+  const { orgId, paymentId } = req.params;
+  const query = `
+    SELECT p.*, i.custom_invoice_code AS invoice_code,
+           i.final_amount AS invoice_amount, i.status AS invoice_status,
+           CONCAT(c.first_name, ' ', c.last_name) AS client_name
+    FROM payments p
+    LEFT JOIN invoices i ON p.invoice_id = i.id
+    LEFT JOIN contacts c ON i.contact_id = c.id
+    WHERE p.id = ? AND p.organization_id = ?
+  `;
+  db.query(query, [paymentId, orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod uplate." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Uplata nije pronađena." });
+    res.json(results[0]);
+  });
+});
+
+router.get("/organizations/:orgId/inventory/:inventoryId", (req, res) => {
+  const { orgId, inventoryId } = req.params;
+  const query = `
+    SELECT * FROM inventory_items
+    WHERE id = ? AND organization_id = ?
+  `;
+  db.query(query, [inventoryId, orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod inventara." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Inventar nije pronađen." });
+    res.json(results[0]);
+  });
+});
+
+router.get("/organizations/:orgId/users/:userId", (req, res) => {
+  const { orgId, userId } = req.params;
+  const query = `SELECT * FROM users WHERE id = ? AND organization_id = ?`;
+  db.query(query, [userId, orgId], (err, results) => {
+    if (err) return res.status(500).json({ error: "Greška kod korisnika." });
+    if (results.length === 0)
+      return res.status(404).json({ error: "Korisnik nije pronađen." });
+    const user = results[0];
+    delete user.password;
+    res.json(user);
+  });
+});
+
+///
+router.put("/users/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, email, organization_id } = req.body;
+
+  const query = `UPDATE users SET name = ?, email = ?, organization_id = ? WHERE id = ?`;
+  db.query(query, [name, email, organization_id || null, id], (err, result) => {
+    if (err) return res.status(500).json({ error: "Greška kod ažuriranja" });
+    res.json({ success: true });
+  });
+});
+
+// DELETE /api/admin/users/:id
+router.delete("/users/:id", (req, res) => {
+  const { id } = req.params;
+
+  db.query("DELETE FROM users WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json({ error: "Greška kod brisanja" });
+    res.json({ success: true });
+  });
+});
+
+router.put("/organizations/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, address } = req.body;
+
+  const query = `UPDATE organizations SET name = ?, address = ? WHERE id = ?`;
+  db.query(query, [name, address, id], (err, result) => {
+    if (err) {
+      console.error("Greška kod ažuriranja organizacije:", err);
+      return res
+        .status(500)
+        .json({ error: "Greška kod ažuriranja organizacije." });
+    }
+    res.json({ success: true });
+  });
+});
+
+router.delete("/organizations/:id", (req, res) => {
+  const { id } = req.params;
+
+  db.query("DELETE FROM organizations WHERE id = ?", [id], (err, result) => {
+    if (err) {
+      console.error("Greška kod brisanja organizacije:", err);
+      return res
+        .status(500)
+        .json({ error: "Greška kod brisanja organizacije." });
+    }
+    res.json({ success: true });
+  });
+});
+
+
+
+
 
 module.exports = router;
