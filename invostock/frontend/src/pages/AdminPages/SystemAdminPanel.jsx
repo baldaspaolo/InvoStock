@@ -1,11 +1,12 @@
 import React, { useContext, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Card } from "primereact/card";
 
 const SystemAdminPanel = () => {
   const { user } = useContext(AuthContext);
   const [section, setSection] = useState(null);
+  const navigate = useNavigate();
 
   /*if (user?.role !== "systemadmin") {
     return <Navigate to="/dashboard" replace />;
@@ -42,7 +43,7 @@ const SystemAdminPanel = () => {
           transition: "transform 0.2s, box-shadow 0.2s",
           boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
         }}
-        onClick={() => setSection("users")}
+        onClick={() => navigate("/admin/users")}
       >
         <p>Pregled svih korisnika sustava</p>
       </Card>
@@ -61,7 +62,7 @@ const SystemAdminPanel = () => {
           transition: "transform 0.2s, box-shadow 0.2s",
           boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
         }}
-        onClick={() => setSection("organizations")}
+        onClick={() => navigate("/admin/organizations")}
       >
         <p>Pregled svih organizacija</p>
       </Card>
