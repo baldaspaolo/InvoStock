@@ -39,6 +39,7 @@ import Users from "./pages/AdminPages/Users";
 import Organizations from "./pages/AdminPages/Organizations";
 import AdminProtectedRoutes from "./AdminProtectedRoutes";
 import OrganizationsItem from "./pages/AdminPages/OrganizationsItem";
+import AdminStatistics from "./pages/AdminPages/AdminStatistics";
 
 function App() {
   return (
@@ -79,45 +80,22 @@ function App() {
             <Route path="/expenses/add" element={<ExpensesAdd />} />
           </Route>
           <Route
-            path="/admin/dashboard"
             element={
               <AdminProtectedRoutes>
-                <SystemAdminPanel />
+                <Layout />
               </AdminProtectedRoutes>
             }
-          />
-          <Route
-            path="/admin/users"
-            element={
-              <AdminProtectedRoutes>
-                <Users />
-              </AdminProtectedRoutes>
-            }
-          />
-          <Route
-            path="/admin/users/:id"
-            element={
-              <AdminProtectedRoutes>
-                <UsersItem />
-              </AdminProtectedRoutes>
-            }
-          />
-          <Route
-            path="/admin/organizations"
-            element={
-              <AdminProtectedRoutes>
-                <Organizations />
-              </AdminProtectedRoutes>
-            }
-          />
-          <Route
-            path="/admin/organizations/:id"
-            element={
-              <AdminProtectedRoutes>
-                <OrganizationsItem />
-              </AdminProtectedRoutes>
-            }
-          />
+          >
+            <Route path="/admin/dashboard" element={<SystemAdminPanel />} />
+            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/users/:id" element={<UsersItem />} />
+            <Route path="/admin/organizations" element={<Organizations />} />
+            <Route
+              path="/admin/organizations/:id"
+              element={<OrganizationsItem />}
+            />
+            <Route path="/admin/statistics" element={<AdminStatistics />} />
+          </Route>
 
           <Route path="*" element={<Login />} />
         </Routes>
