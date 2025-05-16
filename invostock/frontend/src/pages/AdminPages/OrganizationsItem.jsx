@@ -51,6 +51,7 @@ const OrganizationsItem = () => {
         if (!res.ok) throw new Error("Neuspješno dohvaćanje organizacije");
         const data = await res.json();
         setOrganization(data.organization);
+        console.log("Podaci", data);
       } catch (error) {
         showError(error.message);
       } finally {
@@ -834,10 +835,8 @@ const OrganizationsItem = () => {
               {formatDate(organization.created_at)}
             </p>
             <p>
-              <strong>Broj članova:</strong>{" "}
-              {data.length > 0 && activeTab === "members"
-                ? data.length
-                : "Učitavam..."}
+              <strong>Broj članova:</strong>
+              {organization.member_count}
             </p>
           </div>
         </div>

@@ -241,7 +241,7 @@ const Users = () => {
   };
 
   return (
-    <div style={{ minHeight: "70vh", marginTop: "1%" }}>
+    <div style={{ minHeight: "70vh", marginTop: "3%" }}>
       <Card
         title="Upravljanje korisnicima"
         className="shadow-sm"

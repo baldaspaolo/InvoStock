@@ -124,7 +124,7 @@ const Organizations = () => {
   };
 
   return (
-    <div style={{ minHeight: "70vh", marginTop: "1%" }}>
+    <div style={{ minHeight: "70vh", marginTop: "3%" }}>
       <Card
         title="Organizacije"
         className="shadow-sm"
