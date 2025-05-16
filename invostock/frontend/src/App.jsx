@@ -32,11 +32,13 @@ import Packages from "./pages/UserOrganizationPages/Packages";
 import SalesAdd from "./pages/UserOrganizationPages/SalesAdd";
 import InventoryAdd from "./pages/UserOrganizationPages/InventoryAdd";
 import ExpensesAdd from "./pages/UserOrganizationPages/ExpensesAdd";
+
 import SystemAdminPanel from "./pages/AdminPages/SystemAdminPanel";
 import UsersItem from "./pages/AdminPages/UsersItem";
-
 import Users from "./pages/AdminPages/Users";
+import Organizations from "./pages/AdminPages/Organizations";
 import AdminProtectedRoutes from "./AdminProtectedRoutes";
+import OrganizationsItem from "./pages/AdminPages/OrganizationsItem";
 
 function App() {
   return (
@@ -97,6 +99,22 @@ function App() {
             element={
               <AdminProtectedRoutes>
                 <UsersItem />
+              </AdminProtectedRoutes>
+            }
+          />
+          <Route
+            path="/admin/organizations"
+            element={
+              <AdminProtectedRoutes>
+                <Organizations />
+              </AdminProtectedRoutes>
+            }
+          />
+          <Route
+            path="/admin/organizations/:id"
+            element={
+              <AdminProtectedRoutes>
+                <OrganizationsItem />
               </AdminProtectedRoutes>
             }
           />
