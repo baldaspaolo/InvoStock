@@ -43,7 +43,10 @@ const Invoices = () => {
         fetch(`${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoices`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id }),
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id || null,
+          }),
         }),
         fetch(
           `${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoicesSummary`,
@@ -60,6 +63,7 @@ const Invoices = () => {
 
       setInvoices(invoicesData.invoices || []);
       setStatus(statusData || {});
+      console.log(invoices);
     } catch (error) {
       console.error("Error fetching data:", error);
     }

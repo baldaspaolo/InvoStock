@@ -21,6 +21,10 @@ export default function Navbar() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("Current user:", user);
+  }, [user]);
+
+  useEffect(() => {
     const fetchNotifications = async () => {
       try {
         const response = await fetch(
@@ -225,86 +229,108 @@ export default function Navbar() {
   return (
     <div className="navbar-fixed">
       <Toast ref={toast} />
-      <Menubar model={items} start={start} end={end} />
-      <OverlayPanel
-        ref={op}
-        style={{ width: "300px" }}
-        className="notification-overlay"
-      >
+
+      {user?.role === "systemadmin" ? (
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            justifyContent: "flex-end", 
+            padding: "0.5rem 1rem",
+            backgroundColor: "#f8f9fa",
           }}
         >
-          <h3 style={{ marginBottom: "0.5rem" }}>
-            <i className="pi pi-bell" style={{ marginRight: "0.5rem" }} />{" "}
-            Obavijesti
-          </h3>
           <Button
-            label="Otvori centar"
-            icon="pi pi-external-link"
-            onClick={() => navigate("/notifications")}
-            text
-            size="small"
-            style={{ marginBottom: "8%", fontSize: "0.88rem" }}
+            label="Odjava"
+            icon="pi pi-sign-out"
+            onClick={logoutUser}
+            className="p-button-sm p-button-danger"
+            style={{ width: "10%" }}
           />
         </div>
+      ) : (
+        <>
+          <Menubar model={items} start={start} end={end} />
+          <OverlayPanel
+            ref={op}
+            style={{ width: "300px" }}
+            className="notification-overlay"
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <h3 style={{ marginBottom: "0.5rem" }}>
+                <i className="pi pi-bell" style={{ marginRight: "0.5rem" }} />{" "}
+                Obavijesti
+              </h3>
+              <Button
+                label="Otvori centar"
+                icon="pi pi-external-link"
+                onClick={() => navigate("/notifications")}
+                text
+                size="small"
+                style={{ marginBottom: "8%", fontSize: "0.88rem" }}
+              />
+            </div>
 
-        {loading ? (
-          <p>Učitavanje...</p>
-        ) : notifications.length > 0 ? (
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {notifications.slice(0, 10).map((n) => (
-              <li
-                key={n.id}
-                style={{
-                  backgroundColor: n.read ? "#f5f5f5" : "#e0f7fa",
-                  padding: "0.7rem",
-                  borderRadius: "5px",
-                  marginBottom: "0.5rem",
-                  cursor: "pointer",
-                }}
-                onClick={() => navigate(`/notifications/${n.id}`)}
-              >
-                <strong>{n.title}</strong>
-                <p style={{ margin: "0.3rem 0" }}>{n.message}</p>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontSize: "0.75rem",
-                  }}
-                >
-                  <span style={{ color: n.read ? "green" : "red" }}>
-                    {n.read ? "Pročitano" : "Nepročitano"}
-                  </span>
-                  <span style={{ color: "#555" }}>
-                    {new Date(n.created_at).toLocaleString("hr-HR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>Nema dostupnih obavijesti.</p>
-        )}
+            {loading ? (
+              <p>Učitavanje...</p>
+            ) : notifications.length > 0 ? (
+              <ul style={{ listStyle: "none", padding: 0 }}>
+                {notifications.slice(0, 10).map((n) => (
+                  <li
+                    key={n.id}
+                    style={{
+                      backgroundColor: n.read ? "#f5f5f5" : "#e0f7fa",
+                      padding: "0.7rem",
+                      borderRadius: "5px",
+                      marginBottom: "0.5rem",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => navigate(`/notifications/${n.id}`)}
+                  >
+                    <strong>{n.title}</strong>
+                    <p style={{ margin: "0.3rem 0" }}>{n.message}</p>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      <span style={{ color: n.read ? "green" : "red" }}>
+                        {n.read ? "Pročitano" : "Nepročitano"}
+                      </span>
+                      <span style={{ color: "#555" }}>
+                        {new Date(n.created_at).toLocaleString("hr-HR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>Nema dostupnih obavijesti.</p>
+            )}
 
-        <Button
-          label="Označi sve kao pročitano"
-          icon="pi pi-check"
-          onClick={markAllAsRead}
-          size="small"
-          style={{ fontSize: "0.8rem", width: "100%" }}
-        />
-      </OverlayPanel>
+            <Button
+              label="Označi sve kao pročitano"
+              icon="pi pi-check"
+              onClick={markAllAsRead}
+              size="small"
+              style={{ fontSize: "0.8rem", width: "100%" }}
+            />
+          </OverlayPanel>
+        </>
+      )}
     </div>
   );
 }

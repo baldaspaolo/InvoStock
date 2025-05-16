@@ -33,6 +33,14 @@ import SalesAdd from "./pages/UserOrganizationPages/SalesAdd";
 import InventoryAdd from "./pages/UserOrganizationPages/InventoryAdd";
 import ExpensesAdd from "./pages/UserOrganizationPages/ExpensesAdd";
 
+import SystemAdminPanel from "./pages/AdminPages/SystemAdminPanel";
+import UsersItem from "./pages/AdminPages/UsersItem";
+import Users from "./pages/AdminPages/Users";
+import Organizations from "./pages/AdminPages/Organizations";
+import AdminProtectedRoutes from "./AdminProtectedRoutes";
+import OrganizationsItem from "./pages/AdminPages/OrganizationsItem";
+import AdminStatistics from "./pages/AdminPages/AdminStatistics";
+
 function App() {
   return (
     <AuthProvider>
@@ -70,6 +78,23 @@ function App() {
             <Route path="/sales/add" element={<SalesAdd />} />
             <Route path="/inventory/add" element={<InventoryAdd />} />
             <Route path="/expenses/add" element={<ExpensesAdd />} />
+          </Route>
+          <Route
+            element={
+              <AdminProtectedRoutes>
+                <Layout />
+              </AdminProtectedRoutes>
+            }
+          >
+            <Route path="/admin/dashboard" element={<SystemAdminPanel />} />
+            <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/users/:id" element={<UsersItem />} />
+            <Route path="/admin/organizations" element={<Organizations />} />
+            <Route
+              path="/admin/organizations/:id"
+              element={<OrganizationsItem />}
+            />
+            <Route path="/admin/statistics" element={<AdminStatistics />} />
           </Route>
 
           <Route path="*" element={<Login />} />
