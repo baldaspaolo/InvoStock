@@ -116,13 +116,18 @@ router.post("/getUserPackages", (req, res) => {
   if (!userId) return res.status(400).json({ error: "Nedostaje User ID" });
 
   const query = `
-  SELECT p.*, c.first_name, c.last_name
-  FROM packages p
-  LEFT JOIN contacts c ON p.contact_id = c.id
-  WHERE p.user_id = ? AND ${
+  SELECT 
+  p.*, 
+  c.first_name, 
+  c.last_name,
+  so.custom_order_code AS order_code
+FROM packages p
+LEFT JOIN contacts c ON p.contact_id = c.id
+LEFT JOIN sales_orders so ON p.sales_order_id = so.id
+WHERE p.user_id = ? AND ${
     organizationId ? "p.organization_id = ?" : "p.organization_id IS NULL"
   }
-  ORDER BY p.created_at DESC
+ORDER BY p.created_at DESC
 `;
 
   const params = organizationId ? [userId, organizationId] : [userId];
