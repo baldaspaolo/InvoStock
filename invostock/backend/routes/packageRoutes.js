@@ -7,6 +7,44 @@ function generatePackageCode(orgOrUserCode, count) {
   return `PCK-${orgOrUserCode}-${paddedCount}`;
 }
 
+function checkAndCloseSalesOrder(salesOrderId) {
+  return new Promise((resolve, reject) => {
+    const query = `
+      SELECT 
+        so.id,
+        i.status AS invoice_status,
+        p.status AS package_status,
+        i.remaining_amount
+      FROM sales_orders so
+      LEFT JOIN invoices i ON so.invoice_id = i.id
+      LEFT JOIN packages p ON p.sales_order_id = so.id
+      WHERE so.id = ?
+    `;
+
+    db.query(query, [salesOrderId], (err, result) => {
+      if (err) return reject("Greška kod provjere naloga");
+      if (result.length === 0) return resolve("Nalog nije pronađen");
+
+      const order = result[0];
+      if (
+        order.invoice_status === "paid" &&
+        order.package_status === "delivered" &&
+        Number(order.remaining_amount) === 0
+      ) {
+        const updateQuery = `UPDATE sales_orders SET status = 'closed' WHERE id = ?`;
+        db.query(updateQuery, [salesOrderId], (err2) => {
+          if (err2) return reject("Greška kod zatvaranja naloga");
+          return resolve("Nalog zatvoren automatski.");
+        });
+      } else {
+        return resolve(
+          "Nalog nije zatvoren jer faktura nije plaćena i/ili paket nije dostavljen."
+        );
+      }
+    });
+  });
+}
+
 router.post("/createPackage", async (req, res) => {
   const {
     userId,
@@ -121,9 +159,39 @@ router.post("/updatePackageStatus", (req, res) => {
       console.error("Greška kod ažuriranja statusa paketa:", err);
       return res.status(500).json({ error: "Greška na serveru." });
     }
-    res.status(200).json({ success: true });
+
+    // Ako je status postao "delivered", provjeri i zatvori nalog ako treba
+    if (status === "delivered") {
+      const salesOrderIdQuery = `
+        SELECT sales_order_id FROM packages WHERE id = ?
+      `;
+
+      db.query(salesOrderIdQuery, [packageId], async (err2, result2) => {
+        if (err2) {
+          console.error("Greška kod dohvaćanja sales_order_id:", err2);
+          return res.status(500).json({ error: "Greška na serveru." });
+        }
+
+        const salesOrderId = result2[0]?.sales_order_id;
+        if (salesOrderId) {
+          try {
+            const message = await checkAndCloseSalesOrder(salesOrderId);
+            return res.status(200).json({ success: true, message });
+          } catch (error) {
+            console.error(error);
+            return res.status(500).json({ success: true, warning: error });
+          }
+        } else {
+          return res.status(200).json({
+            success: true,
+            message: "Paket ažuriran, ali nije povezan s nalogom.",
+          });
+        }
+      });
+    } else {
+      return res.status(200).json({ success: true });
+    }
   });
 });
-
 
 module.exports = router;

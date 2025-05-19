@@ -201,9 +201,51 @@ const Sales = () => {
       message: "Jeste li sigurni da želite kreirati samo paket?",
       header: "Kreiraj paket",
       icon: "pi pi-info-circle",
-      accept: () => {
-        console.log("Kreiraj samo paket za orderId:", selectedOrder.id);
-        setDialogVisible(false);
+      accept: async () => {
+        try {
+          const payload = {
+            userId: user.id,
+            organizationId: user.organization_id,
+            contactId: selectedOrder.contact_id,
+            salesOrderId: selectedOrder.id,
+            courier: null, // ako želiš dodati kurira kasnije, ovdje to možeš podesiti
+            description: null, // ako želiš napomenu uz paket
+          };
+
+          const response = await fetch(
+            "http://localhost:3000/api/packages/createPackage",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            toast.current.show({
+              severity: "success",
+              summary: "Paket kreiran",
+              detail: `Kod: ${data.custom_package_code}`,
+              life: 4000,
+            });
+            setDialogVisible(false);
+            fetchOrders(); // ako želiš osvježiti naloge (statusi, povezanost s paketom itd.)
+          } else {
+            throw new Error(data.error || "Greška prilikom kreiranja paketa.");
+          }
+        } catch (error) {
+          toast.current.show({
+            severity: "error",
+            summary: "Greška",
+            detail: "Neuspješno kreiranje paketa.",
+            life: 4000,
+          });
+          console.error("Greška pri kreiranju paketa:", error);
+        }
       },
     });
   };

@@ -7,7 +7,7 @@ function generateCustomCode(prefix, date, orgOrUserCode, count) {
     .toLocaleDateString("hr-HR")
     .split(".")
     .reverse()
-    .join(""); 
+    .join("");
   return `${prefix}-${formattedDate}-${orgOrUserCode}-${count}`;
 }
 
@@ -71,11 +71,41 @@ router.post("/addPayment", (req, res) => {
           return res.status(500).json({ error: "Greška na serveru" });
         }
 
-        res.status(201).json({
-          success: true,
-          message: "Uplata zabilježena",
-          paymentId: result2.insertId,
-          custom_payment_code: customPaymentCode,
+        // === Provjera za automatsko zatvaranje prodajnog naloga ===
+        const checkAndCloseQuery = `
+          UPDATE sales_orders so
+          JOIN invoices i ON so.invoice_id = i.id
+          JOIN packages p ON p.sales_order_id = so.id
+          SET so.status = 'closed'
+          WHERE so.invoice_id = ?
+            AND i.status = 'paid'
+            AND p.status = 'delivered'
+            AND so.status != 'closed'
+        `;
+
+        db.query(checkAndCloseQuery, [invoiceId], (err3, result3) => {
+          if (err3) {
+            console.error(
+              "Greška kod upita za automatsko zatvaranje naloga:",
+              err3
+            );
+          } else {
+            if (result3.affectedRows === 0) {
+              console.log(
+                "Nalog nije zatvoren jer faktura nije kreirana i/ili paket nije dostavljen, ili je već zatvoren."
+              );
+            } else {
+              console.log("Nalog je automatski zatvoren.");
+            }
+          }
+
+          // Odgovor korisniku nakon provjere
+          res.status(201).json({
+            success: true,
+            message: "Uplata zabilježena",
+            paymentId: result2.insertId,
+            custom_payment_code: customPaymentCode,
+          });
         });
       }
     );
