@@ -248,7 +248,14 @@ const Packages = () => {
   );
 
   return (
-    <div className="parent" style={{ margin: "5%" }}>
+    <div
+      className="parent"
+      style={{
+        marginTop: "5%",
+        marginLeft: "10%",
+        marginRight: "10%",
+      }}
+    >
       <div className="div1">
         <h1>Paketi</h1>
       </div>
@@ -269,7 +276,6 @@ const Packages = () => {
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
             gap: "2rem",
-            marginTop: "2rem",
           }}
         >
           {[
