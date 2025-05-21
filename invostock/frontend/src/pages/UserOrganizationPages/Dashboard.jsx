@@ -13,7 +13,6 @@ import "../../styles/dashboard.css";
 const Dashboard = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState("30days");
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,13 +30,14 @@ const Dashboard = () => {
             body: JSON.stringify({
               userId: user.id,
               organizationId: user.organization_id || null,
-              timeRange: timeRange,
+              timeRange: "30days",
             }),
           }
         );
 
         const data = await response.json();
         setDashboardData(data);
+        console.log("Financial data:", data);
       } catch (error) {
         console.error("Greška pri dohvaćanju podataka:", error);
       } finally {
@@ -48,14 +48,7 @@ const Dashboard = () => {
     if (user?.id) {
       fetchDashboardData();
     }
-  }, [user, timeRange]);
-
-  const timeRangeOptions = [
-    { label: "Zadnjih 30 dana", value: "30days" },
-    { label: "Ovaj mjesec", value: "month" },
-    { label: "Ovaj kvartal", value: "quarter" },
-    { label: "Ova godina", value: "year" },
-  ];
+  }, [user]);
 
   if (loading) {
     return (
@@ -74,16 +67,6 @@ const Dashboard = () => {
       <h2>Dobrodošli, {user?.name}!</h2>
 
       <DashboardActions />
-
-      <div className="time-range-selector">
-        <span>Prikaz podataka za: </span>
-        <Dropdown
-          value={timeRange}
-          options={timeRangeOptions}
-          onChange={(e) => setTimeRange(e.value)}
-          style={{ width: "180px" }}
-        />
-      </div>
 
       <DashboardCards stats={dashboardData.stats} />
 

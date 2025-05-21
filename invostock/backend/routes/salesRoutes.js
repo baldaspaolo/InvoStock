@@ -19,13 +19,10 @@ router.post("/createOrder", (req, res) => {
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
-  const countQuery = `
-    SELECT COUNT(*) AS order_count
-    FROM sales_orders
-    WHERE user_id = ? AND ${
-      organizationId ? "organization_id = ?" : "organization_id IS NULL"
-    }
-  `;
+  const countQuery = organizationId
+    ? `SELECT COUNT(*) AS order_count FROM sales_orders WHERE user_id = ? AND organization_id = ?`
+    : `SELECT COUNT(*) AS order_count FROM sales_orders WHERE user_id = ? AND organization_id IS NULL`;
+
   const countParams = organizationId ? [userId, organizationId] : [userId];
 
   db.query(countQuery, countParams, (err1, result1) => {

@@ -56,40 +56,48 @@ router.post("/getUserInvoices", (req, res) => {
 });
 
 router.post("/getUserInvoicesSummary", (req, res) => {
-  const { userId } = req.body;
+  const { userId, organizationId } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: "Nedostaje UserID!" });
   }
 
-  //ukupna potraživanja
+  const isOrg =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    organizationId !== "null" &&
+    !isNaN(organizationId);
+
+  const orgCondition = isOrg
+    ? "organization_id = ?"
+    : "organization_id IS NULL";
+  const params = isOrg ? [userId, organizationId] : [userId];
+
   const totalReceivablesQuery = `
     SELECT SUM(remaining_amount) AS total_receivables
     FROM invoices
-    WHERE user_id = ? AND (status = 'pending' OR status = 'partially_paid')
+    WHERE user_id = ? AND ${orgCondition} AND (status = 'pending' OR status = 'partially_paid')
   `;
 
-  //broj neplaćenih faktura
   const unpaidInvoicesQuery = `
     SELECT COUNT(*) AS unpaid_count
     FROM invoices
-    WHERE user_id = ? AND status = 'pending'
+    WHERE user_id = ? AND ${orgCondition} AND status = 'pending'
   `;
 
-  //broj djelomično plaćenih faktura
   const partiallyPaidInvoicesQuery = `
     SELECT COUNT(*) AS partially_paid_count
     FROM invoices
-    WHERE user_id = ? AND status = 'partially_paid'
+    WHERE user_id = ? AND ${orgCondition} AND status = 'partially_paid'
   `;
 
-  db.query(totalReceivablesQuery, [userId], (err, totalReceivablesResult) => {
+  db.query(totalReceivablesQuery, params, (err, totalReceivablesResult) => {
     if (err) {
       console.log("Greška pri dohvaćanju ukupnih potraživanja!", err);
       return res.status(500).json({ error: "Greška na serveru!" });
     }
 
-    db.query(unpaidInvoicesQuery, [userId], (err, unpaidInvoicesResult) => {
+    db.query(unpaidInvoicesQuery, params, (err, unpaidInvoicesResult) => {
       if (err) {
         console.log("Greška pri dohvaćanju broja neplaćenih faktura!", err);
         return res.status(500).json({ error: "Greška na serveru!" });
@@ -97,7 +105,7 @@ router.post("/getUserInvoicesSummary", (req, res) => {
 
       db.query(
         partiallyPaidInvoicesQuery,
-        [userId],
+        params,
         (err, partiallyPaidInvoicesResult) => {
           if (err) {
             console.log(
@@ -119,6 +127,7 @@ router.post("/getUserInvoicesSummary", (req, res) => {
     });
   });
 });
+
 
 router.post("/getInvoiceItems", (req, res) => {
   const { invoiceId } = req.body;
@@ -146,7 +155,7 @@ router.post("/getInvoiceItems", (req, res) => {
   });
 });
 
-router.post("/getUserInovice", (req, res) => {
+router.post("/getUserInvoice", (req, res) => {
   const { invoiceId } = req.body;
 
   if (!invoiceId) {

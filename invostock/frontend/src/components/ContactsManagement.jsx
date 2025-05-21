@@ -25,7 +25,10 @@ const ContactsManagement = ({ user }) => {
       const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({
+          userId: user.id,
+          organizationId: user.organization_id || null,
+        }),
       });
       const data = await res.json();
       if (data.success) setContacts(data.contacts);
@@ -47,6 +50,11 @@ const ContactsManagement = ({ user }) => {
     try {
       await fetch(`${API_URL}/api/contacts/deleteContact/${id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          organizationId: user.organization_id || null,
+        }),
       });
       toast.current.show({
         severity: "success",
@@ -69,7 +77,11 @@ const ContactsManagement = ({ user }) => {
       await fetch(`${API_URL}/api/contacts/updateContact/${editContact.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editContact),
+        body: JSON.stringify({
+          ...editContact,
+          userId: user.id,
+          organizationId: user.organization_id || null,
+        }),
       });
       toast.current.show({
         severity: "success",

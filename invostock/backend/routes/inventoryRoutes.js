@@ -39,86 +39,84 @@ router.post("/getInventory", (req, res) => {
 router.post("/addInventoryItem", (req, res) => {
   const { userId, organizationId, itemData } = req.body;
 
-  if (!userId || !itemData || !itemData.item_name || !itemData.category) {
+  if (!userId || !itemData?.item_name || !itemData?.category) {
     return res.status(400).json({ error: "Nedostaju podaci" });
   }
 
-  const checkQuery =
-    "SELECT * FROM inventory_items WHERE item_name = ? AND organization_id = ?";
-  db.query(
-    checkQuery,
-    [itemData.item_name, organizationId || null],
-    (err, existingItem) => {
-      if (err) {
-        console.error("Greška kod provjere:", err);
-        return res.status(500).json({ error: "Greška na serveru." });
-      }
+  let checkQuery = "";
+  let checkParams = [];
 
-      if (existingItem.length > 0) {
-        return res
-          .status(400)
-          .json({ error: "Artikal s tim nazivom već postoji" });
-      }
+  if (organizationId) {
+    checkQuery =
+      "SELECT * FROM inventory_items WHERE item_name = ? AND organization_id = ?";
+    checkParams = [itemData.item_name, organizationId];
+  } else {
+    checkQuery =
+      "SELECT * FROM inventory_items WHERE item_name = ? AND user_id = ? AND organization_id IS NULL";
+    checkParams = [itemData.item_name, userId];
+  }
 
-      const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
-      const countQuery = `SELECT COUNT(*) AS count FROM inventory_items WHERE ${
-        organizationId ? "organization_id = ?" : "user_id = ?"
-      }`;
+  db.query(checkQuery, checkParams, (err, existingItem) => {
+    if (err) return res.status(500).json({ error: "Greška na serveru." });
+    if (existingItem.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Artikal s tim nazivom već postoji" });
+    }
 
-      db.query(countQuery, [organizationId || userId], (err2, countResult) => {
-        if (err2) {
-          console.error("Greška kod brojanja:", err2);
-          return res.status(500).json({ error: "Greška na serveru." });
-        }
+    const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
+    const countQuery = `SELECT COUNT(*) AS count FROM inventory_items WHERE ${
+      organizationId
+        ? "organization_id = ?"
+        : "user_id = ? AND organization_id IS NULL"
+    }`;
 
-        const count = countResult[0].count + 1;
-        const customInventoryCode = generateInventoryCode(codePrefix, count);
+    db.query(countQuery, [organizationId || userId], (err2, countResult) => {
+      if (err2) return res.status(500).json({ error: "Greška kod brojanja" });
 
-        const insertQuery = `
+      const count = countResult[0].count + 1;
+      const customCode = generateInventoryCode(codePrefix, count);
+
+      const insertQuery = `
         INSERT INTO inventory_items (
           organization_id, user_id, item_name, category, description,
           stock_quantity, reorder_level, price, custom_inventory_code
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        const values = [
-          organizationId || null,
-          userId,
-          itemData.item_name,
-          itemData.category,
-          itemData.description || null,
-          itemData.stock_quantity || 0,
-          itemData.reorder_level || 1,
-          itemData.price || 0,
-          customInventoryCode,
-        ];
+      const values = [
+        organizationId || null,
+        userId,
+        itemData.item_name,
+        itemData.category,
+        itemData.description || null,
+        itemData.stock_quantity || 0,
+        itemData.reorder_level || 1,
+        itemData.price || 0,
+        customCode,
+      ];
 
-        db.query(insertQuery, values, (err3, result) => {
-          if (err3) {
-            console.error("Greška kod unosa:", err3);
-            return res.status(500).json({ error: "Greška kod dodavanja" });
-          }
+      db.query(insertQuery, values, (err3, result) => {
+        if (err3)
+          return res.status(500).json({ error: "Greška kod dodavanja" });
 
-          db.query(
-            "SELECT * FROM inventory_items WHERE id = ?",
-            [result.insertId],
-            (err4, addedItem) => {
-              if (err4) {
-                console.error("Greška kod dohvata unesenog artikla:", err4);
-                return res.status(500).json({ error: "Greška na serveru." });
-              }
-
-              res.status(201).json({
+        db.query(
+          "SELECT * FROM inventory_items WHERE id = ?",
+          [result.insertId],
+          (err4, item) => {
+            if (err4)
+              return res.status(500).json({ error: "Greška kod dohvaćanja" });
+            res
+              .status(201)
+              .json({
                 message: "Artikal dodan",
-                item: addedItem[0],
-                custom_inventory_code: customInventoryCode,
+                item: item[0],
+                custom_inventory_code: customCode,
               });
-            }
-          );
-        });
+          }
+        );
       });
-    }
-  );
+    });
+  });
 });
 
 
@@ -200,52 +198,111 @@ router.post("/zeroStock", (req, res) => {
   });
 });
 
-router.post("/checkOrAddItem", async (req, res) => {
-  try {
-    const { userId, organizationId, item_name, category, price } = req.body;
+router.post("/checkOrAddItem", (req, res) => {
+  const { userId, organizationId, item_name, category, price } = req.body;
 
-    if (!userId || !item_name || !category) {
-      return res.status(400).json({
-        error: "Nedostaju obavezni podaci (userId, item_name, category)",
+  if (!userId || !item_name || !category) {
+    return res.status(400).json({
+      error: "Nedostaju obavezni podaci (userId, item_name, category)",
+    });
+  }
+
+  // Provjera postoji li već artikl
+  let checkQuery = "";
+  let checkParams = [];
+
+  if (organizationId) {
+    checkQuery =
+      "SELECT * FROM inventory_items WHERE item_name = ? AND organization_id = ? LIMIT 1";
+    checkParams = [item_name, organizationId];
+  } else {
+    checkQuery =
+      "SELECT * FROM inventory_items WHERE item_name = ? AND user_id = ? AND organization_id IS NULL LIMIT 1";
+    checkParams = [item_name, userId];
+  }
+
+  db.query(checkQuery, checkParams, (err, existing) => {
+    if (err) {
+      console.error("Greška kod provjere artikla:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    if (existing.length > 0) {
+      return res.status(200).json({
+        item: existing[0],
+        message: "Artikal već postoji",
       });
     }
 
-    const [existing] = await db.query(
-      `SELECT * FROM inventory_items WHERE item_name = ? AND 
-        ${
-          organizationId
-            ? "organization_id = ?"
-            : "user_id = ? AND organization_id IS NULL"
-        } LIMIT 1`,
-      organizationId ? [item_name, organizationId] : [item_name, userId]
-    );
+    // Generiranje custom_inventory_code
+    const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
 
-    if (existing.length > 0) {
-      return res
-        .status(200)
-        .json({ item: existing[0], message: "Artikal već postoji" });
+    let countQuery = "";
+    let countParams = [];
+
+    if (organizationId) {
+      countQuery =
+        "SELECT COUNT(*) AS count FROM inventory_items WHERE organization_id = ?";
+      countParams = [organizationId];
+    } else {
+      countQuery =
+        "SELECT COUNT(*) AS count FROM inventory_items WHERE user_id = ?";
+      countParams = [userId];
     }
 
-    const [result] = await db.query(
-      `INSERT INTO inventory_items (
-        item_name, category, description, stock_quantity, reorder_level, price, user_id, organization_id
-      ) VALUES (?, ?, '', 0, 1, ?, ?, ?)`,
-      [item_name, category, price || 0, userId, organizationId || null]
-    );
+    db.query(countQuery, countParams, (err, countResult) => {
+      if (err) {
+        console.error("Greška kod brojanja artikala:", err);
+        return res.status(500).json({ error: "Greška na serveru." });
+      }
 
-    const [newItem] = await db.query(
-      "SELECT * FROM inventory_items WHERE id = ?",
-      [result.insertId]
-    );
+      const count = countResult[0].count + 1;
+      const customCode = generateInventoryCode(codePrefix, count);
 
-    res
-      .status(201)
-      .json({ item: newItem[0], message: "Artikal dodan jer nije postojao" });
-  } catch (err) {
-    console.error("Greška kod provjere ili dodavanja artikla:", err);
-    res.status(500).json({ error: "Greška na serveru." });
-  }
+      // Unos artikla s custom kodom
+      const insertQuery = `
+        INSERT INTO inventory_items (
+          item_name, category, description, stock_quantity, reorder_level, price,
+          user_id, organization_id, custom_inventory_code
+        ) VALUES (?, ?, '', 0, 1, ?, ?, ?, ?)
+      `;
+
+      const insertParams = [
+        item_name,
+        category,
+        price || 0,
+        userId,
+        organizationId || null,
+        customCode,
+      ];
+
+      db.query(insertQuery, insertParams, (err, result) => {
+        if (err) {
+          console.error("Greška kod unosa artikla:", err);
+          return res.status(500).json({ error: "Greška na serveru." });
+        }
+
+        db.query(
+          "SELECT * FROM inventory_items WHERE id = ?",
+          [result.insertId],
+          (err, newItem) => {
+            if (err) {
+              console.error("Greška kod dohvaćanja novog artikla:", err);
+              return res.status(500).json({ error: "Greška na serveru." });
+            }
+
+            res.status(201).json({
+              item: newItem[0],
+              custom_inventory_code: customCode,
+              message: "Artikal dodan jer nije postojao",
+            });
+          }
+        );
+      });
+    });
+  });
 });
+
 
 router.post("/increaseStock", async (req, res) => {
   try {

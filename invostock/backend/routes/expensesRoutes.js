@@ -12,25 +12,28 @@ function generateCustomCode(prefix, date, orgOrUserCode, count) {
 }
 
 router.post("/getUserExpenses", (req, res) => {
-  const { userId } = req.body;
+  const { userId, organizationId } = req.body;
 
-  const query = `
-    SELECT 
-      e.id,
-      e.name,
-      e.expense_date,
-      e.amount,
-      e.description,
-      e.category_id,             
-      e.custom_expense_code,
-      ec.name AS category
-    FROM expenses e
-    LEFT JOIN expense_categories ec ON e.category_id = ec.id
-    WHERE e.user_id = ?
-    ORDER BY e.expense_date DESC
-  `;
+  let query = `
+  SELECT 
+    e.id, e.name, e.expense_date, e.amount, e.description,
+    e.category_id, e.custom_expense_code,
+    ec.name AS category
+  FROM expenses e
+  LEFT JOIN expense_categories ec ON e.category_id = ec.id
+  WHERE e.user_id = ?
+`;
 
-  db.query(query, [userId], (err, results) => {
+  let params = [userId];
+
+  if (organizationId) {
+    query += " AND e.organization_id = ?";
+    params.push(organizationId);
+  } else {
+    query += " AND e.organization_id IS NULL";
+  }
+
+  db.query(query, params, (err, results) => {
     if (err) {
       console.error("Greška kod dohvata troškova:", err);
       return res
@@ -202,33 +205,77 @@ router.delete("/deleteExpenseCategory/:id", (req, res) => {
 });
 
 router.post("/getExpenseSummary", (req, res) => {
-  const { userId, organizationId, startDate, endDate } = req.body;
+  const { userId, organizationId } = req.body;
 
-  if (!userId || !startDate || !endDate) {
+  if (!userId) {
     return res.status(400).json({ error: "Nedostaju podaci" });
   }
 
-  const where = organizationId
-    ? "organization_id = ?"
-    : "organization_id IS NULL AND user_id = ?";
+  // Build the base WHERE clause
+  let whereClause;
+  let params;
 
-  const query = `
-    SELECT SUM(amount) AS total
-    FROM expenses
-    WHERE ${where}
-    AND expense_date BETWEEN ? AND ?
-  `;
+  if (organizationId) {
+    whereClause = "e.organization_id = ? AND e.user_id = ?";
+    params = [organizationId, userId];
+  } else {
+    whereClause = "e.organization_id IS NULL AND e.user_id = ?";
+    params = [userId];
+  }
 
-  const params = organizationId
-    ? [organizationId, startDate, endDate]
-    : [userId, startDate, endDate];
+  const queries = {
+    last30Days: `
+      SELECT COALESCE(SUM(amount), 0) AS total
+      FROM expenses e
+      WHERE ${whereClause}
+      AND expense_date >= CURDATE() - INTERVAL 30 DAY
+    `,
+    last3Months: `
+      SELECT COALESCE(SUM(amount), 0) AS total
+      FROM expenses e
+      WHERE ${whereClause}
+      AND expense_date >= CURDATE() - INTERVAL 3 MONTH
+    `,
+    lastYear: `
+      SELECT COALESCE(SUM(amount), 0) AS total
+      FROM expenses e
+      WHERE ${whereClause}
+      AND expense_date >= CURDATE() - INTERVAL 1 YEAR
+    `,
+    topCategory: `
+      SELECT ec.name AS category, COALESCE(SUM(e.amount), 0) AS total
+      FROM expenses e
+      JOIN expense_categories ec ON e.category_id = ec.id
+      WHERE ${whereClause}
+      GROUP BY ec.name
+      ORDER BY total DESC
+      LIMIT 1
+    `,
+  };
 
-  db.query(query, params, (err, result) => {
-    if (err) {
-      console.error("Greška kod sažetka troškova:", err);
-      return res.status(500).json({ error: "Greška na serveru" });
-    }
-    res.json({ success: true, total: result[0].total || 0 });
+  // Run all queries
+  db.query(queries.last30Days, params, (err30, result30) => {
+    if (err30) return res.status(500).json({ error: "Greška 30 dana" });
+
+    db.query(queries.last3Months, params, (err3m, result3m) => {
+      if (err3m) return res.status(500).json({ error: "Greška 3 mjeseca" });
+
+      db.query(queries.lastYear, params, (erry, resulty) => {
+        if (erry) return res.status(500).json({ error: "Greška godina" });
+
+        db.query(queries.topCategory, params, (errc, resultc) => {
+          if (errc) return res.status(500).json({ error: "Greška kategorije" });
+
+          res.json({
+            success: true,
+            last30Days: result30[0].total,
+            last3Months: result3m[0].total,
+            lastYear: resulty[0].total,
+            topCategory: resultc[0] || { category: null, total: 0 },
+          });
+        });
+      });
+    });
   });
 });
 

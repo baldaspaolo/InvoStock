@@ -72,12 +72,23 @@ router.post("/addSupplier", (req, res) => {
 });
 router.put("/updateSupplier/:id", (req, res) => {
   const { id } = req.params;
-  const { name, address, phone } = req.body;
+  const { userId, organizationId, name, address, phone } = req.body;
 
-  if (!name) return res.status(400).json({ error: "Naziv je obavezan" });
+  if (!userId || !name)
+    return res.status(400).json({ error: "Nedostaju obavezni podaci" });
 
-  const query = `UPDATE suppliers SET name = ?, address = ?, phone = ? WHERE id = ?`;
-  const params = [name, address || null, phone || null, id];
+  let query = `
+    UPDATE suppliers SET name = ?, address = ?, phone = ?
+    WHERE id = ? AND user_id = ?
+  `;
+  const params = [name, address || null, phone || null, id, userId];
+
+  if (organizationId) {
+    query += " AND organization_id = ?";
+    params.push(organizationId);
+  } else {
+    query += " AND organization_id IS NULL";
+  }
 
   db.query(query, params, (err) => {
     if (err) {
@@ -98,8 +109,23 @@ router.put("/updateSupplier/:id", (req, res) => {
 
 router.delete("/deleteSupplier/:id", (req, res) => {
   const { id } = req.params;
+  const { userId, organizationId } = req.body;
 
-  db.query("DELETE FROM suppliers WHERE id = ?", [id], (err) => {
+  if (!userId) return res.status(400).json({ error: "Nedostaje userId" });
+
+  let query = `
+    DELETE FROM suppliers WHERE id = ? AND user_id = ?
+  `;
+  const params = [id, userId];
+
+  if (organizationId) {
+    query += " AND organization_id = ?";
+    params.push(organizationId);
+  } else {
+    query += " AND organization_id IS NULL";
+  }
+
+  db.query(query, params, (err) => {
     if (err) {
       console.error("Greška kod brisanja dobavljača:", err);
       return res.status(500).json({ error: "Greška na serveru" });

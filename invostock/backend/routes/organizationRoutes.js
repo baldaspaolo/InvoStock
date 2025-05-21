@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
-// Registracija organizacije
 router.post("/registerOrganization", (req, res) => {
   const { name, address } = req.body;
 
