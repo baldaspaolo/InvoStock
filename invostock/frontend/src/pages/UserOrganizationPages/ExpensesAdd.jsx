@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { Panel } from "primereact/panel";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
@@ -13,6 +15,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 const ExpensesAdd = () => {
   const { user } = useContext(AuthContext);
   const toast = useRef(null);
+  const navigate = useNavigate();
 
   const [expense, setExpense] = useState({
     name: "",
@@ -72,13 +75,19 @@ const ExpensesAdd = () => {
       return;
     }
 
+    const toLocalISOString = (date) => {
+      return new Date(
+        date.getTime() - date.getTimezoneOffset() * 60000
+      ).toISOString();
+    };
+
     const payload = {
       userId: user.id,
       organizationId: user.organization_id,
       name: expense.name,
       amount: parseFloat(expense.amount),
       description: expense.description,
-      date: expense.date.toISOString(),
+      date: toLocalISOString(expense.date),
       categoryId: expense.categoryId,
     };
 
@@ -104,6 +113,10 @@ const ExpensesAdd = () => {
         description: "",
         categoryId: null,
       });
+
+      setTimeout(() => {
+        navigate("/expenses");
+      }, 1000);
     } else {
       toast.current.show({
         severity: "error",
