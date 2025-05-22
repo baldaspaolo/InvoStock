@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 import { Dialog } from "primereact/dialog";
 import { DataTable } from "primereact/datatable";
@@ -18,6 +19,8 @@ import ContactsManagement from "../../components/ContactsManagement";
 export default function Account() {
   const { user } = useContext(AuthContext);
   const toast = React.useRef(null);
+  const navigate = useNavigate();
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -38,13 +41,15 @@ export default function Account() {
   const [editUserId, setEditUserId] = useState(null);
   const [editUserEmail, setEditUserEmail] = useState("");
   const [editUserRole, setEditUserRole] = useState("");
+  const [editDialogVisible, setEditDialogVisible] = useState(false);
+  const [confirmPasswordDialog, setConfirmPasswordDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [changePassword, setChangePassword] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       if (user?.name) {
-        const [first, ...last] = user.name.split(" ");
-        setFirstName(first);
-        setLastName(last.join(" "));
+        setFirstName(user.name);
       }
       setEmail(user.email);
 
@@ -80,32 +85,48 @@ export default function Account() {
     fetchData();
   }, [user]);
 
-  const handleSave = async () => {
+  const confirmAndSave = async () => {
     const fullName = `${firstName} ${lastName}`.trim();
+
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/users/updateUser/${user.id}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: fullName, email, password }),
+          body: JSON.stringify({
+            name: fullName,
+            email,
+            newPassword: password?.trim() || null,
+            currentPassword,
+          }),
         }
       );
-      await res.json();
 
-      toast.current.show({
-        severity: "success",
-        summary: "Spremanje",
-        detail: "Podaci su uspješno spremljeni.",
-        life: 3000,
-      });
-      setIsEditing(false);
-      setPassword("");
+      const data = await res.json();
+
+      if (data.success) {
+        setLoadingMessage("Uspješna promjena podataka. Odjava u tijeku...");
+
+        setTimeout(() => {
+          localStorage.clear();
+          navigate("/login");
+        }, 2000);
+        setPassword("");
+        setCurrentPassword("");
+        setConfirmPasswordDialog(false);
+      } else {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: data.message || "Pogrešna lozinka.",
+        });
+      }
     } catch (err) {
       toast.current.show({
         severity: "error",
         summary: "Greška",
-        detail: "Došlo je do greške kod spremanja.",
+        detail: "Greška kod spremanja.",
       });
     }
   };
@@ -208,6 +229,28 @@ export default function Account() {
   return (
     <div style={{ padding: "2% 5%", marginTop: "3%" }}>
       <Toast ref={toast} />
+      {loadingMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(0,0,0,0.3)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+          }}
+        >
+          <i className="pi pi-spin pi-spinner" style={{ fontSize: "3rem" }}></i>
+          <p style={{ marginTop: "1rem", fontSize: "1.2rem", color: "white" }}>
+            {loadingMessage}
+          </p>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: "2rem" }}>
         <div style={{ width: "220px" }}>
@@ -325,79 +368,43 @@ export default function Account() {
                   marginBottom: "1rem",
                 }}
               >
-                <h4 style={{ margin: 0 }}>Osobni podaci</h4>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <Checkbox
-                    inputId="edit"
-                    checked={isEditing}
-                    onChange={(e) => setIsEditing(e.checked)}
-                  />
-                  <label htmlFor="edit" style={{ margin: 0 }}>
-                    Uredi podatke
-                  </label>
-                </div>
+                <h4 style={{}}>Osobni podaci</h4>
+                <Button
+                  icon="pi pi-pencil"
+                  label="Uredi"
+                  onClick={() => setEditDialogVisible(true)}
+                  severity="secondary"
+                  outlined
+                  size="small"
+                  style={{ width: "10%" }}
+                />
               </div>
 
-              <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                <span className="p-float-label" style={{ flex: 1 }}>
-                  <InputText
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={!isEditing}
-                  />
-                  <label htmlFor="firstName">Ime</label>
-                </span>
-                <span className="p-float-label" style={{ flex: 1 }}>
-                  <InputText
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    disabled={!isEditing}
-                    style={{ width: "100%" }}
-                  />
-                  <label htmlFor="firstName">Ime</label>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "1rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  className="p-float-label"
+                  style={{ flex: 1, marginBottom: "1rem" }}
+                >
+                  <InputText id="firstName" value={firstName} disabled />
+                  <label htmlFor="firstName">Korisničko ime</label>
                 </span>
               </div>
+
               <div className="p-float-label" style={{ marginTop: "1rem" }}>
                 <InputText
                   id="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={!isEditing}
+                  disabled
                   style={{ width: "100%" }}
                 />
-                <label htmlFor="email">E-mail</label>
+                <label htmlFor="email">E-mail adresa</label>
               </div>
-              {isEditing && (
-                <div className="p-float-label" style={{ marginTop: "1rem" }}>
-                  <Password
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    toggleMask
-                    feedback={false}
-                    style={{ width: "100%" }}
-                  />
-                  <label htmlFor="password">Nova lozinka</label>
-                </div>
-              )}
-              {isEditing && (
-                <div style={{ textAlign: "right", marginTop: "1rem" }}>
-                  <Button
-                    label="Spremi"
-                    icon="pi pi-check"
-                    onClick={handleSave}
-                    severity="success"
-                  />
-                </div>
-              )}
             </Panel>
           )}
 
@@ -588,6 +595,117 @@ export default function Account() {
               icon="pi pi-check"
               onClick={handleUpdateUserRole}
               severity="success"
+            />
+          </div>
+        </div>
+      </Dialog>
+      <Dialog
+        header="Uredi osobne podatke"
+        visible={editDialogVisible}
+        style={{ width: "35vw" }}
+        modal
+        onHide={() => {
+          setEditDialogVisible(false);
+          setPassword("");
+          setChangePassword(false);
+        }}
+      >
+        <div className="p-fluid">
+          <div className="p-field">
+            <label htmlFor="firstName">Korisničko ime</label>
+            <InputText
+              id="firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+            />
+          </div>
+          <div className="p-field">
+            <label htmlFor="email">Email adresa</label>
+            <InputText
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-start",
+              marginTop: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
+            <Checkbox
+              inputId="changePassword"
+              checked={changePassword}
+              onChange={(e) => {
+                setChangePassword(e.checked);
+                if (!e.checked) setPassword("");
+              }}
+              style={{ width: "5%" }}
+            />
+            <label htmlFor="changePassword">Želim promijeniti lozinku</label>
+          </div>
+
+          {changePassword && (
+            <div className="p-field">
+              <label htmlFor="password">Nova lozinka</label>
+              <Password
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                feedback={false}
+                toggleMask={false}
+                style={{ width: "100%" }}
+              />
+            </div>
+          )}
+
+          <div style={{ textAlign: "right", marginTop: "1rem" }}>
+            <Button
+              label="Spremi"
+              icon="pi pi-check"
+              onClick={() => {
+                setEditDialogVisible(false);
+                setConfirmPasswordDialog(true);
+              }}
+              severity="success"
+            />
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        header="Potvrdi identitet"
+        visible={confirmPasswordDialog}
+        style={{ width: "30vw" }}
+        modal
+        onHide={() => {
+          setConfirmPasswordDialog(false);
+          setCurrentPassword("");
+        }}
+      >
+        <div className="p-fluid">
+          <div className="p-field">
+            <label htmlFor="currentPassword">Trenutna lozinka</label>
+            <Password
+              id="currentPassword"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              feedback={false}
+              toggleMask={false}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ textAlign: "right", marginTop: "1rem" }}>
+            <Button
+              label="Potvrdi"
+              icon="pi pi-check"
+              onClick={confirmAndSave}
+              severity="success"
+              disabled={!currentPassword}
             />
           </div>
         </div>
