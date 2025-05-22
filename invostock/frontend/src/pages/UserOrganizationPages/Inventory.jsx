@@ -51,7 +51,7 @@ const Inventory = () => {
             },
             body: JSON.stringify({
               userId: user.id,
-              organizationId: user.organizationId,
+              organizationId: user.organization_id, 
             }),
           }
         );
@@ -62,10 +62,12 @@ const Inventory = () => {
 
         const data = await response.json();
         setInventoryItems(data.inventory);
+        console.log(data);
       } catch (error) {
         console.error("Greška:", error);
       }
     };
+
 
     fetchInventory();
   }, [user.id, user.organizationId]);
@@ -103,7 +105,7 @@ const Inventory = () => {
 
   const onRowClick = (e) => {
     const itemId = e.data.id;
-    console.log(`Kliknuto na artikl s ID: ${itemId}`);
+    navigate(`/inventory/${itemId}`);
   };
 
   const lowStockItems = inventoryItems.filter(
@@ -124,6 +126,11 @@ const Inventory = () => {
         rowsPerPageOptions={[5, 10, 25, 50]}
         style={{ fontSize: "0.9rem" }}
         onRowClick={onRowClick}
+        pt={{
+          bodyRow: {
+            style: { cursor: "pointer" },
+          },
+        }}
       >
         <Column field="id" header="ID" sortable></Column>
         <Column field="item_name" header="Naziv artikla" sortable></Column>
@@ -154,6 +161,11 @@ const Inventory = () => {
         rowsPerPageOptions={[5, 10, 25, 50]}
         style={{ fontSize: "0.9rem" }}
         onRowClick={onRowClick}
+        pt={{
+          bodyRow: {
+            style: { cursor: "pointer" },
+          },
+        }}
       >
         <Column field="custom_inventory_code" header="ID" sortable></Column>
         <Column field="item_name" header="Naziv artikla" sortable></Column>
@@ -259,6 +271,11 @@ const Inventory = () => {
             rowsPerPageOptions={[5, 10, 25, 50]}
             style={{ fontSize: "0.9rem", marginTop: "1.5rem" }}
             onRowClick={onRowClick}
+            pt={{
+              bodyRow: {
+                style: { cursor: "pointer" },
+              },
+            }}
           >
             <Column field="custom_inventory_code" header="ID" sortable></Column>
             <Column field="item_name" header="Naziv artikla" sortable></Column>
