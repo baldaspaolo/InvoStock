@@ -25,19 +25,15 @@ const InventoryAdd = () => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/inventory/getCategories`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            organizationId: user.organization_id,
-          }),
-        });
+        const res = await fetch(
+          `${API_URL}/api/inventory/getCategories?userId=${
+            user.id
+          }&organizationId=${user.organization_id || ""}`
+        );
         const data = await res.json();
-        if (data.success)
-          setCategories(
-            data.categories.map((c) => ({ label: c.label, value: c.value }))
-          );
+        if (data.success) {
+          setCategories(data.categories.map((c) => ({ label: c, value: c })));
+        }
       } catch (err) {
         console.error("Greška kod dohvata kategorija:", err);
       }
@@ -46,7 +42,16 @@ const InventoryAdd = () => {
   }, [user.id, user.organization_id]);
 
   const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
+    if (!newCategoryName.trim()) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Upozorenje",
+        detail: "Naziv kategorije je obavezan.",
+        life: 3000,
+      });
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/api/expenses/addExpenseCategory`, {
         method: "POST",
@@ -57,6 +62,7 @@ const InventoryAdd = () => {
         }),
       });
       const data = await res.json();
+
       if (data.success) {
         setCategories((prev) => [
           ...prev,
@@ -65,9 +71,24 @@ const InventoryAdd = () => {
         setItem((prevItem) => ({ ...prevItem, category: newCategoryName }));
         setShowCategoryDialog(false);
         setNewCategoryName("");
+
+        toast.current.show({
+          severity: "success",
+          summary: "Kategorija dodana",
+          detail: `Dodana kategorija: ${newCategoryName}`,
+          life: 3000,
+        });
+      } else {
+        throw new Error(data.error || "Neuspješno dodavanje kategorije.");
       }
     } catch (err) {
       console.error("Greška kod dodavanja kategorije:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: err.message,
+        life: 3000,
+      });
     }
   };
 

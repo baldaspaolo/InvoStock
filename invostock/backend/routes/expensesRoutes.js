@@ -137,14 +137,33 @@ router.put("/updateExpense/:id", (req, res) => {
 
 router.delete("/deleteExpense/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM expenses WHERE id = ?", [id], (err) => {
-    if (err)
-      return res
-        .status(500)
-        .json({ success: false, message: "Greška kod brisanja." });
-    res.json({ success: true });
-  });
+
+  if (!id) {
+    return res.status(400).json({ success: false, message: "Nedostaje ID." });
+  }
+
+  db.query(
+    "UPDATE expenses SET is_deleted = 1 WHERE id = ?",
+    [id],
+    (err, result) => {
+      if (err) {
+        console.error("Greška kod mekog brisanja troška:", err);
+        return res
+          .status(500)
+          .json({ success: false, message: "Greška kod mekog brisanja." });
+      }
+
+      if (result.affectedRows === 0) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Trošak nije pronađen." });
+      }
+
+      res.json({ success: true, message: "Trošak je označen kao obrisan." });
+    }
+  );
 });
+
 
 router.post("/getExpenseCategories", (req, res) => {
   const { userId } = req.body;
@@ -211,7 +230,6 @@ router.post("/getExpenseSummary", (req, res) => {
     return res.status(400).json({ error: "Nedostaju podaci" });
   }
 
-  // Build the base WHERE clause
   let whereClause;
   let params;
 
@@ -253,7 +271,6 @@ router.post("/getExpenseSummary", (req, res) => {
     `,
   };
 
-  // Run all queries
   db.query(queries.last30Days, params, (err30, result30) => {
     if (err30) return res.status(500).json({ error: "Greška 30 dana" });
 

@@ -7,7 +7,6 @@ function generateInventoryCode(orgOrUserCode, count) {
   return `INV-${orgOrUserCode}-${padded}`;
 }
 
-
 router.post("/getInventory", (req, res) => {
   const { userId, organizationId } = req.body;
 
@@ -19,10 +18,16 @@ router.post("/getInventory", (req, res) => {
   let queryParams = [];
 
   if (organizationId) {
-    query = "SELECT * FROM inventory_items WHERE organization_id = ?";
+    query = `
+      SELECT * FROM inventory_items 
+      WHERE organization_id = ? AND is_deleted = FALSE
+    `;
     queryParams = [organizationId];
   } else {
-    query = "SELECT * FROM inventory_items WHERE user_id = ?";
+    query = `
+      SELECT * FROM inventory_items 
+      WHERE user_id = ? AND organization_id IS NULL AND is_deleted = FALSE
+    `;
     queryParams = [userId];
   }
 
@@ -35,6 +40,7 @@ router.post("/getInventory", (req, res) => {
     res.status(200).json({ success: true, inventory: results });
   });
 });
+
 
 router.post("/addInventoryItem", (req, res) => {
   const { userId, organizationId, itemData } = req.body;
@@ -105,13 +111,11 @@ router.post("/addInventoryItem", (req, res) => {
           (err4, item) => {
             if (err4)
               return res.status(500).json({ error: "Greška kod dohvaćanja" });
-            res
-              .status(201)
-              .json({
-                message: "Artikal dodan",
-                item: item[0],
-                custom_inventory_code: customCode,
-              });
+            res.status(201).json({
+              message: "Artikal dodan",
+              item: item[0],
+              custom_inventory_code: customCode,
+            });
           }
         );
       });
@@ -119,6 +123,29 @@ router.post("/addInventoryItem", (req, res) => {
   });
 });
 
+router.get("/getCategories", (req, res) => {
+  const { userId, organizationId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ error: "Nedostaje userId" });
+  }
+
+  const query = organizationId
+    ? `SELECT DISTINCT category FROM inventory_items WHERE organization_id = ?`
+    : `SELECT DISTINCT category FROM inventory_items WHERE user_id = ? AND organization_id IS NULL`;
+
+  const param = organizationId || userId;
+
+  db.query(query, [param], (err, results) => {
+    if (err) {
+      console.error("Greška kod dohvaćanja kategorija:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    const categories = results.map((row) => row.category);
+    res.status(200).json({ success: true, categories });
+  });
+});
 
 router.post("/lowStock", (req, res) => {
   const { userId, organizationId } = req.body;
@@ -303,74 +330,233 @@ router.post("/checkOrAddItem", (req, res) => {
   });
 });
 
+router.post("/increaseStock", (req, res) => {
+  const { itemId, quantity, userId, organizationId } = req.body;
 
-router.post("/increaseStock", async (req, res) => {
-  try {
-    const { itemId, quantity } = req.body;
-
-    if (!itemId || typeof quantity !== "number") {
-      return res
-        .status(400)
-        .json({ error: "Nedostaje itemId ili neispravna količina" });
-    }
-
-    const [existing] = await db.query(
-      "SELECT stock_quantity FROM inventory_items WHERE id = ?",
-      [itemId]
-    );
-
-    if (existing.length === 0) {
-      return res.status(404).json({ error: "Artikal nije pronađen" });
-    }
-
-    const newQuantity = existing[0].stock_quantity + quantity;
-
-    await db.query(
-      "UPDATE inventory_items SET stock_quantity = ? WHERE id = ?",
-      [newQuantity, itemId]
-    );
-
-    res.status(200).json({
-      success: true,
-      message: "Zaliha uspješno ažurirana",
-      newQuantity,
-    });
-  } catch (err) {
-    console.error("Greška pri povećanju zalihe:", err);
-    res.status(500).json({ error: "Greška na serveru." });
-  }
-});
-
-router.post("/getCategories", (req, res) => {
-  const { userId, organizationId } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: "Nedostaje userId" });
+  if (!itemId || typeof quantity !== "number" || !userId) {
+    return res
+      .status(400)
+      .json({ error: "Nedostaje itemId, userId ili neispravna količina" });
   }
 
-  let query, params;
-  if (organizationId) {
-    query = `SELECT DISTINCT category FROM inventory_items WHERE organization_id = ?`;
-    params = [organizationId];
-  } else {
-    query = `SELECT DISTINCT category FROM inventory_items WHERE user_id = ? AND organization_id IS NULL`;
-    params = [userId];
-  }
+  const query = organizationId
+    ? "SELECT stock_quantity FROM inventory_items WHERE id = ? AND organization_id = ?"
+    : "SELECT stock_quantity FROM inventory_items WHERE id = ? AND user_id = ? AND organization_id IS NULL";
+  const params = organizationId ? [itemId, organizationId] : [itemId, userId];
 
   db.query(query, params, (err, results) => {
     if (err) {
-      console.error("Greška pri dohvatu kategorija:", err);
+      console.error("Greška kod dohvaćanja artikla:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        error: "Artikal nije pronađen ili ne pripada korisniku/organizaciji",
+      });
+    }
+
+    const newQuantity = results[0].stock_quantity + quantity;
+
+    db.query(
+      "UPDATE inventory_items SET stock_quantity = ? WHERE id = ?",
+      [newQuantity, itemId],
+      (updateErr) => {
+        if (updateErr) {
+          console.error("Greška pri ažuriranju zalihe:", updateErr);
+          return res.status(500).json({ error: "Greška na serveru." });
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "Zaliha uspješno ažurirana",
+          newQuantity,
+        });
+      }
+    );
+  });
+});
+
+router.post("/updateStock", (req, res) => {
+  const { id, quantityChange, reorder_level, userId, organizationId } =
+    req.body;
+
+  if (!id || typeof quantityChange !== "number" || !userId) {
+    return res.status(400).json({ error: "Nedostaju podaci za ažuriranje" });
+  }
+
+  const selectQuery = organizationId
+    ? "SELECT stock_quantity FROM inventory_items WHERE id = ? AND organization_id = ?"
+    : "SELECT stock_quantity FROM inventory_items WHERE id = ? AND user_id = ? AND organization_id IS NULL";
+
+  const selectParams = organizationId ? [id, organizationId] : [id, userId];
+
+  db.query(selectQuery, selectParams, (err, results) => {
+    if (err) {
+      console.error("Greška kod dohvaćanja artikla:", err);
       return res.status(500).json({ error: "Greška na serveru" });
     }
 
-    const categories = results.map((r) => ({
-      label: r.category,
-      value: r.category,
-    }));
+    if (results.length === 0) {
+      return res.status(404).json({
+        error: "Artikal nije pronađen ili ne pripada korisniku/organizaciji",
+      });
+    }
 
-    categories.unshift({ label: "Sve kategorije", value: null });
+    const newQuantity = results[0].stock_quantity + quantityChange;
 
-    res.status(200).json({ success: true, categories });
+    const updateQuery = `
+      UPDATE inventory_items 
+      SET stock_quantity = ?, 
+          reorder_level = ?
+      WHERE id = ?
+      ${
+        organizationId
+          ? "AND organization_id = ?"
+          : "AND user_id = ? AND organization_id IS NULL"
+      }
+    `;
+
+    const updateParams = organizationId
+      ? [newQuantity, reorder_level || 1, id, organizationId]
+      : [newQuantity, reorder_level || 1, id, userId];
+
+    db.query(updateQuery, updateParams, (updateErr, result) => {
+      if (updateErr) {
+        console.error("Greška pri ažuriranju zalihe:", updateErr);
+        return res.status(500).json({ error: "Greška na serveru" });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Zaliha ažurirana",
+        newQuantity,
+      });
+    });
+  });
+});
+
+router.get("/getInventoryItem/:id", (req, res) => {
+  const { id } = req.params;
+  const { userId, organizationId } = req.query;
+
+  if (!id || !userId)
+    return res.status(400).json({ error: "Nedostaje ID artikla ili userId" });
+
+  const query = organizationId
+    ? `SELECT * FROM inventory_items WHERE id = ? AND organization_id = ?`
+    : `SELECT * FROM inventory_items WHERE id = ? AND user_id = ? AND organization_id IS NULL`;
+  const params = organizationId ? [id, organizationId] : [id, userId];
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("Greška kod dohvaćanja artikla:", err);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({
+        error: "Artikal nije pronađen ili ne pripada korisniku/organizaciji",
+      });
+    }
+
+    res.status(200).json({ success: true, item: results[0] });
+  });
+});
+
+router.put("/updateInventoryItem/:id", (req, res) => {
+  const { id } = req.params;
+  const {
+    userId,
+    organizationId,
+    item_name,
+    category,
+    price,
+    description,
+    reorder_level,
+  } = req.body;
+
+  if (!id || !userId || !item_name || !category) {
+    return res.status(400).json({ error: "Nedostaju obavezni podaci" });
+  }
+
+  const query = `
+    UPDATE inventory_items SET
+      item_name = ?,
+      category = ?,
+      price = ?,
+      description = ?,
+      reorder_level = ?
+    WHERE id = ?
+    ${
+      organizationId
+        ? "AND organization_id = ?"
+        : "AND user_id = ? AND organization_id IS NULL"
+    }
+  `;
+
+  const params = [
+    item_name,
+    category,
+    price || 0,
+    description || null,
+    reorder_level || 1,
+    id,
+    organizationId || userId,
+  ];
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error("Greška pri ažuriranju artikla:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ error: "Artikal nije pronađen ili nemaš ovlasti." });
+    }
+
+    res.status(200).json({ success: true, message: "Artikal ažuriran" });
+  });
+});
+
+router.delete("/deleteInventoryItem/:id", (req, res) => {
+  const { id } = req.params;
+  const { userId, organizationId } = req.query;
+
+  if (!id || !userId) {
+    return res.status(400).json({ error: "Nedostaje ID ili userId" });
+  }
+
+  const query = `
+    UPDATE inventory_items 
+    SET is_deleted = TRUE 
+    WHERE id = ? 
+    ${
+      organizationId
+        ? "AND organization_id = ?"
+        : "AND user_id = ? AND organization_id IS NULL"
+    }
+  `;
+
+  const params = [id, organizationId || userId];
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error("Greška pri mekom brisanju artikla:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ error: "Artikal nije pronađen ili nemaš ovlasti." });
+    }
+
+    res
+      .status(200)
+      .json({ success: true, message: "Artikal označen kao obrisan" });
   });
 });
 

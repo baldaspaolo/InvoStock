@@ -212,10 +212,9 @@ router.delete("/deleteContact/:id", (req, res) => {
       .json({ error: "Nedostaje ID kontakta ili korisnika!" });
   }
 
-  // 🔒 Provjera vlasništva
   const checkQuery = organizationId
-    ? "SELECT * FROM contacts WHERE id = ? AND organization_id = ?"
-    : "SELECT * FROM contacts WHERE id = ? AND user_id = ?";
+    ? "SELECT * FROM contacts WHERE id = ? AND organization_id = ? AND is_deleted = 0"
+    : "SELECT * FROM contacts WHERE id = ? AND user_id = ? AND organization_id IS NULL AND is_deleted = 0";
 
   const checkParams = organizationId
     ? [contactId, organizationId]
@@ -230,23 +229,23 @@ router.delete("/deleteContact/:id", (req, res) => {
     if (results.length === 0) {
       return res
         .status(403)
-        .json({ error: "Nemate dozvolu za brisanje ovog kontakta." });
+        .json({ error: "Nemate dozvolu ili kontakt ne postoji." });
     }
 
-    // ✅ Ako postoji i pripada korisniku/organizaciji → brišemo
-    const deleteQuery = "DELETE FROM contacts WHERE id = ?";
+    const deleteQuery = "UPDATE contacts SET is_deleted = 1 WHERE id = ?";
     db.query(deleteQuery, [contactId], (err, result) => {
       if (err) {
-        console.error("Greška pri brisanju kontakta:", err);
+        console.error("Greška pri mekom brisanju kontakta:", err);
         return res.status(500).json({ error: "Greška na serveru!" });
       }
 
       res
         .status(200)
-        .json({ success: true, message: "Kontakt uspješno obrisan." });
+        .json({ success: true, message: "Kontakt označen kao obrisan." });
     });
   });
 });
+
 
 
 module.exports = router;
