@@ -20,7 +20,7 @@ const DashboardActions = () => {
       label: "Novi trošak",
       icon: "pi pi-euro",
       severity: "danger",
-      onClick: () => navigate("/expenses"),
+      onClick: () => navigate("/expenses/add"),
     },
     {
       label: "Nova narudžbenica",
