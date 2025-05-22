@@ -355,32 +355,62 @@ router.delete("/deleteUser/:id", (req, res) => {
 
 router.put("/updateUser/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, email, password } = req.body;
+  const { name, email, newPassword, currentPassword } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: "Ime i email su obavezni." });
   }
 
-  let query = "";
-  let values = [];
+  if (newPassword && newPassword.trim() !== "") {
+    db.query(
+      "SELECT password FROM users WHERE id = ?",
+      [id],
+      async (err, results) => {
+        if (err) return res.status(500).json({ error: "Greška na serveru." });
+        if (results.length === 0)
+          return res.status(404).json({ error: "Korisnik nije pronađen." });
 
-  if (password && password.trim() !== "") {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    query = "UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?";
-    values = [name, email, hashedPassword, id];
+        const isMatch = await bcrypt.compare(
+          currentPassword,
+          results[0].password
+        );
+        if (!isMatch) {
+          return res
+            .status(401)
+            .json({ success: false, message: "Pogrešna lozinka." });
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        db.query(
+          "UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?",
+          [name, email, hashed, id],
+          (updateErr) => {
+            if (updateErr)
+              return res.status(500).json({ error: "Greška kod spremanja." });
+            res
+              .status(200)
+              .json({ success: true, message: "Korisnik je ažuriran." });
+          }
+        );
+      }
+    );
   } else {
-    query = "UPDATE users SET name = ?, email = ? WHERE id = ?";
-    values = [name, email, id];
+    db.query(
+      "UPDATE users SET name = ?, email = ? WHERE id = ?",
+      [name, email, id],
+      (err) => {
+        if (err) {
+          console.error("Greška kod ažuriranja korisnika:", err);
+          return res.status(500).json({ error: "Greška na serveru." });
+        }
+
+        res
+          .status(200)
+          .json({ success: true, message: "Korisnik je ažuriran." });
+      }
+    );
   }
-
-  db.query(query, values, (err, result) => {
-    if (err) {
-      console.error("Greška kod ažuriranja korisnika:", err);
-      return res.status(500).json({ error: "Greška na serveru." });
-    }
-
-    res.status(200).json({ message: "Korisnik je ažuriran." });
-  });
 });
+
 
 module.exports = router;
