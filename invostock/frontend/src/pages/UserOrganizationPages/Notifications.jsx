@@ -92,7 +92,7 @@ const Notifications = () => {
   };
 
   return (
-    <div style={{ padding: "2rem" }}>
+    <div style={{ padding: "2rem", margin: "5%" }}>
       <Panel header="Obavijesti">
         <ConfirmDialog />
         <DataTable

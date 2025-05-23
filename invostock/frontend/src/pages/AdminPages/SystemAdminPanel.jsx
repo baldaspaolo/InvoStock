@@ -88,6 +88,24 @@ const SystemAdminPanel = () => {
       >
         <p>Pregled statistike</p>
       </Card>
+      <Card
+        title="Obavijesti"
+        style={{
+          cursor: "pointer",
+          textAlign: "center",
+          width: "300px",
+          height: "225px",
+          borderRadius: "16px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          transition: "transform 0.2s, box-shadow 0.2s",
+          boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+        }}
+        onClick={() => navigate("/admin/notifications")}
+      >
+        <p>Pregled i slanje obavijesti</p>
+      </Card>
     </div>
   );
 };

@@ -52,7 +52,7 @@ const NotificationItem = () => {
     return <p style={{ padding: "2rem" }}>Obavijest nije pronađena.</p>;
 
   return (
-    <div style={{ padding: "2rem" }}>
+    <div style={{ padding: "2rem", margin: "5%" }}>
       <Panel header={notification.title}>
         <p style={{ marginBottom: "1rem" }}>{notification.message}</p>
         <p>
