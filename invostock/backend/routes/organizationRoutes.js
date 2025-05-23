@@ -21,4 +21,31 @@ router.post("/registerOrganization", (req, res) => {
   });
 });
 
+router.get("/getAllOrganizations", (req, res) => {
+  const query = `
+    SELECT 
+      o.id,
+      o.name,
+      o.email,
+      o.address,
+      COUNT(u.id) AS member_count
+    FROM organizations o
+    LEFT JOIN users u ON u.organization_id = o.id
+    GROUP BY o.id
+    ORDER BY o.name ASC
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Greška pri dohvaćanju organizacija:", err);
+      return res
+        .status(500)
+        .json({ success: false, error: "Greška na serveru!" });
+    }
+
+    res.json({ success: true, organizations: results });
+  });
+});
+
+
 module.exports = router;
