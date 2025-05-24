@@ -4,6 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
+import { Tag } from "primereact/tag";
+import { Divider } from "primereact/divider";
 
 const NotificationItem = () => {
   const { id } = useParams();
@@ -20,20 +22,22 @@ const NotificationItem = () => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ notificationId: id }),
+            body: JSON.stringify({ notificationId: id, userId: user.id }),
           }
         );
         const data = await res.json();
         if (data.success) {
           setNotification(data.notification);
 
-          // Pozovi označavanje kao pročitano
           await fetch(
             "http://localhost:3000/api/notifications/markSingleNotificationAsRead",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ notificationId: id }),
+              body: JSON.stringify({
+                notificationId: id,
+                userId: user.id,
+              }),
             }
           );
         }
@@ -54,11 +58,11 @@ const NotificationItem = () => {
   return (
     <div style={{ padding: "2rem", margin: "5%" }}>
       <Panel header={notification.title}>
-        <p style={{ marginBottom: "1rem" }}>{notification.message}</p>
-        <p>
-          <strong>Status:</strong>{" "}
-          {notification.read ? "Pročitano" : "Nepročitano"}
-        </p>
+        <Tag
+          value={notification.is_read ? "Pročitano" : "Nepročitano"}
+          severity={notification.is_read ? "success" : "warning"}
+          style={{ fontSize: "0.85rem", marginBottom: "1rem", width: "10%" }}
+        />
         <p>
           <strong>Datum:</strong>{" "}
           {new Date(notification.created_at).toLocaleString("hr-HR", {
@@ -66,6 +70,14 @@ const NotificationItem = () => {
             timeStyle: "short",
           })}
         </p>
+        <div style={{}}>
+          <h4>Sadržaj poruke</h4>
+          <div style={{width:" 60%"}}>
+            <Divider />
+          </div>
+        
+          <p style={{ marginBottom: "1rem" }}>{notification.message}</p>
+        </div>
         <Button
           label="Natrag"
           icon="pi pi-arrow-left"
