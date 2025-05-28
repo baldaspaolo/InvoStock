@@ -52,7 +52,6 @@ export default function Account() {
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [deactivatePassword, setDeactivatePassword] = useState("");
 
-
   useEffect(() => {
     const fetchData = async () => {
       if (user?.name) {
@@ -226,6 +225,58 @@ export default function Account() {
     });
   };
 
+  const handleInviteUser = async () => {
+    if (!newUserEmail.includes("@")) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Upozorenje",
+        detail: "Unesite ispravan email.",
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `${
+          import.meta.env.VITE_API_URL
+        }/api/organizations/sendOrganizationInvite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: newUserEmail,
+            organizationId: user.organization_id,
+            invitedBy: user.id,
+          }),
+        }
+      );
+      const data = await res.json();
+
+      if (data.success) {
+        toast.current.show({
+          severity: "success",
+          summary: "Pozivnica poslana",
+          detail: "Korisnik je pozvan u organizaciju.",
+        });
+        setShowAddUserDialog(false);
+        setNewUserEmail("");
+      } else {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: data.error || "Pozivnica nije poslana.",
+        });
+      }
+    } catch (err) {
+      console.error("Greška kod slanja pozivnice:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Došlo je do pogreške prilikom slanja.",
+      });
+    }
+  };
+
   const handleUpdateUserRole = async () => {
     try {
       await fetch(
@@ -296,7 +347,6 @@ export default function Account() {
       }
     }, 3000);
   };
-
 
   return (
     <div style={{ padding: "2% 5%", marginTop: "3%" }}>
@@ -486,6 +536,16 @@ export default function Account() {
                   <p>
                     <strong>Broj članova:</strong> {users.length}
                   </p>
+                  {user.org_role === "admin" && (
+                    <Button
+                      icon="pi pi-user-plus"
+                      label="Pozovi korisnika"
+                      size="small"
+                      severity="success"
+                      onClick={() => setShowAddUserDialog(true)}
+                      style={{ marginTop: "1rem" }}
+                    />
+                  )}
 
                   <DataTable
                     value={users}
@@ -616,7 +676,7 @@ export default function Account() {
             <Button
               label="Dodaj"
               icon="pi pi-check"
-              onClick={handleAddUser}
+              onClick={handleInviteUser}
               severity="success"
             />
           </div>

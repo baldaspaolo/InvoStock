@@ -44,7 +44,7 @@ export default function Navbar() {
         if (data.success) {
           const transformed = data.notifications.map((n) => ({
             ...n,
-            read: !!n.read,
+            read: !!n.is_read, // ispravka ovdje
           }));
           setNotifications(transformed);
         }

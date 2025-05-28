@@ -136,14 +136,27 @@ router.post("/getSingleNotification", (req, res) => {
   }
 
   const query = `
-    SELECT n.*, 
-           IF(nr.id IS NOT NULL, 1, 0) AS is_read
-    FROM notifications n
-    LEFT JOIN notification_reads nr 
-      ON nr.notification_id = n.id AND nr.user_id = ?
-    WHERE n.id = ?
-    LIMIT 1
-  `;
+  SELECT 
+    n.*, 
+    IF(nr.id IS NOT NULL, 1, 0) AS is_read,
+    oi.email AS invite_email,
+    oi.organization_id,
+    oi.invited_by,
+    u.name AS inviter_name,
+    o.name AS organization_name
+  FROM notifications n
+  LEFT JOIN notification_reads nr 
+    ON nr.notification_id = n.id AND nr.user_id = ?
+  LEFT JOIN organization_invites oi 
+    ON n.ref_id = oi.id AND n.type = 'org_invite'
+  LEFT JOIN users u 
+    ON oi.invited_by = u.id
+  LEFT JOIN organizations o 
+    ON oi.organization_id = o.id
+  WHERE n.id = ?
+  LIMIT 1
+`;
+
 
   db.query(query, [userId, notificationId], (err, result) => {
     if (err) {
@@ -166,41 +179,6 @@ router.post("/getSingleNotification", (req, res) => {
   });
 });
 
-
-
-router.post("/getSingleNotification", (req, res) => {
-  const { notificationId } = req.body;
-
-  if (!notificationId) {
-    return res.status(400).json({ error: "Nedostaje notificationId" });
-  }
-
-  const query = `
-    SELECT * FROM notifications 
-    WHERE id = ?
-    LIMIT 1
-  `;
-
-  db.query(query, [notificationId], (err, result) => {
-    if (err) {
-      console.error("Greška pri izvođenju upita:", err);
-      return res.status(500).send("Greška na serveru!");
-    }
-
-    if (result.length > 0) {
-      res.json({
-        success: true,
-        notification: result[0],
-        message: "Obavijest uspješno dohvaćena.",
-      });
-    } else {
-      res.json({
-        success: false,
-        message: "Obavijest nije pronađena.",
-      });
-    }
-  });
-});
 
 router.post("/markSingleNotificationAsRead", (req, res) => {
   const { notificationId, userId } = req.body;
