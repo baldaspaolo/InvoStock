@@ -71,6 +71,9 @@ const Register = () => {
             summary: "Organizacija i korisnik (admin) uspješno registrirani!",
             life: 3000,
           });
+          setTimeout(() => {
+            navigate("/login");
+          }, 2000);
         } else {
           toast.current.show({
             severity: "danger",
@@ -96,7 +99,6 @@ const Register = () => {
             detail: "Možete se sada prijaviti.",
             life: 3000,
           });
-          j;
           setTimeout(() => {
             navigate("/login");
           }, 3000);
@@ -135,6 +137,8 @@ const Register = () => {
         marginTop: "5%",
       }}
     >
+      <Toast ref={toast} />
+
       <Card title="" style={{ width: "25rem" }}>
         <img
           src="/photos/logo-no-background.svg"

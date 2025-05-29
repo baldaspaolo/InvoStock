@@ -23,7 +23,14 @@ const Payments = () => {
   const [expandedRows, setExpandedRows] = useState(null);
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [stats, setStats] = useState({
+    thisMonth: 0,
+    last3Months: 0,
+    last12Months: 0,
+  });
+
   const toast = React.useRef(null);
+
   const { user } = useContext(AuthContext);
 
   useEffect(() => {
@@ -41,7 +48,10 @@ const Payments = () => {
           }
         );
         const data1 = await res1.json();
-        if (data1.success) setPayments(data1.payments);
+        if (data1.success) {
+          setPayments(data1.payments);
+          calculateStats(data1.payments);
+        }
         console.log("Šaljem na getUnpaidInvoices:", {
           userId: user.id,
           organizationId: user.organization_id,
@@ -67,6 +77,32 @@ const Payments = () => {
 
     fetchData();
   }, [user]);
+
+  const calculateStats = (paymentsList) => {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+
+    let thisMonth = 0;
+    let last3Months = 0;
+    let last12Months = 0;
+
+    paymentsList.forEach((p) => {
+      const date = new Date(p.payment_date);
+      const amount = parseFloat(p.amount_paid) || 0;
+
+      if (date >= startOfMonth) thisMonth += amount;
+      if (date >= threeMonthsAgo) last3Months += amount;
+      if (date >= twelveMonthsAgo) last12Months += amount;
+    });
+
+    setStats({
+      thisMonth: thisMonth.toFixed(2),
+      last3Months: last3Months.toFixed(2),
+      last12Months: last12Months.toFixed(2),
+    });
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -193,7 +229,35 @@ const Payments = () => {
 
       <div className="div4">
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
-          <Panel header="Filtriranje" style={{ fontSize: "0.88rem" }}>
+          <Panel
+            header="Statistika uplata"
+            style={{ fontSize: "0.88rem", marginBottom: "1rem" }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(14rem, 1fr))",
+                gap: "1rem",
+              }}
+            >
+              <div>
+                <strong>Uplate ovog mjeseca:</strong>
+                <br />
+                {stats.thisMonth} €
+              </div>
+              <div>
+                <strong>Uplate zadnja 3 mjeseca:</strong>
+                <br />
+                {stats.last3Months} €
+              </div>
+              <div>
+                <strong>Uplate zadnjih 12 mjeseci:</strong>
+                <br />
+                {stats.last12Months} €
+              </div>
+            </div>
+          </Panel>
+          
             <div
               style={{
                 display: "grid",
@@ -223,7 +287,7 @@ const Payments = () => {
                 style={inputStyle}
               />
             </div>
-          </Panel>
+  
 
           <DataTable
             value={filteredPayments}
@@ -353,7 +417,33 @@ const Payments = () => {
             <Button
               label="Potvrdi uplatu"
               icon="pi pi-check"
-              onClick={handleAddPayment}
+              onClick={() => {
+                if (!amount || amount <= 0) {
+                  toast.current.show({
+                    severity: "error",
+                    summary: "Neispravan iznos",
+                    detail: "Iznos mora biti veći od 0.",
+                  });
+                  return;
+                }
+
+                if (amount > selectedInvoice.remaining_amount) {
+                  toast.current.show({
+                    severity: "error",
+                    summary: "Prekoračenje",
+                    detail: "Iznos premašuje preostali dug.",
+                  });
+                  return;
+                }
+
+                handleAddPayment();
+              }}
+              disabled={
+                !amount ||
+                amount <= 0 ||
+                amount > selectedInvoice.remaining_amount ||
+                !paymentMethod
+              }
               style={{ marginTop: "1rem" }}
             />
           </div>

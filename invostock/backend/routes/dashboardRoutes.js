@@ -9,6 +9,37 @@ router.post("/getDashboardStats", (req, res) => {
     return res.status(400).json({ error: "Nedostaje UserID!" });
   }
 
+   const statsQueries = {
+     totalInvoices30Days: `
+      SELECT COUNT(*) AS count FROM invoices 
+      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
+      AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+    `,
+     totalRevenue30Days: `
+      SELECT COALESCE(SUM(final_amount), 0) AS sum FROM invoices 
+      WHERE user_id = ? AND status IN ('paid', 'partially_paid')
+      ${organizationId ? "AND organization_id = ?" : ""}
+      AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+    `,
+     outstandingAmount: `
+      SELECT COALESCE(SUM(remaining_amount), 0) AS sum FROM invoices 
+      WHERE user_id = ? AND (status = 'pending' OR status = 'partially_paid') 
+      ${organizationId ? "AND organization_id = ?" : ""}
+    `,
+     totalExpenses30Days: `
+      SELECT COALESCE(SUM(amount), 0) AS sum FROM expenses 
+      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
+      AND expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+    `,
+     inventoryStats: `
+      SELECT 
+        COUNT(*) AS total_items,
+        SUM(CASE WHEN stock_quantity <= reorder_level THEN 1 ELSE 0 END) AS low_stock_items
+      FROM inventory_items
+      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
+    `,
+   };
+
   const timeRange = req.body.timeRange || "30days";
 
   
@@ -36,36 +67,6 @@ router.post("/getDashboardStats", (req, res) => {
 
   dateCondition = `AND date >= '${startDate.toISOString().split("T")[0]}'`;
 
-  const statsQueries = {
-    totalInvoices30Days: `
-      SELECT COUNT(*) AS count FROM invoices 
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-      AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    `,
-    totalRevenue30Days: `
-      SELECT COALESCE(SUM(final_amount), 0) AS sum FROM invoices 
-      WHERE user_id = ? AND status IN ('paid', 'partially_paid')
-      ${organizationId ? "AND organization_id = ?" : ""}
-      AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    `,
-    outstandingAmount: `
-      SELECT COALESCE(SUM(remaining_amount), 0) AS sum FROM invoices 
-      WHERE user_id = ? AND (status = 'pending' OR status = 'partially_paid') 
-      ${organizationId ? "AND organization_id = ?" : ""}
-    `,
-    totalExpenses30Days: `
-      SELECT COALESCE(SUM(amount), 0) AS sum FROM expenses 
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-      AND expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    `,
-    inventoryStats: `
-      SELECT 
-        COUNT(*) AS total_items,
-        SUM(CASE WHEN stock_quantity <= reorder_level THEN 1 ELSE 0 END) AS low_stock_items
-      FROM inventory_items
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-    `,
-  };
 
   const recentActivitiesQuery = `
     (

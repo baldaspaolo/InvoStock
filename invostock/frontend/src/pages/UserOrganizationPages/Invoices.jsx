@@ -228,7 +228,7 @@ const Invoices = () => {
             sortMode="single"
             removableSort
           >
-            <Column field="id" header="ID" sortable></Column>
+            <Column field="custom_invoice_code" header="ID" sortable></Column>
             <Column
               header="Klijent"
               body={(rowData) =>

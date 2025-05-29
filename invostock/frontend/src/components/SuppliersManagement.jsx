@@ -43,6 +43,11 @@ const SuppliersManagement = ({ user }) => {
     try {
       await fetch(`${API_URL}/api/suppliers/deleteSupplier/${id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          organizationId: user.organization_id,
+        }),
       });
       toast.current.show({
         severity: "success",
@@ -63,6 +68,8 @@ const SuppliersManagement = ({ user }) => {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
             name: editSupplier.name,
             address: editSupplier.address,
             phone: editSupplier.phone,

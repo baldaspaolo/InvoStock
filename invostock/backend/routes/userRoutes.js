@@ -353,34 +353,146 @@ router.delete("/deleteUser/:id", (req, res) => {
   });
 });
 
+
+router.delete("/deleteOrgUser/:id", (req, res) => {
+  const userIdToRemove = req.params.id;
+  const { adminId } = req.body;
+
+  if (!adminId || !userIdToRemove) {
+    return res.status(400).json({ error: "Nedostaje ID administratora ili korisnika." });
+  }
+
+  const adminQuery = "SELECT * FROM users WHERE id = ?";
+  db.query(adminQuery, [adminId], (err1, adminResult) => {
+    if (err1) {
+      console.error("Greška pri provjeri administratora:", err1);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    if (adminResult.length === 0) {
+      return res.status(404).json({ error: "Administrator nije pronađen." });
+    }
+
+    const admin = adminResult[0];
+
+    if (admin.org_role !== "admin") {
+      return res.status(403).json({ error: "Nemate ovlasti za ovu radnju." });
+    }
+
+    const userQuery = "SELECT * FROM users WHERE id = ?";
+    db.query(userQuery, [userIdToRemove], (err2, userResult) => {
+      if (err2) {
+        console.error("Greška pri dohvaćanju korisnika:", err2);
+        return res.status(500).json({ error: "Greška na serveru." });
+      }
+
+      if (userResult.length === 0) {
+        return res.status(404).json({ error: "Korisnik nije pronađen." });
+      }
+
+      const targetUser = userResult[0];
+
+      if (targetUser.organization_id !== admin.organization_id) {
+        return res.status(403).json({ error: "Korisnik ne pripada vašoj organizaciji." });
+      }
+
+      const updateQuery = "UPDATE users SET organization_id = NULL, org_role = NULL WHERE id = ?";
+      db.query(updateQuery, [userIdToRemove], (err3, result) => {
+        if (err3) {
+          console.error("Greška kod uklanjanja korisnika iz organizacije:", err3);
+          return res.status(500).json({ error: "Greška na serveru." });
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: "Korisnik je uspješno uklonjen iz organizacije.",
+        });
+      });
+    });
+  });
+});
+
+
 router.put("/updateUser/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, email, password } = req.body;
+  const { name, email, newPassword, currentPassword } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: "Ime i email su obavezni." });
   }
 
-  let query = "";
-  let values = [];
+  if (newPassword && newPassword.trim() !== "") {
+    db.query(
+      "SELECT password FROM users WHERE id = ?",
+      [id],
+      async (err, results) => {
+        if (err) return res.status(500).json({ error: "Greška na serveru." });
+        if (results.length === 0)
+          return res.status(404).json({ error: "Korisnik nije pronađen." });
 
-  if (password && password.trim() !== "") {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    query = "UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?";
-    values = [name, email, hashedPassword, id];
+        const isMatch = await bcrypt.compare(
+          currentPassword,
+          results[0].password
+        );
+        if (!isMatch) {
+          return res
+            .status(401)
+            .json({ success: false, message: "Pogrešna lozinka." });
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        db.query(
+          "UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?",
+          [name, email, hashed, id],
+          (updateErr) => {
+            if (updateErr)
+              return res.status(500).json({ error: "Greška kod spremanja." });
+            res
+              .status(200)
+              .json({ success: true, message: "Korisnik je ažuriran." });
+          }
+        );
+      }
+    );
   } else {
-    query = "UPDATE users SET name = ?, email = ? WHERE id = ?";
-    values = [name, email, id];
+    db.query(
+      "UPDATE users SET name = ?, email = ? WHERE id = ?",
+      [name, email, id],
+      (err) => {
+        if (err) {
+          console.error("Greška kod ažuriranja korisnika:", err);
+          return res.status(500).json({ error: "Greška na serveru." });
+        }
+
+        res
+          .status(200)
+          .json({ success: true, message: "Korisnik je ažuriran." });
+      }
+    );
+  }
+});
+
+router.put("/deactivate", (req, res) => {
+  const { userId, password } = req.body;
+  if (!userId || !password) {
+    return res.status(400).json({ success: false, message: "Nedostaju podaci!" });
   }
 
-  db.query(query, values, (err, result) => {
-    if (err) {
-      console.error("Greška kod ažuriranja korisnika:", err);
-      return res.status(500).json({ error: "Greška na serveru." });
-    }
+  db.query("SELECT * FROM users WHERE id = ?", [userId], async (err, results) => {
+    if (err || results.length === 0) return res.status(500).json({ success: false, message: "Korisnik nije pronađen!" });
 
-    res.status(200).json({ message: "Korisnik je ažuriran." });
+    const user = results[0];
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ success: false, message: "Pogrešna lozinka." });
+
+    db.query("UPDATE users SET is_active = 0 WHERE id = ?", [userId], (err2) => {
+      if (err2) return res.status(500).json({ success: false, message: "Greška kod deaktivacije." });
+
+      return res.json({ success: true, message: "Račun deaktiviran." });
+    });
   });
 });
+
+
 
 module.exports = router;

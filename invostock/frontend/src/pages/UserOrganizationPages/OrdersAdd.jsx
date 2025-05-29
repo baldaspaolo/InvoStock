@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
@@ -9,11 +9,15 @@ import { Column } from "primereact/column";
 import { Dialog } from "primereact/dialog";
 import { Dropdown } from "primereact/dropdown";
 import { RadioButton } from "primereact/radiobutton";
+import { Toast } from "primereact/toast";
+import { useNavigate } from "react-router-dom";
 
 import SupplierAdd from "../../components/SupplierAdd";
 
 const OrdersAdd = () => {
   const { user } = useContext(AuthContext);
+  const toast = useRef(null);
+  const navigate = useNavigate();
 
   const [suppliers, setSuppliers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
@@ -81,10 +85,20 @@ const OrdersAdd = () => {
     fetchInventory();
   }, [user]);
 
+  const toLocalISOString = (date) => {
+    return new Date(
+      date.getTime() - date.getTimezoneOffset() * 60000
+    ).toISOString();
+  };
+
   const handleSubmit = async () => {
     if (!selectedSupplier || !orderDate || orderItems.length === 0) {
-      alert("Molimo ispunite sve podatke.");
-      return;
+      toast.current.show({
+        severity: "error",
+        summary: "Nedostajući podaci",
+        detail: "Molimo popunite sve podatke!",
+        life: 2000,
+      });
     }
 
     try {
@@ -97,7 +111,7 @@ const OrdersAdd = () => {
             userId: user.id,
             organizationId: user.organization_id,
             supplierId: selectedSupplier.id,
-            orderDate: orderDate.toISOString().slice(0, 10),
+            orderDate: toLocalISOString(orderDate).slice(0, 10),
             totalPrice: totalSum.toFixed(2),
             items: orderItems.map((item) => ({
               name: item.item_name,
@@ -113,7 +127,17 @@ const OrdersAdd = () => {
       const data = await res.json();
 
       if (data.success) {
-        alert("Narudžbenica uspješno spremljena.");
+        toast.current.show({
+          severity: "success",
+          summary: "Uspjeh",
+          detail: "Narudžbenica je spremljena",
+          life: 2000,
+        });
+
+        setTimeout(() => {
+          navigate("/orders");
+        }, 1000);
+
         setSelectedSupplier(null);
         setOrderDate(null);
         setOrderItems([]);
@@ -121,7 +145,12 @@ const OrdersAdd = () => {
         alert("Greška: " + (data.error || "Nepoznata greška."));
       }
     } catch (err) {
-      console.error("Greška kod spremanja narudžbenice:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Greška kod spremanja narudžbenice",
+        life: 2000,
+      });
     }
   };
 
@@ -153,7 +182,6 @@ const OrdersAdd = () => {
               />
               <Button
                 icon="pi pi-plus"
-    
                 severity="success"
                 size="small"
                 style={{ width: "2.5rem", height: "2.5rem" }}
@@ -355,25 +383,62 @@ const OrdersAdd = () => {
             <Button
               label="Dodaj ručno"
               icon="pi pi-plus"
-              onClick={() => {
+              onClick={async () => {
                 const total_price = manualItem.quantity * manualItem.price;
-                const newItem = {
-                  id: orderItems.length + 1,
-                  item_name: manualItem.name,
-                  item_description: manualItem.category,
-                  category: manualItem.category,
-                  quantity: manualItem.quantity,
-                  price: manualItem.price,
-                  total_price,
-                };
-                setOrderItems([...orderItems, newItem]);
-                setManualItem({
-                  name: "",
-                  category: "",
-                  quantity: 1,
-                  price: 0,
-                });
-                setShowItemSearchDialog(false);
+
+                try {
+                  const res = await fetch(
+                    `${
+                      import.meta.env.VITE_API_URL
+                    }/api/inventory/checkOrAddItem`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        userId: user.id,
+                        organizationId: user.organization_id,
+                        item_name: manualItem.name,
+                        category: manualItem.category,
+                        price: manualItem.price,
+                      }),
+                    }
+                  );
+
+                  const data = await res.json();
+
+                  if (data.item) {
+                    const newItem = {
+                      id: orderItems.length + 1,
+                      item_name: data.item.item_name,
+                      item_description: data.item.category,
+                      category: data.item.category,
+                      quantity: manualItem.quantity,
+                      price: manualItem.price,
+                      total_price,
+                    };
+                    setOrderItems([...orderItems, newItem]);
+                    setManualItem({
+                      name: "",
+                      category: "",
+                      quantity: 1,
+                      price: 0,
+                    });
+                    setShowItemSearchDialog(false);
+                  } else {
+                    toast.current?.show({
+                      severity: "error",
+                      summary: "Greška",
+                      detail: data.error || "Artikal nije spremljen.",
+                    });
+                  }
+                } catch (err) {
+                  console.error("Greška kod unosa artikla:", err);
+                  toast.current?.show({
+                    severity: "error",
+                    summary: "Greška",
+                    detail: "Nije moguće spremiti artikl.",
+                  });
+                }
               }}
             />
           </div>
@@ -392,6 +457,7 @@ const OrdersAdd = () => {
           }}
         />
       </Dialog>
+      <Toast ref={toast} />
     </div>
   );
 };

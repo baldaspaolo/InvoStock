@@ -38,8 +38,19 @@ const Login = () => {
 
       const data = await response.json();
 
-      if (data.success) {
-        login(data.user); 
+      if (response.ok && data.success) {
+        if (data.user.is_active === 0 || data.user.is_active === false) {
+          window.toast.show({
+            severity: "error",
+            summary: "Račun deaktiviran",
+            detail: "Vaš račun je deaktiviran. Obratite se administratoru.",
+            life: 3000,
+          });
+          return;
+        }
+
+        // Prijava korisnika
+        login(data.user);
 
         window.toast.show({
           severity: "success",
@@ -56,10 +67,16 @@ const Login = () => {
           }
         }, 1500);
       } else {
+        // Obrada poznatih poruka (npr. deaktivacija)
+        const errorMessage =
+          data?.message === "Vaš račun je deaktiviran."
+            ? "Vaš račun je deaktiviran. Obratite se administratoru."
+            : "Provjerite email i lozinku.";
+
         window.toast.show({
           severity: "error",
           summary: "Neuspješna prijava",
-          detail: "Provjerite email i lozinku.",
+          detail: errorMessage,
           life: 3000,
         });
       }
@@ -73,6 +90,7 @@ const Login = () => {
       });
     }
   };
+
 
 
   return (

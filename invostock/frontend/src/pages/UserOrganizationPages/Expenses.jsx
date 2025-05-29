@@ -35,6 +35,7 @@ const Expenses = () => {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [summary, setSummary] = useState(null);
   const [interval, setInterval] = useState("last_30_days");
+  const [stats, setStats] = useState(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -83,7 +84,7 @@ const Expenses = () => {
     const [start, end] = getRange(interval);
     if (!start || !end) return;
 
-    const fetchSummary = async () => {
+    const fetchStats = async () => {
       try {
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/expenses/getExpenseSummary`,
@@ -93,20 +94,18 @@ const Expenses = () => {
             body: JSON.stringify({
               userId: user.id,
               organizationId: user.organization_id,
-              startDate: start,
-              endDate: end,
             }),
           }
         );
         const data = await res.json();
-        if (data.success) setSummary((parseFloat(data.total) || 0).toFixed(2));
+        if (data.success) setStats(data);
       } catch (err) {
-        console.error("Greška kod sažetka:", err);
+        console.error("Greška kod dohvaćanja općih statistika:", err);
       }
     };
 
-    fetchSummary();
-  }, [interval, user]);
+    if (user?.id) fetchStats();
+  }, [user]);
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -116,7 +115,10 @@ const Expenses = () => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user?.id }),
+            body: JSON.stringify({
+              userId: user?.id,
+              organizationId: user?.organization_id,
+            }),
           }
         );
         const data = await res.json();
@@ -310,32 +312,43 @@ const Expenses = () => {
 
       <div className="div4">
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
-          <Panel
-            header="Ukupni trošak"
-            style={{ marginBottom: "1rem", fontSize: "0.9rem" }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+          {stats && (
+            <Panel
+              header="Statistika troškova"
+              style={{ marginBottom: "1rem", fontSize: "0.9rem" }}
             >
-              <h3 style={{ margin: 0 }}>{summary} €</h3>
-              <Dropdown
-                value={interval}
-                options={[
-                  { label: "15 dana", value: "last_15_days" },
-                  { label: "30 dana", value: "last_30_days" },
-                  { label: "Ovaj mjesec", value: "this_month" },
-                  { label: "Ovaj kvartal", value: "this_quarter" },
-                  { label: "Ova godina", value: "this_year" },
-                ]}
-                onChange={(e) => setInterval(e.value)}
-                style={{ width: "12rem" }}
-              />
-            </div>
-          </Panel>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))",
+                  gap: "1rem",
+                }}
+              >
+                <div>
+                  <strong>30 dana:</strong>
+                  <br />
+                  {parseFloat(stats.last30Days).toFixed(2)} €
+                </div>
+                <div>
+                  <strong>3 mjeseca:</strong>
+                  <br />
+                  {parseFloat(stats.last3Months).toFixed(2)} €
+                </div>
+                <div>
+                  <strong>Zadnja godina:</strong>
+                  <br />
+                  {parseFloat(stats.lastYear).toFixed(2)} €
+                </div>
+                <div>
+                  <strong>Top kategorija (ukupno):</strong>
+                  <br />
+                  {stats.topCategory?.category || "N/A"}
+                  <br />
+                  {parseFloat(stats.topCategory?.total || 0).toFixed(2)} €
+                </div>
+              </div>
+            </Panel>
+          )}
           <div
             style={{
               display: "grid",
@@ -382,6 +395,7 @@ const Expenses = () => {
             value={filteredExpenses}
             paginator
             rows={5}
+            rowsPerPageOptions={[5, 10, 25, 50]}
             emptyMessage="Nema pronađenih troškova."
             dataKey="id"
             expandedRows={expandedRows}
@@ -411,7 +425,7 @@ const Expenses = () => {
             <Column field="custom_expense_code" header="ID" sortable />
             <Column field="name" header="Naslov" sortable />
             <Column
-              field="date"
+              field="expense_date"
               header="Datum"
               sortable
               body={(rowData) => formatDate(rowData.expense_date)}

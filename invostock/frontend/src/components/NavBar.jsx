@@ -44,7 +44,7 @@ export default function Navbar() {
         if (data.success) {
           const transformed = data.notifications.map((n) => ({
             ...n,
-            read: n.read === 1,
+            read: !!n.is_read, // ispravka ovdje
           }));
           setNotifications(transformed);
         }
@@ -80,7 +80,7 @@ export default function Navbar() {
       });
 
       if (data.success) {
-        setNotifications((prev) => prev.map((n) => ({ ...n, read: 1 })));
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       }
     } catch (error) {
       console.error("Greška:", error);
@@ -228,13 +228,13 @@ export default function Navbar() {
 
   return (
     <div className="navbar-fixed">
-      <Toast ref={toast} />
+      <Toast ref={toast} position="top-left" />
 
       {user?.role === "systemadmin" ? (
         <div
           style={{
             display: "flex",
-            justifyContent: "flex-end", 
+            justifyContent: "flex-end",
             padding: "0.5rem 1rem",
             backgroundColor: "#f8f9fa",
           }}
@@ -269,7 +269,10 @@ export default function Navbar() {
               <Button
                 label="Otvori centar"
                 icon="pi pi-external-link"
-                onClick={() => navigate("/notifications")}
+                onClick={(e) => {
+                  op.current?.hide();
+                  navigate(`/notifications`);
+                }}
                 text
                 size="small"
                 style={{ marginBottom: "8%", fontSize: "0.88rem" }}
@@ -290,7 +293,10 @@ export default function Navbar() {
                       marginBottom: "0.5rem",
                       cursor: "pointer",
                     }}
-                    onClick={() => navigate(`/notifications/${n.id}`)}
+                    onClick={(e) => {
+                      op.current?.hide();
+                      navigate(`/notifications/${n.id}`);
+                    }}
                   >
                     <strong>{n.title}</strong>
                     <p style={{ margin: "0.3rem 0" }}>{n.message}</p>

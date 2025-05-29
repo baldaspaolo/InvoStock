@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useMemo,
+  useCallback,
+} from "react";
 import { Card } from "primereact/card";
 import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
@@ -8,9 +14,12 @@ import { InputText } from "primereact/inputtext";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { AuthContext } from "../../context/AuthContext";
+import { Panel } from "primereact/panel";
+
 import "./style.css";
 
 import ExpandedSalesOrder from "../../components/ExpandedSalesOrder";
+import SalesOrderDetails from "../../components/SalesOrderDetails";
 
 const Packages = () => {
   const { user } = useContext(AuthContext);
@@ -29,84 +38,134 @@ const Packages = () => {
   const [expandedRows, setExpandedRows] = useState(null);
   const [courier, setCourier] = useState("");
   const [showAllDelivered, setShowAllDelivered] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
 
-  const fetchPackages = async () => {
-    const res = await fetch(`${API_URL}/api/packages/getUserPackages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user.id,
-        organizationId: user.organization_id,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) setPackages(data.packages);
+  const couriers = useMemo(
+    () => [
+      "GLS",
+      "Paket24 - Hrvatska Pošta",
+      "Overseas",
+      "FedEx",
+      "DHL",
+      "BoxNow",
+      "UPS",
+    ],
+    []
+  );
+
+  const fetchPackages = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/packages/getUserPackages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          organizationId: user.organization_id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) setPackages(data.packages);
+    } catch (error) {
+      console.error("Error fetching packages:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL, user.id, user.organization_id]);
+
+  const fetchContacts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          organizationId: user.organization_id,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setContacts(
+          data.contacts.map((c) => ({
+            label: `${c.first_name} ${c.last_name}`,
+            value: c.id,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching contacts:", error);
+    }
+  }, [API_URL, user.id, user.organization_id]);
+
+  const fetchSalesOrders = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/sales/getOrders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          organizationId: user.organization_id,
+        }),
+      });
+      const data = await res.json();
+      console.log("SALES ORDERS", data.orders);
+
+      if (data.success) setSalesOrders(data.orders);
+    } catch (error) {
+      console.error("Error fetching sales orders:", error);
+    }
+  }, [API_URL, user.id, user.organization_id]);
+
+  const fetchOrderDetails = async (orderId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/sales/getOrderDetails`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSelectedOrderDetails({
+          order: data.order,
+          items: data.items,
+        });
+        setShowOrderDialog(true);
+      }
+    } catch (error) {
+      console.error("Error fetching order details:", error);
+    }
   };
 
   useEffect(() => {
-    if (packages.length && salesOrders.length) {
-      const usedSalesOrderIds = new Set(
-        packages.map((pkg) => pkg.sales_order_id).filter((id) => id !== null)
-      );
+    const loadData = async () => {
+      await Promise.all([fetchPackages(), fetchContacts(), fetchSalesOrders()]);
+    };
+    loadData();
+  }, [fetchPackages, fetchContacts, fetchSalesOrders]);
 
-      const availableOrders = salesOrders.filter(
-        (order) => !usedSalesOrderIds.has(order.id)
-      );
+  const filteredSalesOrders = useMemo(() => {
+    if (!packages.length || !salesOrders.length) return salesOrders;
 
-      setSalesOrders(availableOrders);
-    }
+    const usedSalesOrderIds = new Set(
+      packages.map((pkg) => pkg.sales_order_id).filter((id) => id !== null)
+    );
+    return salesOrders.filter((order) => !usedSalesOrderIds.has(order.id));
   }, [packages, salesOrders]);
 
-  const fetchContacts = async () => {
-    const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user.id,
-        organizationId: user.organizationId,
-      }),
-    });
-    console.log("Saljem: ", user.id, user.organization_id);
-    const data = await res.json();
-    if (data.success) {
-      console.log("Kontakti", data);
-      setContacts(
-        data.contacts.map((c) => ({
-          label: `${c.first_name} ${c.last_name}`,
-          value: c.id,
-        }))
-      );
-    }
-  };
-
-  const fetchSalesOrders = async () => {
-    const res = await fetch(`${API_URL}/api/sales/getOrders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: user.id,
-        organizationId: user.organization_id,
-      }),
-    });
-    const data = await res.json();
-    if (data.success) setSalesOrders(data.orders);
-    console.log("Sales: ", data);
-  };
-
-  useEffect(() => {
-    fetchPackages();
-    fetchContacts();
-    fetchSalesOrders();
-  }, []);
-
   const updatePackageStatus = async (pkgId, newStatus) => {
-    await fetch(`${API_URL}/api/packages/updatePackageStatus`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packageId: pkgId, status: newStatus }),
-    });
-    fetchPackages();
-    setShowDialog(false);
+    try {
+      await fetch(`${API_URL}/api/packages/updatePackageStatus`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId: pkgId, status: newStatus }),
+      });
+      fetchPackages();
+      setShowDialog(false);
+    } catch (error) {
+      console.error("Error updating package status:", error);
+    }
   };
 
   const handlePackageClick = (pkg) => {
@@ -114,33 +173,27 @@ const Packages = () => {
     setShowDialog(true);
   };
 
-  const couriers = [
-    "GLS",
-    "Paket24 - Hrvatska Pošta",
-    "Overseas",
-    "FedEx",
-    "DHL",
-    "BoxNow",
-    "UPS",
-  ];
-
   const handleAddPackage = async () => {
-    const payload = {
-      userId: user.id,
-      organizationId: user.organization_id,
-      contactId:
-        addMode === "manual" ? selectedContact : selectedOrder.contact_id,
-      salesOrderId: addMode === "order" ? selectedOrder.id : null,
-      description,
-      courier,
-    };
-    await fetch(`${API_URL}/api/packages/createPackage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    resetAddForm();
-    fetchPackages();
+    try {
+      const payload = {
+        userId: user.id,
+        organizationId: user.organization_id,
+        contactId:
+          addMode === "manual" ? selectedContact : selectedOrder.contact_id,
+        salesOrderId: addMode === "order" ? selectedOrder.id : null,
+        description,
+        courier,
+      };
+      await fetch(`${API_URL}/api/packages/createPackage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      resetAddForm();
+      fetchPackages();
+    } catch (error) {
+      console.error("Error adding package:", error);
+    }
   };
 
   const resetAddForm = () => {
@@ -152,41 +205,57 @@ const Packages = () => {
     setCourier("");
   };
 
-  const grouped = {
-    not_shipped: [],
-    shipped: [],
-    delivered: [],
-  };
+  const groupedPackages = useMemo(() => {
+    const grouped = {
+      not_shipped: [],
+      shipped: [],
+      delivered: [],
+    };
 
-  const sortedPackages = [...packages].sort(
-    (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    const sortedPackages = [...packages].sort(
+      (a, b) => new Date(b.created_at) - new Date(a.created_at)
+    );
+
+    sortedPackages.forEach((pkg) => grouped[pkg.status]?.push(pkg));
+    return grouped;
+  }, [packages]);
+
+  const cardStyle = useMemo(
+    () => ({
+      maxWidth: "90%",
+      margin: "0.3rem auto",
+      padding: "0.1rem",
+      boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
+      borderRadius: "10px",
+      cursor: "pointer",
+      fontSize: "0.85rem",
+      lineHeight: "0.2rem",
+    }),
+    []
   );
 
-  sortedPackages.forEach((pkg) => grouped[pkg.status]?.push(pkg));
-
-  const cardStyle = {
-    maxWidth: "90%",
-    margin: "0.3rem auto",
-    padding: "0.1rem",
-    boxShadow: "0 1px 4px rgba(0, 0, 0, 0.08)",
-    borderRadius: "10px",
-    cursor: "pointer",
-    fontSize: "0.85rem",
-    lineHeight: "0.2rem",
-  };
-
-  const getHeaderStyle = (color) => ({
-    backgroundColor: color,
-    padding: "0.75rem 1rem",
-    fontWeight: "bold",
-    fontSize: "0.95rem",
-    color: "#333",
-    borderTopLeftRadius: "10px",
-    borderTopRightRadius: "10px",
-  });
+  const getHeaderStyle = useCallback(
+    (color) => ({
+      backgroundColor: color,
+      padding: "0.75rem 1rem",
+      fontWeight: "bold",
+      fontSize: "0.95rem",
+      color: "#333",
+      borderTopLeftRadius: "10px",
+      borderTopRightRadius: "10px",
+    }),
+    []
+  );
 
   return (
-    <div className="parent" style={{ margin: "5%" }}>
+    <div
+      className="parent"
+      style={{
+        marginTop: "5%",
+        marginLeft: "10%",
+        marginRight: "10%",
+      }}
+    >
       <div className="div1">
         <h1>Paketi</h1>
       </div>
@@ -207,7 +276,6 @@ const Packages = () => {
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
             gap: "2rem",
-            marginTop: "2rem",
           }}
         >
           {[
@@ -230,7 +298,7 @@ const Packages = () => {
                 }}
               >
                 {key !== "delivered" ? (
-                  grouped[key].map((pkg) => (
+                  groupedPackages[key].map((pkg) => (
                     <Card
                       key={pkg.id}
                       onClick={() => handlePackageClick(pkg)}
@@ -249,7 +317,7 @@ const Packages = () => {
                   ))
                 ) : (
                   <>
-                    {grouped[key].slice(0, 4).map((pkg) => (
+                    {groupedPackages[key].slice(0, 4).map((pkg) => (
                       <Card
                         key={pkg.id}
                         onClick={() => handlePackageClick(pkg)}
@@ -266,7 +334,7 @@ const Packages = () => {
                         </p>
                       </Card>
                     ))}
-                    {grouped[key].length > 4 && (
+                    {groupedPackages[key].length > 4 && (
                       <Button
                         label="Prikaži sve"
                         onClick={() => setShowAllDelivered(true)}
@@ -290,11 +358,12 @@ const Packages = () => {
           onHide={() => setShowAllDelivered(false)}
         >
           <DataTable
-            value={grouped.delivered}
+            value={groupedPackages.delivered}
             paginator
             rows={10}
             rowsPerPageOptions={[5, 10, 25, 50]}
             style={{ width: "100%" }}
+            loading={loading}
           >
             <Column
               field="created_at"
@@ -311,6 +380,21 @@ const Packages = () => {
             <Column
               header="Prodajni nalog"
               body={(rowData) => rowData.order_code || "-"}
+            />
+            <Column
+              header="Akcija"
+              body={(rowData) =>
+                rowData.sales_order_id ? (
+                  <Button
+                    label="Detalji naloga"
+                    icon="pi pi-eye"
+                    className="p-button-sm p-button-text"
+                    onClick={() => fetchOrderDetails(rowData.sales_order_id)}
+                  />
+                ) : (
+                  "-"
+                )
+              }
             />
           </DataTable>
         </Dialog>
@@ -341,6 +425,7 @@ const Packages = () => {
                 options={contacts}
                 onChange={(e) => setSelectedContact(e.value)}
                 placeholder="Odaberite klijenta"
+                filter
               />
               <Dropdown
                 value={courier}
@@ -348,6 +433,7 @@ const Packages = () => {
                 onChange={(e) => setCourier(e.value)}
                 placeholder="Odaberite kurira"
                 style={{ marginTop: "1rem" }}
+                filter
               />
 
               <InputText
@@ -361,20 +447,21 @@ const Packages = () => {
                 icon="pi pi-check"
                 onClick={handleAddPackage}
                 style={{ marginTop: "1rem" }}
-                disabled={!selectedContact}
+                disabled={!selectedContact || !courier}
               />
             </div>
           ) : (
             <>
               {!selectedOrder ? (
                 <DataTable
-                  value={salesOrders}
+                  value={filteredSalesOrders}
                   expandedRows={expandedRows}
                   onRowToggle={(e) => setExpandedRows(e.data)}
                   rowExpansionTemplate={(data) => (
                     <ExpandedSalesOrder orderId={data.id} apiUrl={API_URL} />
                   )}
                   dataKey="id"
+                  loading={loading}
                 >
                   <Column expander style={{ width: "3em" }} />
                   <Column field="id" header="Broj naloga" />
@@ -411,6 +498,7 @@ const Packages = () => {
                     onChange={(e) => setCourier(e.value)}
                     placeholder="Odaberite kurira"
                     style={{ marginTop: "1rem" }}
+                    filter
                   />
                   <InputText
                     value={description}
@@ -419,12 +507,21 @@ const Packages = () => {
                     style={{ marginTop: "1rem" }}
                   />
 
-                  <Button
-                    label="Dodaj"
-                    icon="pi pi-check"
-                    onClick={handleAddPackage}
-                    style={{ marginTop: "1rem" }}
-                  />
+                  <div
+                    style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}
+                  >
+                    <Button
+                      label="Odustani"
+                      severity="secondary"
+                      onClick={() => setSelectedOrder(null)}
+                    />
+                    <Button
+                      label="Dodaj"
+                      icon="pi pi-check"
+                      onClick={handleAddPackage}
+                      disabled={!courier}
+                    />
+                  </div>
                 </div>
               )}
             </>
@@ -449,7 +546,18 @@ const Packages = () => {
 
               <p>
                 <strong>Prodajni nalog:</strong>{" "}
-                {selectedPackage.order_code || "-"}
+                {selectedPackage.sales_order_id ? (
+                  <Button
+                    label={selectedPackage.order_code}
+                    icon="pi pi-eye"
+                    className="p-button-text p-button-sm"
+                    onClick={() =>
+                      fetchOrderDetails(selectedPackage.sales_order_id)
+                    }
+                  />
+                ) : (
+                  "-"
+                )}
               </p>
               <p>
                 <strong>Način slanja:</strong> {selectedPackage.courier || "-"}
@@ -494,6 +602,22 @@ const Packages = () => {
                 />
               )}
             </div>
+          )}
+        </Dialog>
+        <Dialog
+          header="Detalji prodajnog naloga"
+          visible={showOrderDialog}
+          style={{ width: "60vw" }}
+          onHide={() => {
+            setShowOrderDialog(false);
+            setSelectedOrderDetails(null);
+          }}
+        >
+          {selectedOrderDetails && (
+            <SalesOrderDetails
+              order={selectedOrderDetails.order}
+              items={selectedOrderDetails.items}
+            />
           )}
         </Dialog>
       </div>

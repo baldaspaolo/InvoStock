@@ -7,7 +7,7 @@ function generateCustomCode(prefix, date, orgOrUserCode, count) {
     .toLocaleDateString("hr-HR")
     .split(".")
     .reverse()
-    .join(""); 
+    .join("");
   return `${prefix}-${formattedDate}-${orgOrUserCode}-${count}`;
 }
 
@@ -19,13 +19,10 @@ router.post("/createOrder", (req, res) => {
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
-  const countQuery = `
-    SELECT COUNT(*) AS order_count
-    FROM sales_orders
-    WHERE user_id = ? AND ${
-      organizationId ? "organization_id = ?" : "organization_id IS NULL"
-    }
-  `;
+  const countQuery = organizationId
+    ? `SELECT COUNT(*) AS order_count FROM sales_orders WHERE user_id = ? AND organization_id = ?`
+    : `SELECT COUNT(*) AS order_count FROM sales_orders WHERE user_id = ? AND organization_id IS NULL`;
+
   const countParams = organizationId ? [userId, organizationId] : [userId];
 
   db.query(countQuery, countParams, (err1, result1) => {
@@ -105,24 +102,28 @@ router.post("/getOrders", (req, res) => {
 
   let query = `
     SELECT 
-      sales_orders.*,
-      contacts.first_name,
-      contacts.last_name
-    FROM sales_orders
-    LEFT JOIN contacts ON sales_orders.contact_id = contacts.id
-    WHERE sales_orders.user_id = ?
+  so.*,
+  c.first_name,
+  c.last_name,
+  i.status AS invoice_status,
+  p.status AS package_status
+FROM sales_orders so
+LEFT JOIN contacts c ON so.contact_id = c.id
+LEFT JOIN invoices i ON so.invoice_id = i.id
+LEFT JOIN packages p ON p.sales_order_id = so.id
+WHERE so.user_id = ?
   `;
 
   const params = [userId];
 
   if (organizationId) {
-    query += " AND sales_orders.organization_id = ?";
+    query += " AND so.organization_id = ?";
     params.push(organizationId);
   } else {
-    query += " AND sales_orders.organization_id IS NULL";
+    query += " AND so.organization_id IS NULL";
   }
 
-  query += " ORDER BY sales_orders.created_at DESC";
+  query += " ORDER BY so.created_at DESC";
 
   db.query(query, params, (err, results) => {
     if (err) {
@@ -142,22 +143,29 @@ router.post("/getOrderDetails", (req, res) => {
   }
 
   const query1 = `
-    SELECT 
-      sales_orders.id,
-      sales_orders.invoice_id,
-      sales_orders.status,
-      sales_orders.notes,
-      sales_orders.discount,
-      sales_orders.custom_order_code,
-      sales_orders.created_at,
-      contacts.first_name,
-      contacts.last_name,
-      contacts.company_name,
-      contacts.email
-    FROM sales_orders
-    JOIN contacts ON sales_orders.contact_id = contacts.id
-    WHERE sales_orders.id = ?
-  `;
+  SELECT 
+  so.id,
+  so.invoice_id,
+  i.status AS invoice_status,
+  p.id AS package_id,
+  p.status AS package_status,
+  so.status,
+  so.close_reason,
+  so.notes,
+  so.discount,
+  so.custom_order_code,
+  so.created_at,
+  so.contact_id,
+  c.first_name,
+  c.last_name,
+  c.company_name,
+  c.email
+FROM sales_orders so
+JOIN contacts c ON so.contact_id = c.id
+LEFT JOIN invoices i ON so.invoice_id = i.id
+LEFT JOIN packages p ON p.sales_order_id = so.id
+WHERE so.id = ?
+`;
 
   db.query(query1, [orderId], (err1, result1) => {
     if (err1) {
@@ -243,6 +251,45 @@ router.post("/calculateOrderTotal", (req, res) => {
         total: parseFloat(finalTotal.toFixed(2)),
       });
     });
+  });
+});
+
+router.post("/markOrderComplete", (req, res) => {
+  const { orderId } = req.body;
+  const query = `UPDATE sales_orders SET status = 'completed' WHERE id = ?`;
+  db.query(query, [orderId], (err, result) => {
+    if (err) {
+      console.error("Greška kod zatvaranja naloga:", err);
+      return res.status(500).json({ error: "Greška kod zatvaranja naloga." });
+    }
+    res.json({ success: true, message: "Nalog uspješno označen kao završen." });
+  });
+});
+
+router.post("/closeOrder", (req, res) => {
+  const { orderId, reason } = req.body;
+
+  if (!orderId || !reason) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Nedostaje orderId ili razlog." });
+  }
+
+  const query = `
+    UPDATE sales_orders
+    SET status = 'closed', close_reason = ?
+    WHERE id = ?
+  `;
+
+  db.query(query, [reason, orderId], (err, result) => {
+    if (err) {
+      console.error("Greška kod zatvaranja naloga:", err);
+      return res
+        .status(500)
+        .json({ success: false, message: "Greška na serveru." });
+    }
+
+    res.status(200).json({ success: true, message: "Nalog zatvoren." });
   });
 });
 

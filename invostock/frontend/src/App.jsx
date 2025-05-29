@@ -40,6 +40,8 @@ import Organizations from "./pages/AdminPages/Organizations";
 import AdminProtectedRoutes from "./AdminProtectedRoutes";
 import OrganizationsItem from "./pages/AdminPages/OrganizationsItem";
 import AdminStatistics from "./pages/AdminPages/AdminStatistics";
+import NotificationsAdmin from "./pages/AdminPages/NotificationsAdmin";
+import NotificationsAdminAdd from "./pages/AdminPages/NotificationsAdminAdd";
 
 function App() {
   return (
@@ -65,7 +67,7 @@ function App() {
             <Route path="/invoices/:id/:user_id" element={<InvoiceItem />} />
             <Route path="/invoices/add" element={<InvoiceAdd />} />
             <Route path="/contacts" element={<Contacts />} />
-            <Route path="/inventoryItem" element={<InventoryItem />} />
+            <Route path="/inventory/:id" element={<InventoryItem />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/sales/:sale_id" element={<SalesItem />} />
             <Route path="/notifications" element={<Notifications />} />
@@ -95,6 +97,14 @@ function App() {
               element={<OrganizationsItem />}
             />
             <Route path="/admin/statistics" element={<AdminStatistics />} />
+            <Route
+              path="/admin/notifications"
+              element={<NotificationsAdmin />}
+            />
+            <Route
+              path="/admin/notifications/add"
+              element={<NotificationsAdminAdd />}
+            />
           </Route>
 
           <Route path="*" element={<Login />} />

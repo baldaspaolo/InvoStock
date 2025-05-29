@@ -1,10 +1,8 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef, useMemo } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 import { Toast } from "primereact/toast";
-import { useRef } from "react";
-
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -14,6 +12,7 @@ import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Calendar } from "primereact/calendar";
+import { Tag } from "primereact/tag";
 
 import "./style.css";
 
@@ -26,21 +25,27 @@ const statusOptions = [
 const Sales = () => {
   const { user } = useContext(AuthContext);
   const toast = useRef(null);
-
   const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
   const [statusFilter, setStatusFilter] = useState("svi");
   const [search, setSearch] = useState("");
-  const [summary, setSummary] = useState({});
   const [dialogVisible, setDialogVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [dueDate, setDueDate] = useState(null);
   const [invoiceDialogVisible, setInvoiceDialogVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const summary = useMemo(() => {
+    const open = orders.filter((o) => o.status === "open").length;
+    const closed = orders.filter((o) => o.status === "closed").length;
+    return { open, closed, total: orders.length };
+  }, [orders]);
 
   const fetchOrders = async () => {
+    setLoading(true);
     try {
       const response = await fetch(
         "http://localhost:3000/api/sales/getOrders",
@@ -55,6 +60,10 @@ const Sales = () => {
           }),
         }
       );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -78,38 +87,38 @@ const Sales = () => {
       setOrders(ordersWithTotals);
     } catch (error) {
       console.error("Greška pri dohvaćanju naloga:", error);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Neuspješno dohvaćanje naloga",
+        life: 4000,
+      });
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const fetchSummary = () => {
-    const open = orders.filter((o) => o.status === "open").length;
-    const closed = orders.filter((o) => o.status === "closed").length;
-    setSummary({ open, closed, total: orders.length });
   };
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  useEffect(() => {
-    fetchSummary();
-  }, [orders]);
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchesSearch = `${order.first_name} ${order.last_name}`
+        .toLowerCase()
+        .includes(search.toLowerCase());
 
-  const filteredOrders = orders.filter((order) => {
-    const matchesSearch = `${order.first_name} ${order.last_name}`
-      .toLowerCase()
-      .includes(search.toLowerCase());
+      const matchesStatus =
+        statusFilter === "svi" || order.status === statusFilter;
 
-    const matchesStatus =
-      statusFilter === "svi" || order.status === statusFilter;
+      const orderDate = new Date(order.created_at);
+      const matchesDateRange =
+        (!startDate || orderDate >= startDate) &&
+        (!endDate || orderDate <= endDate);
 
-    const orderDate = new Date(order.created_at);
-    const matchesDateRange =
-      (!startDate || orderDate >= startDate) &&
-      (!endDate || orderDate <= endDate);
-
-    return matchesSearch && matchesStatus && matchesDateRange;
-  });
+      return matchesSearch && matchesStatus && matchesDateRange;
+    });
+  }, [orders, search, statusFilter, startDate, endDate]);
 
   const handleRowClick = (e) => {
     navigate(`/sales/${e.data.id}`);
@@ -125,8 +134,26 @@ const Sales = () => {
     setInvoiceDialogVisible(true);
   };
 
+  const getStatusTag = (status) => {
+    const statusMap = {
+      open: { label: "Otvoren", severity: "info" },
+      closed: { label: "Zatvoren", severity: "success" },
+    };
+
+    const s = statusMap[status] || { label: "Nepoznato", severity: "warning" };
+    return <Tag value={s.label} severity={s.severity} />;
+  };
+
   const confirmCreateInvoice = async (createPackage) => {
-    if (!dueDate) return;
+    if (!dueDate) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Upozorenje",
+        detail: "Odaberite datum dospijeća",
+        life: 4000,
+      });
+      return;
+    }
 
     try {
       const itemsRes = await fetch(
@@ -201,9 +228,51 @@ const Sales = () => {
       message: "Jeste li sigurni da želite kreirati samo paket?",
       header: "Kreiraj paket",
       icon: "pi pi-info-circle",
-      accept: () => {
-        console.log("Kreiraj samo paket za orderId:", selectedOrder.id);
-        setDialogVisible(false);
+      accept: async () => {
+        try {
+          const payload = {
+            userId: user.id,
+            organizationId: user.organization_id,
+            contactId: selectedOrder.contact_id,
+            salesOrderId: selectedOrder.id,
+            courier: null,
+            description: null,
+          };
+
+          const response = await fetch(
+            "http://localhost:3000/api/packages/createPackage",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            toast.current.show({
+              severity: "success",
+              summary: "Paket kreiran",
+              detail: `Kod: ${data.custom_package_code}`,
+              life: 4000,
+            });
+            setDialogVisible(false);
+            fetchOrders();
+          } else {
+            throw new Error(data.error || "Greška prilikom kreiranja paketa.");
+          }
+        } catch (error) {
+          toast.current.show({
+            severity: "error",
+            summary: "Greška",
+            detail: "Neuspješno kreiranje paketa.",
+            life: 4000,
+          });
+          console.error("Greška pri kreiranju paketa:", error);
+        }
       },
     });
   };
@@ -332,6 +401,7 @@ const Sales = () => {
             style={{ fontSize: "0.9rem" }}
             onRowClick={handleRowClick}
             selectionMode="single"
+            loading={loading}
           >
             <Column field="custom_order_code" header="ID" sortable></Column>
             <Column
@@ -355,7 +425,12 @@ const Sales = () => {
               body={(rowData) => (rowData.invoice_id ? "Da" : "Ne")}
               sortable
             ></Column>
-            <Column field="status" header="Status" sortable></Column>
+            <Column
+              field="status"
+              header="Status"
+              body={(rowData) => getStatusTag(rowData.status)}
+              sortable
+            />
             <Column
               body={actionBodyTemplate}
               style={{ textAlign: "center", width: "4rem" }}

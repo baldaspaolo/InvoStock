@@ -140,5 +140,9 @@
 }
 
 .p-dropdown-panel {
+  width: 29%;
+}
+
+.p-confirm-dialog {
   width: 50%;
 }

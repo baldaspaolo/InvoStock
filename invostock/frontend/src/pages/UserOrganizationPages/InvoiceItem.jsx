@@ -9,6 +9,7 @@ import { Divider } from "primereact/divider";
 import { Toast } from "primereact/toast";
 import ExportUtility from "../../components/ExportUtility";
 import "./style.css";
+import Invoices from "./Invoices";
 
 const InvoiceItem = () => {
   const { user } = useContext(AuthContext);
@@ -21,91 +22,64 @@ const InvoiceItem = () => {
   const [invoiceData, setInvoiceData] = useState([]);
   const [contact, setContact] = useState([]);
 
-  const fetchInvoiceItems = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/invoices/getInvoiceItems`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ invoiceId: id }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch invoice items");
-      }
-
-      const data = await response.json();
-      setInvoiceItems(data.items);
-    } catch (error) {
-      console.error("Error fetching invoices:", error);
-    }
-  };
-
-  const fetchInvoiceData = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/invoices/getUserInovice`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ invoiceId: id }),
-        }
-      );
-
-      const data = await response.json();
-      setInvoiceData(data.invoice);
-    } catch (error) {
-      console.log("Greška u izvršavanju zahtjeva!", error);
-    }
-  };
-
-  const fetchInvoiceContact = async () => {
-    try {
-      if (invoiceData.length > 0 && invoiceData[0].contact_id) {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/contacts/getInvoiceContact`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ contactId: invoiceData[0].contact_id }),
-          }
-        );
-
-        const data = await response.json();
-        setContact(data.contact);
-      }
-    } catch (error) {
-      console.log("Greška u izvršavanju zahtjeva!", error);
-    }
-  };
-
   useEffect(() => {
-    const fetchData = async () => {
-      await fetchInvoiceItems();
-      await fetchInvoiceData();
+    const fetchEverything = async () => {
+      try {
+        const [itemsRes, dataRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/api/invoices/getInvoiceItems`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ invoiceId: id }),
+          }),
+          fetch(`${import.meta.env.VITE_API_URL}/api/invoices/getUserInvoice`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ invoiceId: id }),
+          }),
+        ]);
+  
+        const itemsData = await itemsRes.json();
+        const invoiceDataResponse = await dataRes.json();
+  
+        setInvoiceItems(itemsData.items || []);
+        setInvoiceData(invoiceDataResponse.invoice || []);
+  
+        const invoice = invoiceDataResponse.invoice?.[0];
+  
+        if (invoice?.contact_id) {
+          const contactRes = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/contacts/getInvoiceContact`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ contactId: invoice.contact_id }),
+            }
+          );
+          const contactData = await contactRes.json();
+  
+          // Ako kontakt nije array, pretvori ga
+          setContact(Array.isArray(contactData.contact) ? contactData.contact : [contactData.contact]);
+        }
+      } catch (err) {
+        console.error("Greška prilikom dohvata podataka:", err);
+      }
     };
-
-    fetchData();
+  
+    fetchEverything();
   }, [id]);
 
   useEffect(() => {
-    if (invoiceData.length > 0) {
-      fetchInvoiceContact();
-    }
-  }, [invoiceData]);
+    console.log("Invoice:", invoiceData);
+    console.log("Contact:", contact);
+  }, [invoiceData, contact]);
+  
 
   const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString("hr-HR");
+    return isNaN(date) ? "N/A" : date.toLocaleDateString("hr-HR");
   };
+  
 
   const getExcelData = () => {
     return [
@@ -132,10 +106,9 @@ const InvoiceItem = () => {
         item.total_price,
       ]),
       [],
-      ["Ukupno bez poreza:", invoiceData?.[0]?.total_amount || "0"],
-      ["Porez:", "0"],
+      ["Ukupno bez popusta:", invoiceData?.[0]?.total_amount || "0"],
       ["Popust:", invoiceData?.[0]?.discount || "0"],
-      ["Ukupan iznos:", invoiceData?.[0]?.total_amount || "0"],
+      ["Ukupan iznos:", invoiceData?.[0]?.final_amount || "0"],
     ];
   };
 
@@ -245,8 +218,7 @@ const InvoiceItem = () => {
                     {formatDate(invoiceData?.[0]?.due_date)}
                   </h4>
                   <h4 style={{ margin: "4px 0" }}>
-                    <span style={{ fontWeight: "normal" }}>Račun izdao:</span>{" "}
-                    Admin
+                    <span style={{ fontWeight: "normal" }}>Račun izdao: <b>{invoiceData?.[0]?.issuer_name}</b></span>{" "}
                   </h4>
                 </div>
               </div>
@@ -271,9 +243,8 @@ const InvoiceItem = () => {
             </div>
             <div style={{ textAlign: "right", fontSize: "0.9rem" }}>
               <h3>Vrijednost zbroja: {invoiceData?.[0]?.total_amount}</h3>
-              <h3>Porez: NE</h3>
               <h3>Popust: {invoiceData?.[0]?.discount}</h3>
-              <h3>Ukupno: {invoiceData?.[0]?.total_amount}</h3>
+              <h3>Ukupno: {invoiceData?.[0]?.final_amount}</h3>
             </div>
           </Panel>
         </div>
