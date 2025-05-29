@@ -23,10 +23,12 @@ router.post("/getUserInvoices", (req, res) => {
     query = `
       SELECT 
         invoices.*, 
-        contacts.first_name, 
-        contacts.last_name
+        contacts.first_name AS contact_first_name, 
+        contacts.last_name AS contact_last_name,
+        users.name AS issuer_name
       FROM invoices
       LEFT JOIN contacts ON invoices.contact_id = contacts.id
+      LEFT JOIN users ON invoices.user_id = users.id
       WHERE invoices.organization_id = ?
       ORDER BY invoices.invoice_date DESC
     `;
@@ -35,10 +37,12 @@ router.post("/getUserInvoices", (req, res) => {
     query = `
       SELECT 
         invoices.*, 
-        contacts.first_name, 
-        contacts.last_name
+        contacts.first_name AS contact_first_name, 
+        contacts.last_name AS contact_last_name,
+        users.name AS issuer_name
       FROM invoices
       LEFT JOIN contacts ON invoices.contact_id = contacts.id
+      LEFT JOIN users ON invoices.user_id = users.id
       WHERE invoices.user_id = ? AND invoices.organization_id IS NULL
       ORDER BY invoices.invoice_date DESC
     `;
@@ -54,6 +58,7 @@ router.post("/getUserInvoices", (req, res) => {
     res.status(200).json({ success: true, invoices: result });
   });
 });
+
 
 router.post("/getUserInvoicesSummary", (req, res) => {
   const { userId, organizationId } = req.body;
@@ -163,10 +168,13 @@ router.post("/getUserInvoice", (req, res) => {
   }
 
   const query = `
-    SELECT * 
-    FROM invoices
-    WHERE id = ?
-  `;
+  SELECT 
+    invoices.*, 
+    users.name AS issuer_name
+  FROM invoices
+  LEFT JOIN users ON invoices.user_id = users.id
+  WHERE invoices.id = ?
+`;
 
   db.query(query, [invoiceId], (err, results) => {
     if (err) {
