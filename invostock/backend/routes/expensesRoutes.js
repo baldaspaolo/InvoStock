@@ -60,6 +60,9 @@ router.post("/addExpense", (req, res) => {
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
+  
+  const formattedDate = new Date(date).toISOString().split("T")[0];
+
   const countQuery = `
     SELECT COUNT(*) AS expense_count
     FROM expenses
@@ -96,7 +99,7 @@ router.post("/addExpense", (req, res) => {
       userId,
       organizationId || null,
       categoryId,
-      date,
+      formattedDate, 
       amount,
       name,
       description || null,
@@ -118,6 +121,7 @@ router.post("/addExpense", (req, res) => {
     });
   });
 });
+
 
 router.put("/updateExpense/:id", (req, res) => {
   const { id } = req.params;
@@ -163,7 +167,6 @@ router.delete("/deleteExpense/:id", (req, res) => {
     }
   );
 });
-
 
 router.post("/getExpenseCategories", (req, res) => {
   const { userId } = req.body;
