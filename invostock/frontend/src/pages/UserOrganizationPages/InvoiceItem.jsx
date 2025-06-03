@@ -57,7 +57,6 @@ const InvoiceItem = () => {
           );
           const contactData = await contactRes.json();
   
-          // Ako kontakt nije array, pretvori ga
           setContact(Array.isArray(contactData.contact) ? contactData.contact : [contactData.contact]);
         }
       } catch (err) {

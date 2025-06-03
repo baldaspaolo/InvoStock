@@ -11,7 +11,6 @@ import { Tag } from "primereact/tag";
 import { Dialog } from "primereact/dialog";
 import { Calendar } from "primereact/calendar";
 
-
 import { InputTextarea } from "primereact/inputtextarea";
 
 import ExportUtility from "../../components/ExportUtility";
@@ -93,7 +92,7 @@ const SalesItem = () => {
 
   const handleCreateInvoice = async () => {
     try {
-      // Dohvati stavke naloga ako već nisu u stateu
+      
       const itemsRes = await fetch(
         `${import.meta.env.VITE_API_URL}/api/sales/getOrderDetails`,
         {
@@ -123,6 +122,7 @@ const SalesItem = () => {
 
       console.log("Payload za fakturu:", payload);
 
+     
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/invoices/createInvoice`,
         {
@@ -142,7 +142,46 @@ const SalesItem = () => {
           life: 4000,
         });
 
-        // Osvježi podatke o nalogu
+       
+        const stockUpdatePayload = {
+          userId: user.id,
+          organizationId: user.organization_id,
+          items: data.items.map((item) => ({
+            itemId: item.item_id,
+            quantity: item.quantity,
+          })),
+        };
+
+        const stockRes = await fetch(
+          `${
+            import.meta.env.VITE_API_URL
+          }/api/inventory/updateStockAfterInvoice`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(stockUpdatePayload),
+          }
+        );
+
+        const stockData = await stockRes.json();
+
+        if (stockData.success) {
+          toastRef.current.show({
+            severity: "success",
+            summary: "Zalihe ažurirane",
+            detail: "Stanje zaliha je uspješno ažurirano.",
+            life: 3000,
+          });
+        } else {
+          toastRef.current.show({
+            severity: "warn",
+            summary: "Upozorenje",
+            detail: "Faktura kreirana, ali zalihe nisu ažurirane.",
+            life: 3000,
+          });
+        }
+
+    
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/sales/getOrderDetails`,
           {
@@ -166,6 +205,7 @@ const SalesItem = () => {
       console.error("Greška pri kreiranju fakture:", error);
     }
   };
+
 
   const handleCreatePackage = async () => {
     try {
@@ -234,6 +274,24 @@ const SalesItem = () => {
         return "Nepoznato";
     }
   };
+
+  const translateOrderStatus = (status) => {
+    switch (status) {
+      case "open":
+        return "Otvoren";
+      case "closed":
+        return "Zatvoren";
+      case "pending":
+        return "U tijeku";
+      case "processing":
+        return "U obradi";
+      case "completed":
+        return "Završen";
+      default:
+        return "Nepoznato";
+    }
+  };
+
 
   const getExcelData = () => {
     return [
@@ -315,7 +373,6 @@ const SalesItem = () => {
     }
   };
 
-  // Check if invoice exists and payment is marked as paid
   const isCloseButtonDisabled = !(
     orderData?.invoice_id && orderData?.invoice_status === "paid"
   );
@@ -445,7 +502,9 @@ const SalesItem = () => {
                   </h4>
                   <h4 style={{ margin: "4px 0" }}>
                     <span style={{ fontWeight: "normal" }}>Status:</span>{" "}
-                    {orderData?.status || "N/A"}
+                    {orderData?.status
+                      ? translateOrderStatus(orderData.status)
+                      : "N/A"}
                   </h4>
                 </div>
               </div>
@@ -526,8 +585,11 @@ const SalesItem = () => {
                   <Divider />
                 </div>
               )}
+              <div style={{ width: "60%" }}>
+                <Divider />
+              </div>
 
-              <h3 style={{ margin: "0 0 1rem 0" }}>Stavke</h3>
+              <h3 style={{ margin: "0 0 1rem " }}>Stavke</h3>
             </div>
 
             <div style={{ display: "flex", gap: "2rem" }}>

@@ -45,8 +45,6 @@ router.post("/getInventory", (req, res) => {
   });
 });
 
-
-
 router.post("/addInventoryItem", (req, res) => {
   const { userId, organizationId, itemData } = req.body;
 
@@ -100,7 +98,7 @@ router.post("/addInventoryItem", (req, res) => {
         organizationId || null,
         userId,
         itemData.item_name,
-        itemData.category_id, 
+        itemData.category_id,
         itemData.description || null,
         itemData.stock_quantity || 0,
         itemData.reorder_level || 1,
@@ -130,7 +128,6 @@ router.post("/addInventoryItem", (req, res) => {
   });
 });
 
-
 router.get("/getCategories", (req, res) => {
   const { userId, organizationId } = req.query;
 
@@ -154,6 +151,52 @@ router.get("/getCategories", (req, res) => {
   });
 });
 
+router.post("/updateStockAfterInvoice", (req, res) => {
+  const { userId, organizationId, items } = req.body;
+
+  if (!userId || !items || items.length === 0) {
+    return res.status(400).json({ error: "Nedostaju obavezni podaci." });
+  }
+
+  let completed = 0;
+  let errorOccurred = false;
+
+  items.forEach((item) => {
+    const updateQuery = `
+      UPDATE inventory_items
+      SET stock_quantity = stock_quantity - ?
+      WHERE id = ? AND user_id = ? AND ${
+        organizationId ? "organization_id = ?" : "organization_id IS NULL"
+      }
+    `;
+
+    const params = organizationId
+      ? [item.quantity, item.itemId, userId, organizationId]
+      : [item.quantity, item.itemId, userId];
+
+    db.query(updateQuery, params, (err) => {
+      if (err && !errorOccurred) {
+        errorOccurred = true;
+        console.error(
+          "Greška pri ažuriranju zaliha za artikl:",
+          item.itemId,
+          err
+        );
+        return res.status(500).json({ error: "Greška pri ažuriranju zaliha." });
+      }
+
+      completed++;
+
+      if (completed === items.length && !errorOccurred) {
+        console.log("Zalihe uspješno ažurirane.");
+        return res.status(200).json({
+          success: true,
+          message: "Zalihe uspješno ažurirane.",
+        });
+      }
+    });
+  });
+});
 
 router.post("/lowStock", (req, res) => {
   const { userId, organizationId } = req.body;
@@ -304,7 +347,7 @@ router.post("/checkOrAddItem", (req, res) => {
 
       const insertParams = [
         item_name,
-        category_id, // <-- NOVO
+        category_id,
         price || 0,
         userId,
         organizationId || null,
@@ -337,7 +380,6 @@ router.post("/checkOrAddItem", (req, res) => {
     });
   });
 });
-
 
 router.post("/increaseStock", (req, res) => {
   const { itemId, quantity, userId, organizationId } = req.body;
@@ -484,7 +526,6 @@ router.get("/getInventoryItem/:id", (req, res) => {
   });
 });
 
-
 router.put("/updateInventoryItem/:id", (req, res) => {
   const { id } = req.params;
   const {
@@ -518,7 +559,7 @@ router.put("/updateInventoryItem/:id", (req, res) => {
 
   const params = [
     item_name,
-    category_id, 
+    category_id,
     price || 0,
     description || null,
     reorder_level || 1,
@@ -541,7 +582,6 @@ router.put("/updateInventoryItem/:id", (req, res) => {
     res.status(200).json({ success: true, message: "Artikal ažuriran" });
   });
 });
-
 
 router.delete("/deleteInventoryItem/:id", (req, res) => {
   const { id } = req.params;
@@ -591,7 +631,7 @@ router.post("/addInventoryCategory", (req, res) => {
       .json({ error: "Nedostaju obavezni podaci (userId, name)" });
   }
 
-    const checkQuery = organizationId
+  const checkQuery = organizationId
     ? `SELECT id FROM inventory_categories WHERE name = ? AND organization_id = ? AND is_deleted = 0 LIMIT 1`
     : `SELECT id FROM inventory_categories WHERE name = ? AND user_id = ? AND organization_id IS NULL AND is_deleted = 0 LIMIT 1`;
 
@@ -609,7 +649,6 @@ router.post("/addInventoryCategory", (req, res) => {
         .json({ error: "Kategorija s tim nazivom već postoji." });
     }
 
-    
     const insertQuery = `
       INSERT INTO inventory_categories (name, user_id, organization_id, is_deleted)
       VALUES (?, ?, ?, 0)
@@ -626,11 +665,10 @@ router.post("/addInventoryCategory", (req, res) => {
       res.status(201).json({
         success: true,
         message: "Kategorija uspješno dodana.",
-        category_id: result.insertId, 
+        category_id: result.insertId,
       });
     });
   });
 });
-
 
 module.exports = router;

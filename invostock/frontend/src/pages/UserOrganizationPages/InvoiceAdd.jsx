@@ -103,7 +103,7 @@ const InvoicesAdd = () => {
             { label: "Sve kategorije", value: "ALL" },
             ...data.categories.map((cat) => ({
               label: cat.name,
-              value: cat.id.toString(), 
+              value: cat.id.toString(),
             })),
           ]);
         }
@@ -133,12 +133,13 @@ const InvoicesAdd = () => {
     const total_price = item.price * quantity;
     const newItem = {
       id: Date.now(),
+      itemId: item.id,
       item_name: item.name,
       item_description: "",
       quantity,
       price: item.price,
       total_price,
-      max_quantity: item.stock, 
+      max_quantity: item.stock,
     };
 
     setInvoiceItems([...invoiceItems, newItem]);
@@ -150,9 +151,10 @@ const InvoicesAdd = () => {
 
   const filteredItems = availableItems.filter((item) => {
     if (selectedCategory === "ALL" || !selectedCategory) {
-      return true;     }
+      return true;
+    }
 
-    return item.category_id == selectedCategory; 
+    return item.category_id == selectedCategory;
   });
 
   useEffect(() => {
@@ -183,6 +185,8 @@ const InvoicesAdd = () => {
     }
 
     const final_amount = totalAmount - discount;
+
+    // Priprema itema za createInvoice
     const items = invoiceItems.map((item) => ({
       itemName: item.item_name,
       itemDescription: item.item_description,
@@ -218,10 +222,46 @@ const InvoicesAdd = () => {
           life: 4000,
         });
 
+        const stockUpdatePayload = {
+          userId: user.id,
+          organizationId: user.organization_id,
+          items: invoiceItems.map((item) => ({
+            itemId: item.itemId, 
+            quantity: item.quantity,
+          })),
+        };
+
+        const stockRes = await fetch(
+          `${API_URL}/api/inventory/updateStockAfterInvoice`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(stockUpdatePayload),
+          }
+        );
+
+        const stockData = await stockRes.json();
+
+        if (stockData.success) {
+          toast.current.show({
+            severity: "success",
+            summary: "Zalihe ažurirane",
+            detail: "Stanje zaliha je uspješno ažurirano.",
+            life: 3000,
+          });
+        } else {
+          toast.current.show({
+            severity: "warn",
+            summary: "Upozorenje",
+            detail: "Faktura kreirana, ali zalihe nisu ažurirane.",
+            life: 3000,
+          });
+        }
+
         setInvoiceItems([]);
         setSelectedClient(null);
-        setInvoiceDate(null);
-        setDueDate(null);
+        setInvoiceDate(today);
+        setDueDate(defaultDueDate);
         setDiscount(0);
       } else {
         toast.current.show({
@@ -278,7 +318,6 @@ const InvoicesAdd = () => {
       </div>
       <Toast ref={toast} />
       <Panel header="Nova faktura" style={{ fontSize: "0.88rem" }}>
-       
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Dropdown
             value={selectedClient}
@@ -450,6 +489,7 @@ const InvoicesAdd = () => {
                   icon="pi pi-trash"
                   severity="danger"
                   rounded
+                  style={{ width: "40px", height: "40px" }}
                   onClick={() =>
                     setInvoiceItems(
                       invoiceItems.filter((item) => item.id !== rowData.id)

@@ -130,6 +130,18 @@ const ExpensesAdd = () => {
   return (
     <div style={{ padding: "2% 5%", marginTop: "3%" }}>
       <Toast ref={toast} />
+      <div style={{ display: "flex", marginBottom: "1rem" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          aria-label="Natrag"
+          onClick={() => navigate("/expenses")}
+          style={{ width: "5%" }}
+        />
+      </div>
+
       <Panel header="Dodaj novi trošak" style={{ fontSize: "0.88rem" }}>
         <div style={{ display: "flex", justifyContent: "center" }}>
           <div style={{ width: "100%", maxWidth: "500px" }}>

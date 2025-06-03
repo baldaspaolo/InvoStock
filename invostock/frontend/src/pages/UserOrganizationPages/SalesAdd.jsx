@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
@@ -30,6 +32,7 @@ const SalesAdd = () => {
 
   const { user } = useContext(AuthContext);
   const toast = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchContacts = async () => {
@@ -77,14 +80,12 @@ const SalesAdd = () => {
     };
 
     const fetchCategories = async () => {
-      const res = await fetch(`${API_URL}/api/inventory/getCategories`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          organizationId: user.organization_id,
-        }),
-      });
+      const res = await fetch(
+        `${API_URL}/api/inventory/getCategories?userId=${
+          user.id
+        }&organizationId=${user.organization_id || ""}`
+      );
+
       const data = await res.json();
       if (data.success) {
         setCategoryOptions([
@@ -102,12 +103,10 @@ const SalesAdd = () => {
   }, [user.id, user.organization_id]);
 
   const filteredItems = availableItems.filter((item) => {
-    // Filtriraj po kategoriji
     const categoryMatch =
       selectedCategory === "ALL" ||
       item.category_id?.toString() === selectedCategory.toString();
 
-    // Filtriraj po pretrazi
     const searchMatch =
       !searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -219,6 +218,17 @@ const SalesAdd = () => {
   return (
     <div style={{ padding: "2% 5%", marginTop: "3%" }}>
       <Toast ref={toast} />
+      <div style={{ display: "flex", marginBottom: "1rem" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          aria-label="Natrag"
+          onClick={() => navigate("/sales")}
+          style={{ width: "8%" }}
+        />
+      </div>
       <Panel header="Novi prodajni nalog" style={{ fontSize: "0.88rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Dropdown
@@ -255,7 +265,7 @@ const SalesAdd = () => {
         />
 
         <DataTable
-          value={[...salesItems, { id: "new", item_name: "➕ Dodaj stavku" }]}
+          value={[...salesItems, { id: "new", item_name: "Dodaj stavku" }]}
           onRowClick={(e) => e.data.id === "new" && setShowAddItemDialog(true)}
           style={{ fontSize: "0.9rem", marginTop: "1rem" }}
         >
@@ -321,8 +331,9 @@ const SalesAdd = () => {
           <Column field="price" header="Jed. cijena (€)" />
           <Column field="total_price" header="Ukupno (€)" />
           <Column
+            header="Akcija"
             body={(rowData) =>
-              rowData.id !== "new" && (
+              rowData.id !== "new" ? (
                 <Button
                   icon="pi pi-trash"
                   severity="danger"
@@ -330,8 +341,9 @@ const SalesAdd = () => {
                   onClick={() =>
                     setSalesItems(salesItems.filter((i) => i.id !== rowData.id))
                   }
+                  style={{ width: "45px", height: "45px" }}
                 />
-              )
+              ) : null
             }
           />
         </DataTable>
@@ -395,6 +407,7 @@ const SalesAdd = () => {
             body={(rowData) => rowData.category_name || "Bez kategorije"}
           />
           <Column field="stock" header="Na zalihi" />
+          <Column field="price" header="Jed. cijena €" />
           <Column
             header="Količina"
             body={(rowData) => (
@@ -417,12 +430,14 @@ const SalesAdd = () => {
           />
           <Column
             body={(rowData) => (
-              <Button
-                label="Dodaj"
-                icon="pi pi-plus"
-                onClick={() => handleAddItem(rowData)}
-                disabled={(rowData.tempQty || 1) > rowData.stock}
-              />
+              <div>
+                <Button
+                  label="Dodaj"
+                  icon="pi pi-plus"
+                  onClick={() => handleAddItem(rowData)}
+                  disabled={(rowData.tempQty || 1) > rowData.stock}
+                />
+              </div>
             )}
           />
         </DataTable>
@@ -445,6 +460,7 @@ const SalesAdd = () => {
               life: 3000,
             });
             setShowAddContactDialog(false);
+            fetchContacts();
           }}
           onError={(err) => {
             toast.current.show({

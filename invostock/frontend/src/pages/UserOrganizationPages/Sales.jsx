@@ -9,8 +9,7 @@ import { Button } from "primereact/button";
 import { Panel } from "primereact/panel";
 import { Dropdown } from "primereact/dropdown";
 import { InputText } from "primereact/inputtext";
-import { Dialog } from "primereact/dialog";
-import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { ConfirmDialog } from "primereact/confirmdialog";
 import { Calendar } from "primereact/calendar";
 import { Tag } from "primereact/tag";
 
@@ -30,12 +29,8 @@ const Sales = () => {
   const [orders, setOrders] = useState([]);
   const [statusFilter, setStatusFilter] = useState("svi");
   const [search, setSearch] = useState("");
-  const [dialogVisible, setDialogVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
-  const [dueDate, setDueDate] = useState(null);
-  const [invoiceDialogVisible, setInvoiceDialogVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const summary = useMemo(() => {
@@ -141,140 +136,13 @@ const Sales = () => {
     };
 
     const s = statusMap[status] || { label: "Nepoznato", severity: "warning" };
-    return <Tag value={s.label} severity={s.severity} />;
-  };
-
-  const confirmCreateInvoice = async (createPackage) => {
-    if (!dueDate) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Upozorenje",
-        detail: "Odaberite datum dospijeća",
-        life: 4000,
-      });
-      return;
-    }
-
-    try {
-      const itemsRes = await fetch(
-        "http://localhost:3000/api/sales/getOrderDetails",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ orderId: selectedOrder.id }),
-        }
-      );
-
-      const data = await itemsRes.json();
-
-      const payload = {
-        userId: user.id,
-        organizationId: user.organization_id,
-        contactId: selectedOrder.contact_id,
-        invoiceDate: new Date().toISOString().slice(0, 10),
-        dueDate: dueDate.toISOString().slice(0, 10),
-        discount: selectedOrder.discount,
-        salesOrderId: selectedOrder.id,
-        items: data.items.map((item) => ({
-          itemId: item.item_id,
-          itemName: item.item_name,
-          itemDescription: null,
-          quantity: item.quantity,
-          price: item.price,
-        })),
-      };
-
-      const response = await fetch(
-        "http://localhost:3000/api/invoices/createInvoice",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.current.show({
-          severity: "success",
-          summary: "Faktura kreirana",
-          detail: `Kod: ${result.custom_invoice_code}`,
-          life: 4000,
-        });
-
-        setInvoiceDialogVisible(false);
-        setDueDate(null);
-        setSelectedOrder(null);
-        fetchOrders();
-      } else {
-        throw new Error(result.error || "Neuspješno kreiranje fakture.");
-      }
-    } catch (error) {
-      toast.current.show({
-        severity: "error",
-        summary: "Greška",
-        detail: "Neuspješno kreiranje fakture.",
-        life: 4000,
-      });
-      console.error("Greška pri kreiranju fakture iz naloga:", error);
-    }
-  };
-
-  const handleCreatePackage = () => {
-    confirmDialog({
-      message: "Jeste li sigurni da želite kreirati samo paket?",
-      header: "Kreiraj paket",
-      icon: "pi pi-info-circle",
-      accept: async () => {
-        try {
-          const payload = {
-            userId: user.id,
-            organizationId: user.organization_id,
-            contactId: selectedOrder.contact_id,
-            salesOrderId: selectedOrder.id,
-            courier: null,
-            description: null,
-          };
-
-          const response = await fetch(
-            "http://localhost:3000/api/packages/createPackage",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(payload),
-            }
-          );
-
-          const data = await response.json();
-
-          if (data.success) {
-            toast.current.show({
-              severity: "success",
-              summary: "Paket kreiran",
-              detail: `Kod: ${data.custom_package_code}`,
-              life: 4000,
-            });
-            setDialogVisible(false);
-            fetchOrders();
-          } else {
-            throw new Error(data.error || "Greška prilikom kreiranja paketa.");
-          }
-        } catch (error) {
-          toast.current.show({
-            severity: "error",
-            summary: "Greška",
-            detail: "Neuspješno kreiranje paketa.",
-            life: 4000,
-          });
-          console.error("Greška pri kreiranju paketa:", error);
-        }
-      },
-    });
+    return (
+      <Tag
+        value={s.label}
+        severity={s.severity}
+        style={{ }}
+      />
+    );
   };
 
   const resetFilters = () => {
@@ -282,20 +150,6 @@ const Sales = () => {
     setStatusFilter("svi");
     setStartDate(null);
     setEndDate(null);
-  };
-
-  const actionBodyTemplate = (rowData) => {
-    return (
-      <Button
-        icon="pi pi-ellipsis-v"
-        rounded
-        text
-        onClick={(e) => {
-          e.stopPropagation();
-          openDialog(rowData);
-        }}
-      />
-    );
   };
 
   const inputStyle = { height: "2.5rem", width: "100%" };
@@ -381,7 +235,7 @@ const Sales = () => {
               icon="pi pi-refresh"
               severity="secondary"
               onClick={resetFilters}
-              style={{ marginBottom: "5%", height: "2.5rem" }}
+              style={{ height: "2.5rem", marginTop: "2%" }}
             />
           </div>
 
@@ -423,70 +277,7 @@ const Sales = () => {
               body={(rowData) => getStatusTag(rowData.status)}
               sortable
             />
-            <Column
-              body={actionBodyTemplate}
-              style={{ textAlign: "center", width: "4rem" }}
-            ></Column>
           </DataTable>
-
-          <Dialog
-            header="Opcije za nalog"
-            visible={dialogVisible}
-            style={{ width: "30vw" }}
-            onHide={() => setDialogVisible(false)}
-          >
-            <p>Odaberite što želite napraviti s ovim nalogom:</p>
-            <div className="">
-              <Button
-                label="Kreiraj fakturu"
-                icon="pi pi-file"
-                onClick={handleCreateInvoice}
-                style={{ marginBottom: "3%" }}
-              />
-              <Button
-                label="Kreiraj paket"
-                icon="pi pi-box"
-                severity="secondary"
-                onClick={handleCreatePackage}
-              />
-            </div>
-          </Dialog>
-
-          <Dialog
-            header="Kreiraj fakturu"
-            visible={invoiceDialogVisible}
-            style={{ width: "25rem" }}
-            onHide={() => setInvoiceDialogVisible(false)}
-          >
-            <p>Unesite datum dospijeća fakture:</p>
-            <Calendar
-              value={dueDate}
-              onChange={(e) => setDueDate(e.value)}
-              showIcon
-              dateFormat="dd.mm.yy"
-              style={{ width: "100%", marginTop: "1rem" }}
-            />
-            <div>
-              <Button
-                label="Odustani"
-                icon="pi pi-times"
-                severity="secondary"
-                onClick={() => setInvoiceDialogVisible(false)}
-                style={{ marginBottom: "3%" }}
-              />
-              <Button
-                label="Samo faktura"
-                icon="pi pi-check"
-                onClick={() => confirmCreateInvoice(false)}
-                style={{ marginBottom: "3%" }}
-              />
-              <Button
-                label="Faktura + Paket"
-                icon="pi pi-box"
-                onClick={() => confirmCreateInvoice(true)}
-              />
-            </div>
-          </Dialog>
         </div>
       </div>
     </div>
