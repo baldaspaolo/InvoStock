@@ -26,6 +26,7 @@ const payments = require("./routes/paymentsRoutes");
 const packages = require("./routes/packageRoutes");
 const dashboard = require("./routes/dashboardRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const emailRoutes = require("./routes/emailRoutes");
 
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
@@ -41,7 +42,7 @@ app.use("/api/payments", payments);
 app.use("/api/packages", packages);
 app.use("/api/dashboard", dashboard);
 app.use("/api/admin", adminRoutes);
-
+app.use("/api/email", emailRoutes);
 
 app.post("/api/sendLowStockNotification", (req, res) => {
   const { itemName, userEmail } = req.body;
