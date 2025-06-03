@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { Panel } from "primereact/panel";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
+import { InputNumber } from "primereact/inputnumber";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Dialog } from "primereact/dialog";
@@ -22,9 +23,9 @@ const SalesAdd = () => {
   const [showAddContactDialog, setShowAddContactDialog] = useState(false);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [categoryOptions, setCategoryOptions] = useState([
-    { label: "Sve kategorije", value: null },
+    { label: "Sve kategorije", value: "ALL" },
   ]);
 
   const { user } = useContext(AuthContext);
@@ -69,6 +70,7 @@ const SalesAdd = () => {
             name: item.item_name,
             stock: item.stock_quantity,
             price: item.price,
+            category_id: item.category_id?.toString() || "ALL",
           }))
         );
       }
@@ -85,7 +87,13 @@ const SalesAdd = () => {
       });
       const data = await res.json();
       if (data.success) {
-        setCategoryOptions((prev) => [...prev, ...data.categories]);
+        setCategoryOptions([
+          { label: "Sve kategorije", value: "ALL" },
+          ...data.categories.map((cat) => ({
+            label: cat.name,
+            value: cat.id.toString(),
+          })),
+        ]);
       }
     };
 
@@ -93,7 +101,47 @@ const SalesAdd = () => {
     fetchCategories();
   }, [user.id, user.organization_id]);
 
+  const filteredItems = availableItems.filter((item) => {
+    // Filtriraj po kategoriji
+    const categoryMatch =
+      selectedCategory === "ALL" ||
+      item.category_id?.toString() === selectedCategory.toString();
+
+    // Filtriraj po pretrazi
+    const searchMatch =
+      !searchTerm || item.name.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return categoryMatch && searchMatch;
+  });
+
   const handleAddItem = (item) => {
+    const alreadyAdded = salesItems.some((i) => i.itemId === item.id);
+    if (alreadyAdded) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Upozorenje",
+        detail: "Ovaj artikl je već dodan!",
+        life: 3000,
+      });
+      return;
+    }
+
+    if (item.stock <= 0) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Nema zaliha",
+        detail: "Artikl nema dostupnih zaliha!",
+        life: 4000,
+      });
+    } else if (item.stock <= 3) {
+      toast.current.show({
+        severity: "info",
+        summary: "Niska zaliha",
+        detail: `Preostalo na zalihi: ${item.stock}`,
+        life: 3000,
+      });
+    }
+
     const quantity = item.tempQty || 1;
     const newItem = {
       id: Date.now(),
@@ -215,26 +263,59 @@ const SalesAdd = () => {
           <Column
             header="Količina"
             body={(rowData) =>
-              rowData.id !== "new" && (
+              rowData.id !== "new" ? (
                 <InputText
                   type="number"
                   min={1}
+                  max={
+                    availableItems.find((i) => i.id === rowData.itemId)
+                      ?.stock || 1
+                  }
                   value={rowData.quantity}
-                  style={{ width: 60 }}
+                  style={{ width: "60px" }}
                   onChange={(e) => {
+                    const newQuantity = parseInt(e.target.value);
+
+                    if (isNaN(newQuantity)) {
+                      return;
+                    }
+
+                    if (newQuantity < 1) {
+                      toast.current.show({
+                        severity: "warn",
+                        summary: "Upozorenje",
+                        detail: "Količina ne može biti manja od 1.",
+                        life: 3000,
+                      });
+                      return;
+                    }
+
+                    const stockForItem =
+                      availableItems.find((i) => i.id === rowData.itemId)
+                        ?.stock || 0;
+                    if (newQuantity > stockForItem) {
+                      toast.current.show({
+                        severity: "warn",
+                        summary: "Upozorenje",
+                        detail: `Na zalihi je dostupno samo ${stockForItem} komada.`,
+                        life: 3000,
+                      });
+                      return;
+                    }
+
                     const updated = salesItems.map((item) =>
                       item.id === rowData.id
                         ? {
                             ...item,
-                            quantity: parseInt(e.target.value),
-                            total_price: item.price * parseInt(e.target.value),
+                            quantity: newQuantity,
+                            total_price: newQuantity * item.price,
                           }
                         : item
                     );
                     setSalesItems(updated);
                   }}
                 />
-              )
+              ) : null
             }
           />
           <Column field="price" header="Jed. cijena (€)" />
@@ -289,6 +370,7 @@ const SalesAdd = () => {
             value={selectedCategory}
             options={categoryOptions}
             onChange={(e) => setSelectedCategory(e.value)}
+            optionLabel="label"
             placeholder="Kategorija"
             style={{ width: 200 }}
           />
@@ -301,21 +383,17 @@ const SalesAdd = () => {
         </div>
 
         <DataTable
-          value={availableItems.filter((item) => {
-            const matchCat = selectedCategory
-              ? item.category === selectedCategory
-              : true;
-            const matchSearch = item.name
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase());
-            return matchCat && matchSearch;
-          })}
+          value={filteredItems}
           paginator
           rows={5}
           responsiveLayout="scroll"
         >
           <Column field="name" header="Naziv" />
-          <Column field="category" header="Kategorija" />
+          <Column
+            field="category_name"
+            header="Kategorija"
+            body={(rowData) => rowData.category_name || "Bez kategorije"}
+          />
           <Column field="stock" header="Na zalihi" />
           <Column
             header="Količina"

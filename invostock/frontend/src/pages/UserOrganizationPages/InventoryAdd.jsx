@@ -21,6 +21,14 @@ const InventoryAdd = () => {
   const [categories, setCategories] = useState([]);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [item, setItem] = useState({
+    item_name: "",
+    category_id: "", 
+    description: "",
+    stock_quantity: 0,
+    reorder_level: 1,
+    price: 0,
+  });
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -32,7 +40,13 @@ const InventoryAdd = () => {
         );
         const data = await res.json();
         if (data.success) {
-          setCategories(data.categories.map((c) => ({ label: c, value: c })));
+          setCategories(
+            data.categories.map((c) => ({
+              label: c.name,
+              value: c.id, 
+            }))
+          );
+
         }
       } catch (err) {
         console.error("Greška kod dohvata kategorija:", err);
@@ -53,7 +67,7 @@ const InventoryAdd = () => {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/expenses/addExpenseCategory`, {
+      const res = await fetch(`${API_URL}/api/inventory/addInventoryCategory`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -66,9 +80,9 @@ const InventoryAdd = () => {
       if (data.success) {
         setCategories((prev) => [
           ...prev,
-          { label: newCategoryName, value: newCategoryName },
+          { label: newCategoryName, value: data.category_id }, 
         ]);
-        setItem((prevItem) => ({ ...prevItem, category: newCategoryName }));
+        setItem((prevItem) => ({ ...prevItem, category_id: data.category_id }));
         setShowCategoryDialog(false);
         setNewCategoryName("");
 
@@ -92,21 +106,12 @@ const InventoryAdd = () => {
     }
   };
 
-  const [item, setItem] = useState({
-    item_name: "",
-    category: "",
-    description: "",
-    stock_quantity: 0,
-    reorder_level: 1,
-    price: 0,
-  });
-
   const handleInputChange = (e, field) => {
     setItem({ ...item, [field]: e.target.value });
   };
 
   const handleSubmit = async () => {
-    if (!item.item_name || !item.category) {
+    if (!item.item_name || !item.category_id) {
       toast.current.show({
         severity: "warn",
         summary: "Upozorenje",
@@ -192,13 +197,14 @@ const InventoryAdd = () => {
                 }}
               >
                 <Dropdown
-                  value={item.category}
+                  value={item.category_id}
                   options={categories}
-                  onChange={(e) => setItem({ ...item, category: e.value })}
+                  onChange={(e) => setItem({ ...item, category_id: e.value })}
                   placeholder="Odaberi kategoriju"
                   style={{ flex: 1 }}
                   showClear
                 />
+
                 <Button
                   icon="pi pi-plus"
                   rounded

@@ -43,10 +43,11 @@ const InventoryItem = () => {
           setInventoryItem(data.item);
           setEditedData({
             item_name: data.item.item_name,
-            category: data.item.category,
+            category_id: data.item.category_id,
             price: data.item.price,
             description: data.item.description,
           });
+
           setNewReorderLevel(data.item.reorder_level);
         }
       } catch (err) {
@@ -57,7 +58,9 @@ const InventoryItem = () => {
     const fetchCategories = async () => {
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/inventory/getCategories`
+          `${import.meta.env.VITE_API_URL}/api/inventory/getCategories?userId=${
+            user.id
+          }&organizationId=${user.organization_id || ""}`
         );
         const data = await res.json();
         if (data.success) setCategories(data.categories);
@@ -237,8 +240,9 @@ const InventoryItem = () => {
             >
               <div>
                 <p>
-                  <strong>Kategorija:</strong> {inventoryItem.category}
+                  <strong>Kategorija:</strong> {inventoryItem.category_name}
                 </p>
+
                 <p>
                   <strong>Cijena:</strong> {inventoryItem.price} €
                 </p>
@@ -343,13 +347,15 @@ const InventoryItem = () => {
 
           <label style={{ marginTop: "1rem" }}>Kategorija</label>
           <Dropdown
-            value={editedData.category}
-            options={categories.map((cat) => ({ label: cat, value: cat }))}
+            value={editedData.category_id}
+            options={categories.map((cat) => ({
+              label: cat.name,
+              value: cat.id,
+            }))}
             placeholder="Odaberi kategoriju"
             onChange={(e) =>
-              setEditedData((d) => ({ ...d, category: e.value }))
+              setEditedData((d) => ({ ...d, category_id: e.value }))
             }
-            editable
           />
 
           <label style={{ marginTop: "1rem" }}>Cijena (€)</label>
@@ -372,8 +378,7 @@ const InventoryItem = () => {
         </div>
       </Dialog>
 
-      {/* Dialog za usklađivanje zalihe */}
-      <Dialog
+           <Dialog
         header="Uskladi zalihu"
         visible={stockDialogVisible}
         onHide={() => setStockDialogVisible(false)}

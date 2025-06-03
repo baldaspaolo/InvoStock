@@ -59,7 +59,6 @@ router.post("/getUserInvoices", (req, res) => {
   });
 });
 
-
 router.post("/getUserInvoicesSummary", (req, res) => {
   const { userId, organizationId } = req.body;
 
@@ -132,7 +131,6 @@ router.post("/getUserInvoicesSummary", (req, res) => {
     });
   });
 });
-
 
 router.post("/getInvoiceItems", (req, res) => {
   const { invoiceId } = req.body;
@@ -252,21 +250,22 @@ router.post("/createInvoice", async (req, res) => {
         INSERT INTO invoices (
           user_id, organization_id, contact_id, invoice_date, due_date,
           total_amount, discount, final_amount, remaining_amount, status,
-          custom_invoice_code, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())
+          custom_invoice_code, custom_invoice_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())
       `;
 
       const invoiceParams = [
         userId,
         organizationId || null,
         contactId,
-        invoiceDate,
-        dueDate,
+        new Date(invoiceDate).toISOString().split("T")[0],
+        new Date(dueDate).toISOString().split("T")[0],
         subtotal,
         discount || 0,
         finalAmount,
         finalAmount,
         customCode,
+        count,
       ];
 
       db.query(insertInvoiceQuery, invoiceParams, (err2, result2) => {
@@ -318,12 +317,75 @@ router.post("/createInvoice", async (req, res) => {
             completed++;
 
             if (completed === items.length && !errorOccurred) {
-              return res.status(201).json({
-                success: true,
-                message: "Faktura uspješno kreirana",
-                invoiceId,
-                custom_invoice_code: customCode,
-              });
+                            const getClientQuery = `
+                SELECT first_name, last_name, email
+                FROM contacts
+                WHERE id = ?
+              `;
+
+              db.query(
+                getClientQuery,
+                [contactId],
+                async (errClient, resultClient) => {
+                  if (errClient || resultClient.length === 0) {
+                    console.error(
+                      "Greška pri dohvaćanju podataka o klijentu:",
+                      errClient
+                    );
+                    
+                    return res.status(201).json({
+                      success: true,
+                      message:
+                        "Faktura kreirana, ali email nije poslan (greška dohvaćanja klijenta).",
+                      invoiceId,
+                      custom_invoice_code: customCode,
+                    });
+                  }
+
+                  const client = resultClient[0];
+                  const clientEmail = client.email;
+                  const clientName = `${client.first_name} ${client.last_name}`;
+
+                  const formattedItems = items.map((item) => ({
+                    name: item.itemName,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                  }));
+
+                  
+                  try {
+                    await fetch(
+                      `${process.env.API_URL}/api/email/sendInvoiceEmail`,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          clientEmail,
+                          clientName,
+                          invoiceNumber: customCode,
+                          totalAmount: finalAmount,
+                          dueDate,
+                          items: formattedItems,
+                        }),
+                      }
+                    );
+
+                    console.log("Invoice email poslan.");
+                  } catch (emailErr) {
+                    console.error(
+                      "Greška pri slanju invoice emaila:",
+                      emailErr
+                    );
+                  }
+
+                                    return res.status(201).json({
+                    success: true,
+                    message: "Faktura uspješno kreirana",
+                    invoiceId,
+                    custom_invoice_code: customCode,
+                  });
+                }
+              );
             }
           });
         });
