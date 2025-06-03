@@ -22,7 +22,7 @@ const OrdersAdd = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [orderDate, setOrderDate] = useState(null);
+  const [orderDate, setOrderDate] = useState(new Date());
   const [orderItems, setOrderItems] = useState([]);
   const [showItemSearchDialog, setShowItemSearchDialog] = useState(false);
   const [itemAddMode, setItemAddMode] = useState("inventory");
@@ -33,6 +33,9 @@ const OrdersAdd = () => {
     price: 0,
   });
   const [showSupplierDialog, setShowSupplierDialog] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState([
+    { label: "Odaberi kategoriju", value: "" },
+  ]);
 
   useEffect(() => {
     const fetchSuppliers = async () => {
@@ -81,8 +84,31 @@ const OrdersAdd = () => {
       }
     };
 
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/inventory/getCategories?userId=${
+            user.id
+          }&organizationId=${user.organization_id || ""}`
+        );
+        const data = await res.json();
+        if (data.success) {
+          setCategoryOptions([
+            { label: "Odaberi kategoriju", value: "" },
+            ...data.categories.map((cat) => ({
+              label: cat.name,
+              value: cat.id,
+            })),
+          ]);
+        }
+      } catch (error) {
+        console.error("Greška pri dohvaćanju kategorija:", error);
+      }
+    };
+
     fetchSuppliers();
     fetchInventory();
+    fetchCategories();
   }, [user]);
 
   const toLocalISOString = (date) => {
@@ -219,6 +245,23 @@ const OrdersAdd = () => {
                 <Column field="quantity" header="Količina" />
                 <Column field="price" header="Jedinična cijena (€)" />
                 <Column field="total_price" header="Ukupna cijena (€)" />
+                <Column
+                  header="Akcije"
+                  body={(rowData) =>
+                    rowData.id !== "new" && (
+                      <Button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        rounded
+                        onClick={() =>
+                          setOrderItems(
+                            orderItems.filter((item) => item.id !== rowData.id)
+                          )
+                        }
+                      />
+                    )
+                  }
+                />
               </DataTable>
             </div>
 
@@ -242,8 +285,21 @@ const OrdersAdd = () => {
         style={{ width: "60vw" }}
         onHide={() => setShowItemSearchDialog(false)}
       >
-        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-          <div>
+        <div
+          style={{
+            display: "flex",
+            gap: "2rem",
+            alignItems: "center",
+            marginBottom: "1rem",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
             <RadioButton
               inputId="inventory"
               name="mode"
@@ -253,7 +309,8 @@ const OrdersAdd = () => {
             />
             <label htmlFor="inventory">Iz inventara</label>
           </div>
-          <div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <RadioButton
               inputId="manual"
               name="mode"
@@ -323,6 +380,30 @@ const OrdersAdd = () => {
                   label="Dodaj"
                   icon="pi pi-plus"
                   onClick={() => {
+                    const alreadyExists = orderItems.some(
+                      (item) => item.item_name === rowData.item_name
+                    );
+
+                    if (alreadyExists) {
+                      toast.current.show({
+                        severity: "warn",
+                        summary: "Upozorenje",
+                        detail: "Artikl je već dodan u narudžbu.",
+                        life: 3000,
+                      });
+                      return;
+                    }
+
+                    if (alreadyExists) {
+                      toast.current.show({
+                        severity: "warn",
+                        summary: "Upozorenje",
+                        detail: "Artikl je već dodan u narudžbu.",
+                        life: 3000,
+                      });
+                      return;
+                    }
+
                     const total_price = rowData.quantity * rowData.customPrice;
                     const newItem = {
                       id: orderItems.length + 1,
@@ -351,35 +432,48 @@ const OrdersAdd = () => {
                 setManualItem({ ...manualItem, name: e.target.value })
               }
             />
-            <InputText
-              placeholder="Kategorija"
+            <Dropdown
               value={manualItem.category}
+              options={categoryOptions}
               onChange={(e) =>
-                setManualItem({ ...manualItem, category: e.target.value })
+                setManualItem({ ...manualItem, category: e.value })
               }
+              placeholder="Odaberi kategoriju"
+              style={{ width: "100%" }}
             />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <label style={{ display: "flex", marginBottom: "0.3rem" }}>
+                Količina
+              </label>
+              <InputText
+                type="number"
+                min={1}
+                value={manualItem.quantity}
+                onChange={(e) =>
+                  setManualItem({
+                    ...manualItem,
+                    quantity: parseInt(e.target.value) || 1,
+                  })
+                }
+                style={{ width: "100%" }}
+              />
+            </div>
+
+            <label style={{ display: "flex" }}>Cijena (€)</label>
             <InputText
-              placeholder="Količina"
               type="number"
-              value={manualItem.quantity}
-              onChange={(e) =>
+              min={0}
+              value={manualItem.price === 0 ? "" : manualItem.price.toString()}
+              onChange={(e) => {
+                const input = e.target.value;
                 setManualItem({
                   ...manualItem,
-                  quantity: parseInt(e.target.value) || 1,
-                })
-              }
+                  price: input === "" ? "" : parseFloat(input),
+                });
+              }}
+              style={{ width: "100%" }}
             />
-            <InputText
-              placeholder="Cijena (€)"
-              type="number"
-              value={manualItem.price}
-              onChange={(e) =>
-                setManualItem({
-                  ...manualItem,
-                  price: parseFloat(e.target.value) || 0,
-                })
-              }
-            />
+
             <Button
               label="Dodaj ručno"
               icon="pi pi-plus"
@@ -399,6 +493,7 @@ const OrdersAdd = () => {
                         organizationId: user.organization_id,
                         item_name: manualItem.name,
                         category: manualItem.category,
+                        category_id: manualItem.category,
                         price: manualItem.price,
                       }),
                     }

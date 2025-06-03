@@ -20,13 +20,6 @@ const stockStatusOptions = [
   { label: "Nema zalihe", value: "out_of_stock" },
 ];
 
-const categoryOptions = [
-  { label: "Sve kategorije", value: "all" },
-  { label: "Satovi", value: "Satovi" },
-  { label: "Pribor", value: "Pribor" },
-  { label: "Rezervni dijelovi", value: "Rezervni dijelovi" },
-];
-
 const Inventory = () => {
   const menu = useRef(null);
   const navigate = useNavigate();
@@ -38,6 +31,9 @@ const Inventory = () => {
   const [displayModal, setDisplayModal] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [modalTitle, setModalTitle] = useState("");
+  const [categoryOptions, setCategoryOptions] = useState([
+    { label: "Sve kategorije", value: "all" },
+  ]);
 
   useEffect(() => {
     const fetchInventory = async () => {
@@ -51,7 +47,7 @@ const Inventory = () => {
             },
             body: JSON.stringify({
               userId: user.id,
-              organizationId: user.organization_id, 
+              organizationId: user.organization_id,
             }),
           }
         );
@@ -68,9 +64,41 @@ const Inventory = () => {
       }
     };
 
-
     fetchInventory();
   }, [user.id, user.organizationId]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/inventory/getCategories?userId=${
+            user.id
+          }&organizationId=${user.organization_id || ""}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Greška prilikom dohvaćanja kategorija");
+        }
+
+        const data = await response.json();
+        console.log(data);
+
+        const options = [
+          { label: "Sve kategorije", value: "all" },
+          ...data.categories.map((cat) => ({
+            label: cat.name,
+            value: cat.id.toString(), 
+          })),
+        ];
+
+        setCategoryOptions(options);
+      } catch (error) {
+        console.error("Greška kod dohvaćanja kategorija:", error);
+      }
+    };
+
+    fetchCategories();
+  }, [user.id, user.organization_id]);
 
   const menuItems = [
     {
@@ -90,14 +118,22 @@ const Inventory = () => {
     setCategoryFilter(e.value);
   };
 
+  const getItemStatus = (item) => {
+    if (item.stock_quantity === 0) return "out_of_stock";
+    if (item.stock_quantity <= item.reorder_level) return "low_stock";
+    return "sufficient";
+  };
+
   const filteredItems = inventoryItems.filter((item) => {
     const matchesSearch = item.item_name
       .toLowerCase()
       .includes(search.toLowerCase());
     const matchesStatus =
-      statusFilter === "all" || item.status === statusFilter;
+      statusFilter === "all" || getItemStatus(item) === statusFilter;
     const matchesCategory =
-      categoryFilter === "all" || item.category === categoryFilter;
+      categoryFilter === "all" ||
+      item.category_id?.toString() === categoryFilter;
+
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
@@ -169,7 +205,7 @@ const Inventory = () => {
       >
         <Column field="custom_inventory_code" header="ID" sortable></Column>
         <Column field="item_name" header="Naziv artikla" sortable></Column>
-        <Column field="category" header="Kategorija" sortable></Column>
+        <Column field="category_name" header="Kategorija" sortable></Column>
         <Column
           field="stock_quantity"
           header="Količina na zalihi"
@@ -279,7 +315,7 @@ const Inventory = () => {
           >
             <Column field="custom_inventory_code" header="ID" sortable></Column>
             <Column field="item_name" header="Naziv artikla" sortable></Column>
-            <Column field="category" header="Kategorija" sortable></Column>
+            <Column field="category_name" header="Kategorija" sortable></Column>
             <Column
               field="stock_quantity"
               header="Količina na zalihi"

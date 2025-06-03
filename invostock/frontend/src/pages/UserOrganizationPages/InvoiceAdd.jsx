@@ -17,8 +17,12 @@ const API_URL = import.meta.env.VITE_API_URL;
 const InvoicesAdd = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(null);
-  const [dueDate, setDueDate] = useState(null);
+  const today = new Date();
+  const defaultDueDate = new Date();
+  defaultDueDate.setDate(today.getDate() + 14);
+
+  const [invoiceDate, setInvoiceDate] = useState(today);
+  const [dueDate, setDueDate] = useState(defaultDueDate);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [discount, setDiscount] = useState(0);
@@ -28,7 +32,7 @@ const InvoicesAdd = () => {
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState([
-    { label: "Sve kategorije", value: null },
+    { label: "Sve kategorije", value: "ALL" }, // Koristimo "ALL" umjesto null
   ]);
 
   const { user } = useContext(AuthContext);
@@ -88,17 +92,20 @@ const InvoicesAdd = () => {
 
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/inventory/getCategories`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            organizationId: user.organization_id,
-          }),
-        });
+        const res = await fetch(
+          `${API_URL}/api/inventory/getCategories?userId=${
+            user.id
+          }&organizationId=${user.organization_id || ""}`
+        );
         const data = await res.json();
         if (data.success) {
-          setCategoryOptions([...categoryOptions, ...data.categories]);
+          setCategoryOptions([
+            { label: "Sve kategorije", value: "ALL" },
+            ...data.categories.map((cat) => ({
+              label: cat.name,
+              value: cat.id.toString(), 
+            })),
+          ]);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
@@ -110,6 +117,18 @@ const InvoicesAdd = () => {
   }, [user.id, user.organization_id]);
 
   const handleAddItem = (item) => {
+    const alreadyAdded = invoiceItems.some((i) => i.item_name === item.name);
+
+    if (alreadyAdded) {
+      toast.current.show({
+        severity: "warn",
+        summary: "Upozorenje",
+        detail: "Artikl je već dodan u fakturu.",
+        life: 3000,
+      });
+      return;
+    }
+
     const quantity = item.tempQty || 1;
     const total_price = item.price * quantity;
     const newItem = {
@@ -119,12 +138,28 @@ const InvoicesAdd = () => {
       quantity,
       price: item.price,
       total_price,
+      max_quantity: item.stock, 
     };
+
     setInvoiceItems([...invoiceItems, newItem]);
+
     setAvailableItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, tempQty: 1 } : i))
     );
   };
+
+  const filteredItems = availableItems.filter((item) => {
+    if (selectedCategory === "ALL" || !selectedCategory) {
+      return true;     }
+
+    return item.category_id == selectedCategory; 
+  });
+
+  useEffect(() => {
+    console.log("Dostupni artikli:", availableItems);
+    console.log("Odabrana kategorija:", selectedCategory);
+    console.log("Opcije kategorija:", categoryOptions);
+  }, [availableItems, selectedCategory, categoryOptions]);
 
   const totalAmount = invoiceItems.reduce(
     (sum, item) => sum + item.total_price,
@@ -243,7 +278,7 @@ const InvoicesAdd = () => {
       </div>
       <Toast ref={toast} />
       <Panel header="Nova faktura" style={{ fontSize: "0.88rem" }}>
-        {/* Client Selection */}
+       
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <Dropdown
             value={selectedClient}
@@ -264,7 +299,6 @@ const InvoicesAdd = () => {
               height: "40px",
               borderRadius: "6px",
               padding: 0,
-              marginBottom: "5%",
             }}
           />
 
@@ -279,7 +313,6 @@ const InvoicesAdd = () => {
                 height: "40px",
                 borderRadius: "6px",
                 padding: 0,
-                marginBottom: "5%",
               }}
             />
           )}
@@ -325,22 +358,32 @@ const InvoicesAdd = () => {
         <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
           <Calendar
             value={invoiceDate}
-            onChange={(e) => setInvoiceDate(e.value)}
+            onChange={(e) => {
+              setInvoiceDate(e.value);
+
+              if (dueDate < e.value) {
+                const newDueDate = new Date(e.value);
+                newDueDate.setDate(newDueDate.getDate() + 14);
+                setDueDate(newDueDate);
+              }
+            }}
             placeholder="Datum računa"
             dateFormat="dd.mm.yy"
             style={{ width: "100%" }}
           />
+
           <Calendar
             value={dueDate}
             onChange={(e) => setDueDate(e.value)}
             placeholder="Datum dospijeća"
             dateFormat="dd.mm.yy"
             style={{ width: "100%" }}
+            minDate={invoiceDate}
           />
         </div>
 
         <DataTable
-          value={[...invoiceItems, { id: "new", item_name: "➕ Dodaj stavku" }]}
+          value={[...invoiceItems, { id: "new", item_name: "Dodaj stavku" }]}
           onRowClick={(e) => e.data.id === "new" && setShowAddItemDialog(true)}
           responsiveLayout="scroll"
           style={{ fontSize: "0.9rem" }}
@@ -350,19 +393,44 @@ const InvoicesAdd = () => {
           <Column
             header="Količina"
             body={(rowData) =>
-              rowData.id !== "new" && (
+              rowData.id === "new" ? (
+                ""
+              ) : (
                 <InputText
                   type="number"
                   min={1}
+                  max={rowData.max_quantity}
                   value={rowData.quantity}
                   style={{ width: "60px" }}
                   onChange={(e) => {
+                    const newQuantity = parseInt(e.target.value);
+
+                    if (isNaN(newQuantity) || newQuantity < 1) {
+                      toast.current.show({
+                        severity: "warn",
+                        summary: "Upozorenje",
+                        detail: "Količina ne može biti manja od 1.",
+                        life: 3000,
+                      });
+                      return;
+                    }
+
+                    if (newQuantity > rowData.max_quantity) {
+                      toast.current.show({
+                        severity: "warn",
+                        summary: "Upozorenje",
+                        detail: `Na zalihi je dostupno samo ${rowData.max_quantity} komada.`,
+                        life: 3000,
+                      });
+                      return;
+                    }
+
                     const updated = invoiceItems.map((item) =>
                       item.id === rowData.id
                         ? {
                             ...item,
-                            quantity: parseInt(e.target.value),
-                            total_price: parseInt(e.target.value) * item.price,
+                            quantity: newQuantity,
+                            total_price: newQuantity * item.price,
                           }
                         : item
                     );
@@ -372,6 +440,7 @@ const InvoicesAdd = () => {
               )
             }
           />
+
           <Column field="price" header="Jed. cijena (€)" />
           <Column field="total_price" header="Ukupno (€)" />
           <Column
@@ -426,6 +495,7 @@ const InvoicesAdd = () => {
             value={selectedCategory}
             options={categoryOptions}
             onChange={(e) => setSelectedCategory(e.value)}
+            optionLabel="label"
             placeholder="Odaberi kategoriju"
             style={{ width: "200px" }}
           />
@@ -438,21 +508,13 @@ const InvoicesAdd = () => {
         </div>
 
         <DataTable
-          value={availableItems.filter((item) => {
-            const matchesCategory = selectedCategory
-              ? item.category === selectedCategory
-              : true;
-            const matchesSearch = item.name
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase());
-            return matchesCategory && matchesSearch;
-          })}
+          value={filteredItems}
           paginator
           rows={5}
           responsiveLayout="scroll"
         >
           <Column field="name" header="Naziv" />
-          <Column field="category" header="Kategorija" />
+          <Column field="category_name" header="Kategorija" />
           <Column field="stock" header="Na zalihi" />
           <Column
             header="Količina"

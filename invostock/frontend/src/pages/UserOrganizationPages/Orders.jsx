@@ -9,6 +9,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { InputText } from "primereact/inputtext";
 import { Menu } from "primereact/menu";
+import { Tag } from "primereact/tag";
 
 const statusOptions = [
   { label: "Sve", value: "all" },
@@ -16,6 +17,31 @@ const statusOptions = [
   { label: "Dostavljeno", value: "delivered" },
   { label: "Obustavljeno", value: "cancelled" },
 ];
+
+const renderStatusTag = (rowData) => {
+  let label = "";
+  let severity = "";
+
+  switch (rowData.status) {
+    case "pending":
+      label = "Na čekanju";
+      severity = "warning";
+      break;
+    case "delivered":
+      label = "Dostavljeno";
+      severity = "success";
+      break;
+    case "cancelled":
+      label = "Obustavljeno";
+      severity = "danger";
+      break;
+    default:
+      label = "Nepoznato";
+      severity = "info";
+  }
+
+  return <Tag value={label} severity={severity} />;
+};
 
 const Orders = () => {
   const navigate = useNavigate();
@@ -287,7 +313,7 @@ const Orders = () => {
             />
             <Column field="supplier" header="Dobavljač" sortable />
             <Column field="total_price" header="Ukupna cijena (€)" sortable />
-            <Column field="status" header="Status" sortable />
+            <Column header="Status" body={renderStatusTag} sortable />
             <Column header="Akcija" body={renderActions} />
           </DataTable>
 

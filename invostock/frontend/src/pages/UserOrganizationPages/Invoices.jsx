@@ -63,7 +63,7 @@ const Invoices = () => {
 
       setInvoices(invoicesData.invoices || []);
       setStatus(statusData || {});
-      console.log(invoices);
+      console.log("Fajtzure: ", invoices);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -82,9 +82,9 @@ const Invoices = () => {
     return statusFilter === "sve"
       ? invoices.filter((invoice) => {
           const fullName =
-            invoice.first_name || invoice.last_name
-              ? `${invoice.first_name || ""} ${
-                  invoice.last_name || ""
+            invoice.contact_first_name || invoice.contact_last_name
+              ? `${invoice.contact_first_name || ""} ${
+                  invoice.contact_last_name || ""
                 }`.toLowerCase()
               : invoice.client_name?.toLowerCase() || "";
 
@@ -150,14 +150,6 @@ const Invoices = () => {
           raised
           size="small"
           onClick={() => navigate("/invoices/add")}
-        />
-        <Button
-          icon="pi pi-ellipsis-h"
-          text
-          raised
-          severity="info"
-          aria-label="User"
-          style={{ width: "50%" }}
         />
       </div>
 
@@ -232,14 +224,15 @@ const Invoices = () => {
             <Column
               header="Klijent"
               body={(rowData) =>
-                rowData.first_name || rowData.last_name
-                  ? `${rowData.first_name || ""} ${
-                      rowData.last_name || ""
+                rowData.contact_first_name || rowData.contact_last_name
+                  ? `${rowData.contact_first_name || ""} ${
+                      rowData.contact_last_name || ""
                     }`.trim()
                   : rowData.client_name || "—"
               }
               sortable
             />
+
             <Column
               field="invoice_date"
               header="Datum fakture"

@@ -1,4 +1,6 @@
-import React from "react";
+import React, { useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
+
 import { Panel } from "primereact/panel";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
@@ -7,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 
 const RecentActivities = ({ activities }) => {
   const navigate = useNavigate();
+  const { user } = useContext(AuthContext);
 
   const formatCurrency = (amount) => {
     return parseFloat(amount || 0).toLocaleString("hr-HR", {
@@ -63,9 +66,12 @@ const RecentActivities = ({ activities }) => {
           paginator
           rows={5}
           onRowClick={(e) => {
-            if (e.data.type === "invoice") navigate(`/invoices/${e.data.id}`);
-            if (e.data.type === "order") navigate(`/orders/${e.data.id}`);
-            if (e.data.type === "expense") navigate(`/expenses/${e.data.id}`);
+            if (e.data.type === "invoice")
+              navigate(`/invoices/${e.data.id}/${user.id}`);
+            if (e.data.type === "order")
+              navigate(`/orders/${e.data.id}/${user.id}`);
+            if (e.data.type === "payment") navigate(`/payments`);
+            if (e.data.type === "expense") navigate(`/expenses`);
           }}
           selectionMode="single"
         >
@@ -74,7 +80,23 @@ const RecentActivities = ({ activities }) => {
             body={(rowData) => getActivityIcon(rowData.type)}
             style={{ width: "50px" }}
           />
-          <Column field="title" header="Opis" />
+          <Column
+            header="Opis"
+            body={(rowData) => {
+              switch (rowData.type) {
+                case "invoice":
+                  return `Faktura #${rowData.id}`;
+                case "order":
+                  return `Nalog #${rowData.id}`;
+                case "expense":
+                  return rowData.title || "Trošak";
+                case "payment":
+                  return rowData.title || `Plaćanje`;
+                default:
+                  return rowData.title || "-";
+              }
+            }}
+          />
           <Column
             field="amount"
             header="Iznos"

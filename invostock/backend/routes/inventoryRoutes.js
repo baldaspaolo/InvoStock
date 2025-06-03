@@ -19,14 +19,18 @@ router.post("/getInventory", (req, res) => {
 
   if (organizationId) {
     query = `
-      SELECT * FROM inventory_items 
-      WHERE organization_id = ? AND is_deleted = FALSE
+      SELECT ii.*, ic.name AS category_name
+      FROM inventory_items ii
+      LEFT JOIN inventory_categories ic ON ii.category_id = ic.id
+      WHERE ii.organization_id = ? AND ii.is_deleted = FALSE
     `;
     queryParams = [organizationId];
   } else {
     query = `
-      SELECT * FROM inventory_items 
-      WHERE user_id = ? AND organization_id IS NULL AND is_deleted = FALSE
+      SELECT ii.*, ic.name AS category_name
+      FROM inventory_items ii
+      LEFT JOIN inventory_categories ic ON ii.category_id = ic.id
+      WHERE ii.user_id = ? AND ii.organization_id IS NULL AND ii.is_deleted = FALSE
     `;
     queryParams = [userId];
   }
@@ -42,11 +46,14 @@ router.post("/getInventory", (req, res) => {
 });
 
 
+
 router.post("/addInventoryItem", (req, res) => {
   const { userId, organizationId, itemData } = req.body;
 
-  if (!userId || !itemData?.item_name || !itemData?.category) {
-    return res.status(400).json({ error: "Nedostaju podaci" });
+  if (!userId || !itemData?.item_name || !itemData?.category_id) {
+    return res
+      .status(400)
+      .json({ error: "Nedostaju podaci (userId, item_name, category_id)" });
   }
 
   let checkQuery = "";
@@ -85,7 +92,7 @@ router.post("/addInventoryItem", (req, res) => {
 
       const insertQuery = `
         INSERT INTO inventory_items (
-          organization_id, user_id, item_name, category, description,
+          organization_id, user_id, item_name, category_id, description,
           stock_quantity, reorder_level, price, custom_inventory_code
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
@@ -93,7 +100,7 @@ router.post("/addInventoryItem", (req, res) => {
         organizationId || null,
         userId,
         itemData.item_name,
-        itemData.category,
+        itemData.category_id, 
         itemData.description || null,
         itemData.stock_quantity || 0,
         itemData.reorder_level || 1,
@@ -123,6 +130,7 @@ router.post("/addInventoryItem", (req, res) => {
   });
 });
 
+
 router.get("/getCategories", (req, res) => {
   const { userId, organizationId } = req.query;
 
@@ -131,8 +139,8 @@ router.get("/getCategories", (req, res) => {
   }
 
   const query = organizationId
-    ? `SELECT DISTINCT category FROM inventory_items WHERE organization_id = ?`
-    : `SELECT DISTINCT category FROM inventory_items WHERE user_id = ? AND organization_id IS NULL`;
+    ? `SELECT id, name FROM inventory_categories WHERE organization_id = ? AND is_deleted = 0 ORDER BY name ASC`
+    : `SELECT id, name FROM inventory_categories WHERE user_id = ? AND organization_id IS NULL AND is_deleted = 0 ORDER BY name ASC`;
 
   const param = organizationId || userId;
 
@@ -142,10 +150,10 @@ router.get("/getCategories", (req, res) => {
       return res.status(500).json({ error: "Greška na serveru" });
     }
 
-    const categories = results.map((row) => row.category);
-    res.status(200).json({ success: true, categories });
+    res.status(200).json({ success: true, categories: results });
   });
 });
+
 
 router.post("/lowStock", (req, res) => {
   const { userId, organizationId } = req.body;
@@ -226,11 +234,11 @@ router.post("/zeroStock", (req, res) => {
 });
 
 router.post("/checkOrAddItem", (req, res) => {
-  const { userId, organizationId, item_name, category, price } = req.body;
+  const { userId, organizationId, item_name, category_id, price } = req.body;
 
-  if (!userId || !item_name || !category) {
+  if (!userId || !item_name || !category_id) {
     return res.status(400).json({
-      error: "Nedostaju obavezni podaci (userId, item_name, category)",
+      error: "Nedostaju obavezni podaci (userId, item_name, category_id)",
     });
   }
 
@@ -289,14 +297,14 @@ router.post("/checkOrAddItem", (req, res) => {
       // Unos artikla s custom kodom
       const insertQuery = `
         INSERT INTO inventory_items (
-          item_name, category, description, stock_quantity, reorder_level, price,
+          item_name, category_id, description, stock_quantity, reorder_level, price,
           user_id, organization_id, custom_inventory_code
         ) VALUES (?, ?, '', 0, 1, ?, ?, ?, ?)
       `;
 
       const insertParams = [
         item_name,
-        category,
+        category_id, // <-- NOVO
         price || 0,
         userId,
         organizationId || null,
@@ -329,6 +337,7 @@ router.post("/checkOrAddItem", (req, res) => {
     });
   });
 });
+
 
 router.post("/increaseStock", (req, res) => {
   const { itemId, quantity, userId, organizationId } = req.body;
@@ -444,8 +453,19 @@ router.get("/getInventoryItem/:id", (req, res) => {
     return res.status(400).json({ error: "Nedostaje ID artikla ili userId" });
 
   const query = organizationId
-    ? `SELECT * FROM inventory_items WHERE id = ? AND organization_id = ?`
-    : `SELECT * FROM inventory_items WHERE id = ? AND user_id = ? AND organization_id IS NULL`;
+    ? `
+      SELECT ii.*, ic.name AS category_name
+      FROM inventory_items ii
+      LEFT JOIN inventory_categories ic ON ii.category_id = ic.id
+      WHERE ii.id = ? AND ii.organization_id = ?
+    `
+    : `
+      SELECT ii.*, ic.name AS category_name
+      FROM inventory_items ii
+      LEFT JOIN inventory_categories ic ON ii.category_id = ic.id
+      WHERE ii.id = ? AND ii.user_id = ? AND ii.organization_id IS NULL
+    `;
+
   const params = organizationId ? [id, organizationId] : [id, userId];
 
   db.query(query, params, (err, results) => {
@@ -464,26 +484,27 @@ router.get("/getInventoryItem/:id", (req, res) => {
   });
 });
 
+
 router.put("/updateInventoryItem/:id", (req, res) => {
   const { id } = req.params;
   const {
     userId,
     organizationId,
     item_name,
-    category,
+    category_id,
     price,
     description,
     reorder_level,
   } = req.body;
 
-  if (!id || !userId || !item_name || !category) {
+  if (!id || !userId || !item_name || !category_id) {
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
   const query = `
     UPDATE inventory_items SET
       item_name = ?,
-      category = ?,
+      category_id = ?,   -- <-- novo
       price = ?,
       description = ?,
       reorder_level = ?
@@ -497,7 +518,7 @@ router.put("/updateInventoryItem/:id", (req, res) => {
 
   const params = [
     item_name,
-    category,
+    category_id, 
     price || 0,
     description || null,
     reorder_level || 1,
@@ -520,6 +541,7 @@ router.put("/updateInventoryItem/:id", (req, res) => {
     res.status(200).json({ success: true, message: "Artikal ažuriran" });
   });
 });
+
 
 router.delete("/deleteInventoryItem/:id", (req, res) => {
   const { id } = req.params;
@@ -559,5 +581,56 @@ router.delete("/deleteInventoryItem/:id", (req, res) => {
       .json({ success: true, message: "Artikal označen kao obrisan" });
   });
 });
+
+router.post("/addInventoryCategory", (req, res) => {
+  const { userId, organizationId, name } = req.body;
+
+  if (!userId || !name) {
+    return res
+      .status(400)
+      .json({ error: "Nedostaju obavezni podaci (userId, name)" });
+  }
+
+    const checkQuery = organizationId
+    ? `SELECT id FROM inventory_categories WHERE name = ? AND organization_id = ? AND is_deleted = 0 LIMIT 1`
+    : `SELECT id FROM inventory_categories WHERE name = ? AND user_id = ? AND organization_id IS NULL AND is_deleted = 0 LIMIT 1`;
+
+  const checkParams = organizationId ? [name, organizationId] : [name, userId];
+
+  db.query(checkQuery, checkParams, (err, existing) => {
+    if (err) {
+      console.error("Greška kod provjere kategorije:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    if (existing.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Kategorija s tim nazivom već postoji." });
+    }
+
+    
+    const insertQuery = `
+      INSERT INTO inventory_categories (name, user_id, organization_id, is_deleted)
+      VALUES (?, ?, ?, 0)
+    `;
+
+    const insertParams = [name, userId, organizationId || null];
+
+    db.query(insertQuery, insertParams, (err2, result) => {
+      if (err2) {
+        console.error("Greška kod unosa nove kategorije:", err2);
+        return res.status(500).json({ error: "Greška na serveru." });
+      }
+
+      res.status(201).json({
+        success: true,
+        message: "Kategorija uspješno dodana.",
+        category_id: result.insertId, 
+      });
+    });
+  });
+});
+
 
 module.exports = router;

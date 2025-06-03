@@ -316,14 +316,6 @@ const Sales = () => {
           size="small"
           onClick={() => navigate("/sales/add")}
         />
-        <Button
-          icon="pi pi-ellipsis-h"
-          text
-          raised
-          severity="info"
-          aria-label="Opcije"
-          style={{ width: "50%" }}
-        />
       </div>
 
       <div className="div4">
