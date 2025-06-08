@@ -49,7 +49,21 @@ const Login = () => {
           return;
         }
 
-        // Prijava korisnika
+        if (
+          data.user.organization_id &&
+          data.user.organization_is_active === 0
+        ) {
+          window.toast.show({
+            severity: "error",
+            summary: "Organizacija deaktivirana",
+            detail:
+              "Vaša organizacija je obrisana/blokirana i nije moguć pristup računu. " +
+              "Obratite se administratoru organizacije ili sistemskom administratoru.",
+            life: 6000,
+          });
+          return;
+        }
+
         login(data.user);
 
         window.toast.show({
@@ -67,7 +81,6 @@ const Login = () => {
           }
         }, 1500);
       } else {
-        // Obrada poznatih poruka (npr. deaktivacija)
         const errorMessage =
           data?.message === "Vaš račun je deaktiviran."
             ? "Vaš račun je deaktiviran. Obratite se administratoru."
@@ -90,6 +103,7 @@ const Login = () => {
       });
     }
   };
+
 
 
 

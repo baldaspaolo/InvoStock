@@ -5,7 +5,7 @@ const db = require("../db");
 
 router.get("/users/no-organization", (req, res) => {
   const query = `
-    SELECT id, name, email, created_at
+    SELECT id, name, email, created_at, is_active
     FROM users
     WHERE organization_id IS NULL
   `;
@@ -17,7 +17,7 @@ router.get("/users/no-organization", (req, res) => {
 
 router.get("/users/with-organization", (req, res) => {
   const query = `
-    SELECT u.id, u.name, u.email, u.created_at, o.id AS organization_id, o.name AS organization_name
+    SELECT u.id, u.name, u.email, u.created_at, u.is_active, o.id AS organization_id, o.name AS organization_name
     FROM users u
     LEFT JOIN organizations o ON u.organization_id = o.id
     WHERE u.organization_id IS NOT NULL
@@ -28,6 +28,7 @@ router.get("/users/with-organization", (req, res) => {
   });
 });
 
+
 router.get("/organizations", (req, res) => {
   const query = `
   SELECT 
@@ -35,15 +36,18 @@ router.get("/organizations", (req, res) => {
     o.name, 
     o.email, 
     o.address,
-    (SELECT COUNT(*) FROM users u WHERE u.organization_id = o.id) AS member_count
+    o.is_active,
+    (SELECT COUNT(*) FROM users u WHERE u.organization_id = o.id AND u.is_active = 1) AS member_count
   FROM organizations o
-`;
+  `;
 
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: "Greška kod organizacija." });
     res.json(results);
   });
 });
+
+
 
 router.get("/users/:id", (req, res) => {
   db.query(
@@ -751,11 +755,17 @@ router.put("/users/:id", (req, res) => {
 router.delete("/users/:id", (req, res) => {
   const { id } = req.params;
 
-  db.query("DELETE FROM users WHERE id = ?", [id], (err, result) => {
-    if (err) return res.status(500).json({ error: "Greška kod brisanja" });
-    res.json({ success: true });
+  const query = `UPDATE users SET is_active = 0 WHERE id = ?`;
+
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      console.error("Greška kod soft brisanja korisnika:", err);
+      return res.status(500).json({ error: "Greška kod soft brisanja." });
+    }
+    res.json({ success: true, message: "Korisnik je soft obrisan." });
   });
 });
+
 
 router.put("/organizations/:id", (req, res) => {
   const { id } = req.params;
@@ -773,17 +783,50 @@ router.put("/organizations/:id", (req, res) => {
   });
 });
 
+router.put("/organizations/:id/activate", (req, res) => {
+  const { id } = req.params;
+
+  const query = `UPDATE organizations SET is_active = 1 WHERE id = ?`;
+
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      console.error("Greška kod aktivacije organizacije:", err);
+      return res
+        .status(500)
+        .json({ error: "Greška kod aktivacije organizacije." });
+    }
+
+    res.json({ success: true, message: "Organizacija je aktivirana." });
+  });
+});
+
 router.delete("/organizations/:id", (req, res) => {
   const { id } = req.params;
 
-  db.query("DELETE FROM organizations WHERE id = ?", [id], (err, result) => {
+  const query = `UPDATE organizations SET is_active = 0 WHERE id = ?`;
+
+  db.query(query, [id], (err, result) => {
     if (err) {
-      console.error("Greška kod brisanja organizacije:", err);
+      console.error("Greška kod soft brisanja organizacije:", err);
       return res
         .status(500)
-        .json({ error: "Greška kod brisanja organizacije." });
+        .json({ error: "Greška kod soft brisanja organizacije." });
     }
-    res.json({ success: true });
+    res.json({ success: true, message: "Organizacija je soft obrisana." });
+  });
+});
+
+router.put("/users/:id/activate", (req, res) => {
+  const { id } = req.params;
+
+  const query = `UPDATE users SET is_active = 1 WHERE id = ?`;
+
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      console.error("Greška kod aktiviranja korisnika:", err);
+      return res.status(500).json({ error: "Greška kod aktiviranja." });
+    }
+    res.json({ success: true, message: "Korisnik je aktiviran." });
   });
 });
 

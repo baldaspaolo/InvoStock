@@ -14,7 +14,13 @@ router.post("/getUser", (req, res) => {
     return res.status(400).json({ error: "Email i lozinka su obavezni!" });
   }
 
-  const query = `SELECT * FROM users WHERE email = ?`;
+  const query = `
+    SELECT u.*, o.is_active AS organization_is_active
+    FROM users u
+    LEFT JOIN organizations o ON u.organization_id = o.id
+    WHERE u.email = ?
+  `;
+
   db.query(query, [email], async (err, results) => {
     if (err) {
       console.error("Greška pri izvođenju upita!", err);
@@ -41,6 +47,7 @@ router.post("/getUser", (req, res) => {
     res.json({ success: true, user, message: "Uspješan login!" });
   });
 });
+
 router.post("/forgot-password", (req, res) => {
   const { email } = req.body;
 

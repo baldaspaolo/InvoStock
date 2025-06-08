@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "primereact/card";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
+import { Menu } from "primereact/menu";
 import { Button } from "primereact/button";
 import { Toast } from "primereact/toast";
 import { InputText } from "primereact/inputtext";
@@ -10,6 +11,8 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import EditOrganizationDialog from "../../components/EditOrganizationDialog";
 const Organizations = () => {
   const navigate = useNavigate();
+  const menu = useRef(null);
+
   const toast = useRef(null);
   const [organizations, setOrganizations] = useState([]);
   const [filteredOrganizations, setFilteredOrganizations] = useState([]);
@@ -123,6 +126,90 @@ const Organizations = () => {
     }
   };
 
+  const showMenu = (event, org) => {
+    event.stopPropagation();
+    setSelectedOrganization(org);
+    menu.current.toggle(event);
+  };
+
+  const handleEdit = () => {
+    setEditDialogVisible(true);
+  };
+
+ 
+
+  const handleDelete = () => {
+    confirmDialog({
+      message: `Jeste li sigurni da želite obrisati organizaciju "${selectedOrganization.name}"?`,
+      header: "Potvrda brisanja",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Da, obriši",
+      rejectLabel: "Odustani",
+      accept: () => deleteOrganization(selectedOrganization.id),
+    });
+  };
+
+  const handleActivate = () => {
+    confirmDialog({
+      message: `Jeste li sigurni da želite aktivirati organizaciju "${selectedOrganization.name}"?`,
+      header: "Potvrda aktivacije",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Da, aktiviraj",
+      rejectLabel: "Odustani",
+      accept: () => activateOrganization(selectedOrganization.id),
+    });
+  };
+
+  const activateOrganization = async (id) => {
+    try {
+      const res = await fetch(
+        `${API_URL}/api/admin/organizations/${id}/activate`,
+        {
+          method: "PUT",
+        }
+      );
+      if (!res.ok) throw new Error("Aktivacija nije uspjela");
+      toast.current.show({
+        severity: "success",
+        summary: "Uspjeh",
+        detail: "Organizacija je aktivirana",
+        life: 2000,
+      });
+      fetchOrganizations();
+    } catch (err) {
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Neuspjela aktivacija organizacije",
+        life: 3000,
+      });
+    }
+  };
+
+  const getMenuItems = () => {
+    if (!selectedOrganization) return [];
+
+    const baseItems = [
+      { label: "Uredi", icon: "pi pi-pencil", command: handleEdit },
+    ];
+
+    if (selectedOrganization.is_active) {
+      baseItems.push({
+        label: "Briši",
+        icon: "pi pi-trash",
+        command: handleDelete,
+      });
+    } else {
+      baseItems.push({
+        label: "Aktiviraj",
+        icon: "pi pi-check",
+        command: handleActivate,
+      });
+    }
+
+    return baseItems;
+  };
+
   return (
     <div style={{ minHeight: "70vh", marginTop: "3%" }}>
       <Card
@@ -157,21 +244,38 @@ const Organizations = () => {
 
             <Column field="member_count" header="Broj članova" sortable />
             <Column
+              field="is_active"
+              header="Aktivna"
+              body={(rowData) =>
+                rowData.is_active ? (
+                  <span className="text-green-500">Da</span>
+                ) : (
+                  <span className="text-red-500">Ne</span>
+                )
+              }
+              sortable
+            />
+            <Column
               body={(rowData) => (
-                <div className="flex gap-2">
+                <div onClick={(e) => e.stopPropagation()}>
                   <Button
-                    icon="pi pi-pencil"
-                    className="p-button-text"
-                    onClick={(e) => handleEditClick(rowData, e)}
+                    icon="pi pi-ellipsis-v"
+                    rounded
+                    text
+                    onClick={(e) => showMenu(e, rowData)}
+                    aria-controls="popup_menu"
+                    aria-haspopup
                   />
-                  <Button
-                    icon="pi pi-trash"
-                    className="p-button-text p-button-danger"
-                    onClick={(e) => handleDeleteClick(rowData, e)}
+                  <Menu
+                    model={getMenuItems()}
+                    popup
+                    ref={menu}
+                    id="popup_menu"
                   />
                 </div>
               )}
-              style={{ width: "6rem" }}
+              style={{ width: "5rem" }}
+              headerStyle={{ width: "5rem" }}
             />
           </DataTable>
         </div>

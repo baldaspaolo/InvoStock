@@ -211,10 +211,30 @@ const Users = () => {
     navigate(`/admin/users/${event.data.id}`);
   };
 
-  const menuItems = [
-    { label: "Uredi", icon: "pi pi-pencil", command: handleEdit },
-    { label: "Briši", icon: "pi pi-trash", command: handleDelete },
-  ];
+  const getMenuItems = () => {
+    if (!selectedUser) return [];
+
+    const baseItems = [
+      { label: "Uredi", icon: "pi pi-pencil", command: handleEdit },
+    ];
+
+    if (selectedUser.is_active) {
+      baseItems.push({
+        label: "Briši",
+        icon: "pi pi-trash",
+        command: handleDelete,
+      });
+    } else {
+      baseItems.push({
+        label: "Aktiviraj",
+        icon: "pi pi-check",
+        command: handleActivate,
+      });
+    }
+
+    return baseItems;
+  };
+
 
   const actionTemplate = (rowData) => {
     return (
@@ -227,10 +247,54 @@ const Users = () => {
           aria-controls="popup_menu"
           aria-haspopup
         />
-        <Menu model={menuItems} popup ref={menu} id="popup_menu" />
+        <Menu model={getMenuItems()} popup ref={menu} id="popup_menu" />
       </div>
     );
   };
+
+  const handleActivate = () => {
+    confirmDialog({
+      message: `Jeste li sigurni da želite aktivirati korisnika "${selectedUser.name}"?`,
+      header: "Potvrda aktivacije",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Da, aktiviraj",
+      rejectLabel: "Odustani",
+      accept: async () => {
+        try {
+          const res = await fetch(
+            `${API_URL}/api/admin/users/${selectedUser.id}/activate`,
+            {
+              method: "PUT",
+            }
+          );
+          if (res.ok) {
+            toast.current.show({
+              severity: "success",
+              summary: "Aktivirano",
+              detail: "Korisnik je uspješno aktiviran",
+              life: 3000,
+            });
+            setUsers((prev) =>
+              prev.map((u) =>
+                u.id === selectedUser.id ? { ...u, is_active: 1 } : u
+              )
+            );
+          } else {
+            throw new Error();
+          }
+        } catch (err) {
+          toast.current.show({
+            severity: "error",
+            summary: "Greška",
+            detail: "Greška pri aktiviranju korisnika",
+            life: 3000,
+          });
+        }
+      },
+    });
+  };
+
+
 
   const organizationTemplate = (rowData) => {
     return rowData.organization_id ? (
@@ -309,6 +373,19 @@ const Users = () => {
               sortable
               sortField="organization_id"
             ></Column>
+            <Column
+              field="is_active"
+              header="Aktivan"
+              body={(rowData) =>
+                rowData.is_active ? (
+                  <span className="text-green-500">Da</span>
+                ) : (
+                  <span className="text-red-500">Ne</span>
+                )
+              }
+              sortable
+            ></Column>
+
             <Column
               body={actionTemplate}
               style={{ width: "5rem" }}
