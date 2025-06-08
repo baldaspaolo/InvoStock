@@ -41,33 +41,6 @@ router.post("/getUser", (req, res) => {
     res.json({ success: true, user, message: "Uspješan login!" });
   });
 });
-
-/*router.post("/getUser", (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email i zaporka su obavezni!" });
-  }
-
-  const query = `SELECT id, name, email, role, organization_id FROM users WHERE email=? AND password=?`;
-
-  db.query(query, [email, password], (err, results) => {
-    if (err) {
-      console.error("Greška pri izvođenju upita!", err);
-      return res.status(500).send("Internal Server Error!");
-    }
-
-    if (results.length > 0) {
-      res.json({ success: true, user: results[0], message: "Uspješan login!" });
-    } else {
-      res.json({
-        success: false,
-        message: "Pogrešno korisničko ime ili zaporka.",
-      });
-    }
-  });
-});*/
-
 router.post("/forgot-password", (req, res) => {
   const { email } = req.body;
 
@@ -207,28 +180,35 @@ router.post("/registerOrganizationUser", (req, res) => {
       .json({ success: false, message: "Sva polja su obavezna." });
   }
 
+  // Provjera da li email već postoji
   db.query(
     "SELECT * FROM users WHERE email = ?",
     [email],
     async (err, results) => {
-      if (err)
+      if (err) {
+        console.error("Greška kod provjere emaila:", err);
         return res
           .status(500)
           .json({ success: false, message: "Greška na serveru." });
-      if (results.length > 0)
+      }
+
+      if (results.length > 0) {
         return res
           .status(409)
           .json({ success: false, message: "Email već postoji." });
+      }
 
       db.query(
-        "INSERT INTO organizations (name, address) VALUES (?, ?)",
-        [orgName, orgAddress],
+        "INSERT INTO organizations (name, email, address) VALUES (?, ?, ?)",
+        [orgName, email, orgAddress],
         async (orgErr, orgResult) => {
-          if (orgErr)
+          if (orgErr) {
+            console.error("Greška pri kreiranju organizacije:", orgErr);
             return res.status(500).json({
               success: false,
               message: "Greška pri kreiranju organizacije.",
             });
+          }
 
           const organizationId = orgResult.insertId;
           const hashedPassword = await bcrypt.hash(password, 10);
@@ -237,11 +217,20 @@ router.post("/registerOrganizationUser", (req, res) => {
             "INSERT INTO users (name, email, password, organization_id, org_role) VALUES (?, ?, ?, ?, 'admin')",
             [name, email, hashedPassword, organizationId],
             (userErr) => {
-              if (userErr)
+              if (userErr) {
+                console.error("Greška pri kreiranju korisnika:", userErr);
+                console.error("Podaci koji su se pokušali unijeti:", {
+                  name,
+                  email,
+                  hashedPassword,
+                  organizationId,
+                });
+
                 return res.status(500).json({
                   success: false,
                   message: "Greška pri kreiranju korisnika.",
                 });
+              }
 
               res.status(201).json({
                 success: true,
@@ -353,13 +342,14 @@ router.delete("/deleteUser/:id", (req, res) => {
   });
 });
 
-
 router.delete("/deleteOrgUser/:id", (req, res) => {
   const userIdToRemove = req.params.id;
   const { adminId } = req.body;
 
   if (!adminId || !userIdToRemove) {
-    return res.status(400).json({ error: "Nedostaje ID administratora ili korisnika." });
+    return res
+      .status(400)
+      .json({ error: "Nedostaje ID administratora ili korisnika." });
   }
 
   const adminQuery = "SELECT * FROM users WHERE id = ?";
@@ -393,13 +383,19 @@ router.delete("/deleteOrgUser/:id", (req, res) => {
       const targetUser = userResult[0];
 
       if (targetUser.organization_id !== admin.organization_id) {
-        return res.status(403).json({ error: "Korisnik ne pripada vašoj organizaciji." });
+        return res
+          .status(403)
+          .json({ error: "Korisnik ne pripada vašoj organizaciji." });
       }
 
-      const updateQuery = "UPDATE users SET organization_id = NULL, org_role = NULL WHERE id = ?";
+      const updateQuery =
+        "UPDATE users SET organization_id = NULL, org_role = NULL WHERE id = ?";
       db.query(updateQuery, [userIdToRemove], (err3, result) => {
         if (err3) {
-          console.error("Greška kod uklanjanja korisnika iz organizacije:", err3);
+          console.error(
+            "Greška kod uklanjanja korisnika iz organizacije:",
+            err3
+          );
           return res.status(500).json({ error: "Greška na serveru." });
         }
 
@@ -411,7 +407,6 @@ router.delete("/deleteOrgUser/:id", (req, res) => {
     });
   });
 });
-
 
 router.put("/updateUser/:id", async (req, res) => {
   const { id } = req.params;
@@ -475,24 +470,41 @@ router.put("/updateUser/:id", async (req, res) => {
 router.put("/deactivate", (req, res) => {
   const { userId, password } = req.body;
   if (!userId || !password) {
-    return res.status(400).json({ success: false, message: "Nedostaju podaci!" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Nedostaju podaci!" });
   }
 
-  db.query("SELECT * FROM users WHERE id = ?", [userId], async (err, results) => {
-    if (err || results.length === 0) return res.status(500).json({ success: false, message: "Korisnik nije pronađen!" });
+  db.query(
+    "SELECT * FROM users WHERE id = ?",
+    [userId],
+    async (err, results) => {
+      if (err || results.length === 0)
+        return res
+          .status(500)
+          .json({ success: false, message: "Korisnik nije pronađen!" });
 
-    const user = results[0];
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ success: false, message: "Pogrešna lozinka." });
+      const user = results[0];
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch)
+        return res
+          .status(401)
+          .json({ success: false, message: "Pogrešna lozinka." });
 
-    db.query("UPDATE users SET is_active = 0 WHERE id = ?", [userId], (err2) => {
-      if (err2) return res.status(500).json({ success: false, message: "Greška kod deaktivacije." });
+      db.query(
+        "UPDATE users SET is_active = 0 WHERE id = ?",
+        [userId],
+        (err2) => {
+          if (err2)
+            return res
+              .status(500)
+              .json({ success: false, message: "Greška kod deaktivacije." });
 
-      return res.json({ success: true, message: "Račun deaktiviran." });
-    });
-  });
+          return res.json({ success: true, message: "Račun deaktiviran." });
+        }
+      );
+    }
+  );
 });
-
-
 
 module.exports = router;

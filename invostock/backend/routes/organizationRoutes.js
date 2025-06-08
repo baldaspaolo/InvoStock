@@ -51,7 +51,7 @@ router.post("/sendOrganizationInvite", (req, res) => {
   const { email, organizationId, invitedBy } = req.body;
 
   console.log(
-    "📨 Poziv za:",
+    "Poziv za:",
     email,
     "u org:",
     organizationId,
@@ -60,19 +60,19 @@ router.post("/sendOrganizationInvite", (req, res) => {
   );
 
   if (!email || !organizationId || !invitedBy) {
-    console.log("❌ Nedostaju podaci");
+    console.log("Nedostaju podaci");
     return res.status(400).json({ error: "Nedostaju podaci." });
   }
 
   const checkQuery = "SELECT * FROM users WHERE email = ?";
   db.query(checkQuery, [email], (err, results) => {
     if (err) {
-      console.error("❌ Greška pri provjeri korisnika:", err);
+      console.error("Greška pri provjeri korisnika:", err);
       return res.status(500).json({ error: "Greška pri provjeri korisnika." });
     }
 
     if (results.length === 0) {
-      console.log("❌ Korisnik ne postoji:", email);
+      console.log("Korisnik ne postoji:", email);
       return res
         .status(404)
         .json({ error: "Korisnik s tim emailom ne postoji." });
@@ -81,7 +81,7 @@ router.post("/sendOrganizationInvite", (req, res) => {
     const user = results[0];
 
     if (user.organization_id) {
-      console.log("❌ Već u organizaciji:", email);
+      console.log("Već u organizaciji:", email);
       return res
         .status(400)
         .json({ error: "Korisnik već pripada organizaciji." });
@@ -97,7 +97,7 @@ router.post("/sendOrganizationInvite", (req, res) => {
       [email, user.id, organizationId, invitedBy],
       (err2, result) => {
         if (err2) {
-          console.error("❌ Greška pri dodavanju poziva:", err2);
+          console.error("Greška pri dodavanju poziva:", err2);
           return res
             .status(500)
             .json({ error: "Greška pri kreiranju poziva." });
@@ -105,23 +105,25 @@ router.post("/sendOrganizationInvite", (req, res) => {
 
         const inviteId = result.insertId;
         const insertNotification = `
-          INSERT INTO notifications (user_id, organization_id, message, type, ref_id)
-          VALUES (?, ?, ?, 'org_invite', ?)
-        `;
+  INSERT INTO notifications (user_id, organization_id, title, message, type, ref_id)
+  VALUES (?, ?, ?, ?, 'org_invite', ?)
+`;
 
+        const title = "Poziv u organizaciju";
         const message = "Pozvani ste da se pridružite organizaciji.";
+
         db.query(
           insertNotification,
-          [user.id, organizationId, message, inviteId],
+          [user.id, organizationId, title, message, inviteId],
           (err3) => {
             if (err3) {
-              console.error("❌ Greška pri kreiranju notifikacije:", err3);
+              console.error("Greška pri kreiranju notifikacije:", err3);
               return res.status(500).json({
                 error: "Poziv je kreiran, ali notifikacija nije poslana.",
               });
             }
 
-            console.log("✅ Pozivnica i notifikacija uspješno poslane.");
+            console.log("Pozivnica i notifikacija uspješno poslane.");
             res.json({ success: true, message: "Poziv uspješno poslan." });
           }
         );
