@@ -195,7 +195,6 @@ const Register = () => {
         {error && <Message severity="error" text={error} />}
 
         <form onSubmit={handleRegister}>
-          {/* 🎯 Unos korisnika */}
           <div className="field">
             <label htmlFor="name">Korisničko ime</label>
             <InputText
@@ -235,7 +234,6 @@ const Register = () => {
             />
           </div>
 
-          {/* 📦 Ako je organizacija, prikazujemo dodatna polja */}
           {isOrganization && (
             <>
               <Message

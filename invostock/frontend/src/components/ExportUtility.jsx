@@ -76,11 +76,9 @@ const ExportUtility = ({
   };
 
   const exportToExcel = () => {
-    // Kreiranje Excel radne knjige
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(excelData);
 
-    // Stiliziranje (opcionalno)
     if (excelColumns) {
       ws["!cols"] = excelColumns;
     }

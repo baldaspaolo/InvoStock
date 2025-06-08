@@ -158,10 +158,7 @@ const InvoicesAdd = () => {
   });
 
   useEffect(() => {
-    console.log("Dostupni artikli:", availableItems);
-    console.log("Odabrana kategorija:", selectedCategory);
-    console.log("Opcije kategorija:", categoryOptions);
-  }, [availableItems, selectedCategory, categoryOptions]);
+     }, [availableItems, selectedCategory, categoryOptions]);
 
   const totalAmount = invoiceItems.reduce(
     (sum, item) => sum + item.total_price,
@@ -186,7 +183,6 @@ const InvoicesAdd = () => {
 
     const final_amount = totalAmount - discount;
 
-    // Priprema itema za createInvoice
     const items = invoiceItems.map((item) => ({
       itemName: item.item_name,
       itemDescription: item.item_description,
