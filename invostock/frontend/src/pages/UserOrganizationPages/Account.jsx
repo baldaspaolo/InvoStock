@@ -555,7 +555,17 @@ export default function Account() {
                   >
                     <Column field="name" header="Ime i prezime" />
                     <Column field="email" header="Email" />
-                    <Column field="role" header="Uloga" />
+                    <Column
+                      header="Uloga"
+                      body={(rowData) =>
+                        rowData.role === "admin"
+                          ? "Administrator"
+                          : rowData.role === "member"
+                          ? "Član"
+                          : "Korisnik"
+                      }
+                    />
+
                     {user.org_role === "admin" && (
                       <Column
                         header="Akcije"
@@ -624,7 +634,17 @@ export default function Account() {
         >
           <Column field="name" header="Ime i prezime" />
           <Column field="email" header="Email" />
-          <Column field="role" header="Uloga" />
+          <Column
+            header="Uloga"
+            body={(rowData) =>
+              rowData.role === "admin"
+                ? "Administrator"
+                : rowData.role === "member"
+                ? "Član"
+                : "Korisnik"
+            }
+          />
+
           <Column
             header="Akcije"
             body={(rowData) => (
