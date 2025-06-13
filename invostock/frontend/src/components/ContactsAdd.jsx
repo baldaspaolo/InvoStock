@@ -1,13 +1,13 @@
 import React, { useState, useRef } from "react";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
-import { InputTextarea } from "primereact/inputtextarea"; 
+import { InputTextarea } from "primereact/inputtextarea";
 import { Toast } from "primereact/toast";
-
 
 const ContactsAdd = ({ userId, organizationId, onSuccess, onError }) => {
   const API_URL = import.meta.env.VITE_API_URL;
   const toast = useRef(null);
+
   const [contact, setContact] = useState({
     first_name: "",
     last_name: "",
@@ -21,12 +21,41 @@ const ContactsAdd = ({ userId, organizationId, onSuccess, onError }) => {
     notes: "",
   });
 
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!contact.first_name.trim()) {
+      newErrors.first_name = "Ime je obavezno.";
+    }
+
+    if (!contact.last_name.trim()) {
+      newErrors.last_name = "Prezime je obavezno.";
+    }
+
+    if (contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+      newErrors.email = "Neispravan email.";
+    }
+
+    if (
+      contact.phone_number &&
+      !/^[\d+\-\s]+$/.test(contact.phone_number.trim())
+    ) {
+      newErrors.phone_number =
+        "Telefon može sadržavati samo brojeve, razmake, + i -.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async () => {
-    if (!contact.first_name || !contact.last_name) {
+    if (!validate()) {
       toast.current.show({
         severity: "warn",
-        summary: "Upozorenje",
-        detail: "Ime i prezime su obavezni.",
+        summary: "Greška",
+        detail: "Molimo ispravite unesene podatke.",
         life: 3000,
       });
       return;
@@ -45,21 +74,17 @@ const ContactsAdd = ({ userId, organizationId, onSuccess, onError }) => {
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to add contact");
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Greška pri dodavanju kontakta.");
       }
 
-      if (data.success) {
-        toast.current.show({
-          severity: "success",
-          summary: "Dodano",
-          detail: "Kontakt je uspješno dodan.",
-          life: 3000,
-        });
-        if (onSuccess) onSuccess(data.contact);
-      } else {
-        throw new Error(data.message || "Failed to add contact");
-      }
+      toast.current.show({
+        severity: "success",
+        summary: "Dodano",
+        detail: "Kontakt je uspješno dodan.",
+        life: 3000,
+      });
+      if (onSuccess) onSuccess(data.contact);
     } catch (err) {
       console.error("Greška kod dodavanja kontakta:", err);
       toast.current.show({
@@ -87,18 +112,15 @@ const ContactsAdd = ({ userId, organizationId, onSuccess, onError }) => {
                 : id === "email"
                 ? "Email"
                 : "Telefon"}
-              *
+              {["first_name", "last_name"].includes(id) ? "*" : ""}
             </label>
             <InputText
               id={id}
               value={contact[id]}
               onChange={(e) => setContact({ ...contact, [id]: e.target.value })}
-              className={
-                !contact[id] && ["first_name", "last_name"].includes(id)
-                  ? "p-invalid"
-                  : ""
-              }
+              className={errors[id] ? "p-invalid" : ""}
             />
+            {errors[id] && <small style={{ color: "red" }}>{errors[id]}</small>}
           </div>
         ))}
       </div>
@@ -148,7 +170,6 @@ const ContactsAdd = ({ userId, organizationId, onSuccess, onError }) => {
           icon="pi pi-check"
           severity="success"
           onClick={handleSubmit}
-          disabled={!contact.first_name || !contact.last_name}
         />
       </div>
     </div>

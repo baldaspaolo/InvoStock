@@ -17,12 +17,35 @@ const SupplierAdd = ({ userId, organizationId, onSuccess }) => {
     email: "",
   });
 
-  const handleSubmit = async () => {
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const newErrors = {};
+
     if (!supplierData.name.trim()) {
+      newErrors.name = "Naziv je obavezan.";
+    }
+
+    if (!supplierData.email.trim()) {
+      newErrors.email = "Email je obavezan.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supplierData.email)) {
+      newErrors.email = "Email nije ispravan.";
+    }
+
+    if (supplierData.phone && !/^[\d+\-\s]+$/.test(supplierData.phone)) {
+      newErrors.phone = "Telefon može sadržavati samo brojeve, razmake, + i -.";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validate()) {
       toast.current.show({
         severity: "warn",
         summary: "Greška",
-        detail: "Naziv je obavezan",
+        detail: "Molimo ispravite unesene podatke.",
         life: 3000,
       });
       return;
@@ -59,6 +82,7 @@ const SupplierAdd = ({ userId, organizationId, onSuccess }) => {
           phone: "",
           email: "",
         });
+        setErrors({});
       } else {
         toast.current.show({
           severity: "error",
@@ -82,54 +106,68 @@ const SupplierAdd = ({ userId, organizationId, onSuccess }) => {
     <div className="p-fluid">
       <Toast ref={toast} />
 
-      <InputText
-        value={supplierData.name}
-        onChange={(e) =>
-          setSupplierData({ ...supplierData, name: e.target.value })
-        }
-        placeholder="Naziv"
-        style={{ marginBottom: "1rem" }}
-      />
-      <InputText
-        value={supplierData.address}
-        onChange={(e) =>
-          setSupplierData({ ...supplierData, address: e.target.value })
-        }
-        placeholder="Adresa"
-        style={{ marginBottom: "1rem" }}
-      />
-      <InputText
-        value={supplierData.city}
-        onChange={(e) =>
-          setSupplierData({ ...supplierData, city: e.target.value })
-        }
-        placeholder="Grad"
-        style={{ marginBottom: "1rem" }}
-      />
-      <InputText
-        value={supplierData.country}
-        onChange={(e) =>
-          setSupplierData({ ...supplierData, country: e.target.value })
-        }
-        placeholder="Država"
-        style={{ marginBottom: "1rem" }}
-      />
-      <InputText
-        value={supplierData.phone}
-        onChange={(e) =>
-          setSupplierData({ ...supplierData, phone: e.target.value })
-        }
-        placeholder="Telefon"
-        style={{ marginBottom: "1rem" }}
-      />
-      <InputText
-        value={supplierData.email}
-        onChange={(e) =>
-          setSupplierData({ ...supplierData, email: e.target.value })
-        }
-        placeholder="Email"
-        style={{ marginBottom: "1rem" }}
-      />
+      <div style={{ marginBottom: "1rem" }}>
+        <InputText
+          value={supplierData.name}
+          onChange={(e) =>
+            setSupplierData({ ...supplierData, name: e.target.value })
+          }
+          placeholder="Naziv"
+        />
+        {errors.name && <small style={{ color: "red" }}>{errors.name}</small>}
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <InputText
+          value={supplierData.address}
+          onChange={(e) =>
+            setSupplierData({ ...supplierData, address: e.target.value })
+          }
+          placeholder="Adresa"
+        />
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <InputText
+          value={supplierData.city}
+          onChange={(e) =>
+            setSupplierData({ ...supplierData, city: e.target.value })
+          }
+          placeholder="Grad"
+        />
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <InputText
+          value={supplierData.country}
+          onChange={(e) =>
+            setSupplierData({ ...supplierData, country: e.target.value })
+          }
+          placeholder="Država"
+        />
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <InputText
+          value={supplierData.phone}
+          onChange={(e) =>
+            setSupplierData({ ...supplierData, phone: e.target.value })
+          }
+          placeholder="Telefon"
+        />
+        {errors.phone && <small style={{ color: "red" }}>{errors.phone}</small>}
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <InputText
+          value={supplierData.email}
+          onChange={(e) =>
+            setSupplierData({ ...supplierData, email: e.target.value })
+          }
+          placeholder="Email"
+        />
+        {errors.email && <small style={{ color: "red" }}>{errors.email}</small>}
+      </div>
 
       <Button
         label="Dodaj dobavljača"
