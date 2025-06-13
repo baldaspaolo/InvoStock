@@ -2,6 +2,8 @@ import React, { useState, useContext, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
 import { DataTable } from "primereact/datatable";
 import { Column } from "primereact/column";
 import { Button } from "primereact/button";
@@ -23,6 +25,13 @@ const stockStatusOptions = [
 const Inventory = () => {
   const menu = useRef(null);
   const navigate = useNavigate();
+  const toast = useRef(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryDialogVisible, setCategoryDialogVisible] = useState(false);
+  const [editedCategory, setEditedCategory] = useState(null);
+  const [editedName, setEditedName] = useState("");
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [rawCategories, setRawCategories] = useState([]); // za prikaz tablice
   const [inventoryItems, setInventoryItems] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -35,78 +44,77 @@ const Inventory = () => {
     { label: "Sve kategorije", value: "all" },
   ]);
 
-  useEffect(() => {
-    const fetchInventory = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/inventory/getInventory`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId: user.id,
-              organizationId: user.organization_id,
-            }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Greška prilikom dohvaćanja inventara");
+  const fetchInventory = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/inventory/getInventory`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
         }
+      );
 
-        const data = await response.json();
-        setInventoryItems(data.inventory);
-        console.log(data);
-      } catch (error) {
-        console.error("Greška:", error);
+      if (!response.ok) {
+        throw new Error("Greška prilikom dohvaćanja inventara");
       }
-    };
 
+      const data = await response.json();
+      setInventoryItems(data.inventory);
+      console.log(data);
+    } catch (error) {
+      console.error("Greška:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchInventory();
   }, [user.id, user.organizationId]);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/inventory/getCategories?userId=${
-            user.id
-          }&organizationId=${user.organization_id || ""}`
-        );
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/inventory/getCategories?userId=${
+          user.id
+        }&organizationId=${user.organization_id || ""}`
+      );
 
-        if (!response.ok) {
-          throw new Error("Greška prilikom dohvaćanja kategorija");
-        }
-
-        const data = await response.json();
-        console.log(data);
-
-        const options = [
-          { label: "Sve kategorije", value: "all" },
-          ...data.categories.map((cat) => ({
-            label: cat.name,
-            value: cat.id.toString(), 
-          })),
-        ];
-
-        setCategoryOptions(options);
-      } catch (error) {
-        console.error("Greška kod dohvaćanja kategorija:", error);
+      if (!response.ok) {
+        throw new Error("Greška prilikom dohvaćanja kategorija");
       }
-    };
 
+      const data = await response.json();
+      console.log(data);
+
+      const options = [
+        { label: "Sve kategorije", value: "all" },
+        ...data.categories.map((cat) => ({
+          label: cat.name,
+          value: cat.id.toString(),
+        })),
+      ];
+
+      setCategoryOptions(options);
+      setRawCategories(data.categories);
+    } catch (error) {
+      console.error("Greška kod dohvaćanja kategorija:", error);
+    }
+  };
+
+  useEffect(() => {
     fetchCategories();
   }, [user.id, user.organization_id]);
 
   const menuItems = [
     {
-      label: "Dodaj kategoriju",
-      icon: "pi pi-folder-plus",
-      command: () => {
-        alert("Dodaj kategoriju");
-      },
+      label: "Upravljanje kategorijama",
+      icon: "pi pi-tags",
+      command: () => setCategoryDialogVisible(true),
     },
   ];
 
@@ -151,6 +159,132 @@ const Inventory = () => {
   const outOfStockItems = inventoryItems.filter(
     (item) => item.stock_quantity === 0
   );
+
+  const handleEditCategory = (category) => {
+    setEditedCategory(category);
+    setEditedName(category.name);
+  };
+
+  const saveEditedCategory = async () => {
+    if (!editedName.trim()) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/inventory/updateCategory/${
+          editedCategory.id
+        }`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: editedName }),
+        }
+      );
+
+      const data = await res.json();
+      if (data.success) {
+        setRawCategories((prev) =>
+          prev.map((cat) =>
+            cat.id === editedCategory.id ? { ...cat, name: editedName } : cat
+          )
+        );
+        toast.current.show({
+          severity: "success",
+          summary: "Kategorija ažurirana",
+          detail: `Naziv promijenjen u "${editedName}"`,
+          life: 3000,
+        });
+        setEditedCategory(null);
+        setEditedName("");
+        fetchInventory();
+        fetchCategories();
+      }
+    } catch (err) {
+      console.error("Greška kod uređivanja:", err);
+    }
+  };
+
+  const handleDeleteCategory = (category) => {
+    setEditedCategory(category);
+    setConfirmDeleteVisible(true);
+  };
+
+  const confirmDeleteCategory = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/inventory/deleteCategory/${
+          editedCategory.id
+        }`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setRawCategories((prev) =>
+          prev.filter((cat) => cat.id !== editedCategory.id)
+        );
+        toast.current.show({
+          severity: "success",
+          summary: "Kategorija obrisana",
+          detail: `"${editedCategory.name}" je uspješno uklonjena.`,
+          life: 3000,
+        });
+        fetchInventory();
+        fetchCategories();
+      }
+    } catch (err) {
+      console.error("Greška kod brisanja:", err);
+    } finally {
+      setEditedCategory(null);
+      setConfirmDeleteVisible(false);
+    }
+  };
+
+  const addNewCategory = async () => {
+    if (!newCategoryName.trim()) return;
+
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/inventory/addCategory`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+            name: newCategoryName,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      if (data.success) {
+        const newCat = { id: data.category_id, name: newCategoryName };
+        setRawCategories((prev) => [...prev, newCat]);
+        setCategoryOptions((prev) => [
+          ...prev,
+          { label: newCategoryName, value: data.category_id.toString() },
+        ]);
+        toast.current.show({
+          severity: "success",
+          summary: "Dodana kategorija",
+          detail: `"${newCategoryName}" je uspješno dodana.`,
+          life: 3000,
+        });
+        setNewCategoryName("");
+        fetchInventory();
+        fetchCategories();
+      } else {
+        throw new Error(data.error || "Neuspješno dodavanje kategorije");
+      }
+    } catch (err) {
+      console.error("Greška kod dodavanja kategorije:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: err.message,
+        life: 3000,
+      });
+    }
+  };
 
   const showLowStockModal = () => {
     setModalTitle("Artikli na niskoj zalihi");
@@ -338,6 +472,91 @@ const Inventory = () => {
         onHide={() => setDisplayModal(false)}
       >
         {modalContent}
+      </Dialog>
+      <Toast ref={toast} />
+      <ConfirmDialog
+        visible={confirmDeleteVisible}
+        onHide={() => setConfirmDeleteVisible(false)}
+        message={`Jeste li sigurni da želite obrisati kategoriju "${editedCategory?.name}"?`}
+        header="Potvrda brisanja"
+        icon="pi pi-exclamation-triangle"
+        accept={confirmDeleteCategory}
+        reject={() => setConfirmDeleteVisible(false)}
+      />
+      <Dialog
+        header="Upravljanje kategorijama"
+        visible={categoryDialogVisible}
+        style={{ width: "30rem" }}
+        onHide={() => {
+          setCategoryDialogVisible(false);
+          setEditedCategory(null);
+          setEditedName("");
+        }}
+      >
+        <DataTable value={rawCategories} emptyMessage="Nema kategorija.">
+          <Column
+            field="name"
+            header="Naziv kategorije"
+            body={(rowData) =>
+              editedCategory?.id === rowData.id ? (
+                <InputText
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  style={{ width: "100%" }}
+                />
+              ) : (
+                rowData.name
+              )
+            }
+          />
+          <Column
+            header="Akcije"
+            body={(rowData) =>
+              editedCategory?.id === rowData.id ? (
+                <Button
+                  icon="pi pi-check"
+                  severity="success"
+                  text
+                  onClick={saveEditedCategory}
+                />
+              ) : (
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <Button
+                    icon="pi pi-pencil"
+                    severity="warning"
+                    text
+                    onClick={() => handleEditCategory(rowData)}
+                  />
+                  <Button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    text
+                    onClick={() => handleDeleteCategory(rowData)}
+                  />
+                </div>
+              )
+            }
+          />
+        </DataTable>
+        <div style={{ marginTop: "1rem" }}>
+          <div className="field">
+            <label htmlFor="newCategory">Nova kategorija</label>
+            <InputText
+              id="newCategory"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="npr. Dijelovi, Pakiranja..."
+              style={{ width: "100%" }}
+            />
+          </div>
+          <Button
+            label="Dodaj"
+            icon="pi pi-plus"
+            onClick={addNewCategory}
+            style={{ marginTop: "0.5rem" }}
+            severity="success"
+          />
+        </div>
       </Dialog>
     </div>
   );
