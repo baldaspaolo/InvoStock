@@ -1,5 +1,8 @@
 // Expenses.jsx
 import React, { useState, useRef, useEffect, useContext, useMemo } from "react";
+import { Toast } from "primereact/toast";
+import { ConfirmDialog } from "primereact/confirmdialog";
+
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { Button } from "primereact/button";
@@ -19,11 +22,14 @@ const Expenses = () => {
   const navigate = useNavigate();
   const menuRef = useRef(null);
   const categoryMenuRef = useRef(null);
+  const toast = useRef(null);
 
+  const [editedCategory, setEditedCategory] = useState(null);
+  const [editedName, setEditedName] = useState("");
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showCharts, setShowCharts] = useState(false);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [expandedRows, setExpandedRows] = useState(null);
@@ -291,6 +297,86 @@ const Expenses = () => {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("hr-HR");
 
+    const handleEditCategory = (category) => {
+      setEditedCategory(category);
+      setEditedName(category.name);
+    };
+
+    const saveEditedCategory = async () => {
+      if (!editedName.trim()) return;
+
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/expenses/updateExpenseCategory/${
+            editedCategory.id
+          }`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: editedName }),
+          }
+        );
+        const data = await res.json();
+
+        if (data.success) {
+          setCategories((prev) =>
+            prev.map((cat) =>
+              cat.id === editedCategory.id ? { ...cat, name: editedName } : cat
+            )
+          );
+          setEditedCategory(null);
+          setEditedName("");
+          toast.current.show({
+            severity: "success",
+            summary: "Kategorija ažurirana",
+            detail: `Naziv je promijenjen u "${editedName}"`,
+            life: 3000,
+          });
+        }
+      } catch (err) {
+        console.error("Greška kod ažuriranja:", err);
+      }
+    };
+
+
+
+ const handleDeleteCategory = (category) => {
+   setEditedCategory(category);
+   setConfirmDeleteVisible(true);
+ };
+
+ const confirmDeleteCategory = async () => {
+   try {
+     const res = await fetch(
+       `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpenseCategory/${
+         editedCategory.id
+       }`,
+       { method: "DELETE" }
+     );
+     const data = await res.json();
+
+     if (data.success) {
+       setCategories((prev) =>
+         prev.filter((cat) => cat.id !== editedCategory.id)
+       );
+       toast.current.show({
+         severity: "success",
+         summary: "Kategorija obrisana",
+         detail: `"${editedCategory.name}" je uspješno uklonjena.`,
+         life: 3000,
+       });
+     }
+   } catch (err) {
+     console.error("Greška kod brisanja kategorije:", err);
+   } finally {
+     setEditedCategory(null);
+     setConfirmDeleteVisible(false);
+   }
+ };
+
+
+
+
   return (
     <div className="parent">
       <div className="div1">
@@ -544,27 +630,70 @@ const Expenses = () => {
           <Dialog
             header="Moje kategorije"
             visible={showCategoryListDialog}
-            style={{ width: "25rem" }}
-            onHide={() => setShowCategoryListDialog(false)}
+            style={{ width: "30rem" }}
+            onHide={() => {
+              setShowCategoryListDialog(false);
+              setEditedCategory(null);
+            }}
           >
-            <div className="p-fluid">
-              {categories.length > 0 ? (
-                categories.map((cat) => (
-                  <div key={cat.id} style={{ padding: "0.5rem 0" }}>
-                    <i
-                      className="pi pi-tag"
-                      style={{ marginRight: "0.5rem" }}
+            <DataTable value={categories} emptyMessage="Nema kategorija.">
+              <Column
+                field="name"
+                header="Naziv kategorije"
+                body={(rowData) =>
+                  editedCategory?.id === rowData.id ? (
+                    <InputText
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      style={{ width: "100%" }}
                     />
-                    {cat.name}
-                  </div>
-                ))
-              ) : (
-                <p>Nemate još kategorija.</p>
-              )}
-            </div>
+                  ) : (
+                    rowData.name
+                  )
+                }
+              />
+              <Column
+                header="Akcije"
+                body={(rowData) =>
+                  editedCategory?.id === rowData.id ? (
+                    <Button
+                      icon="pi pi-check"
+                      severity="success"
+                      text
+                      onClick={saveEditedCategory}
+                    />
+                  ) : (
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <Button
+                        icon="pi pi-pencil"
+                        severity="warning"
+                        text
+                        onClick={() => handleEditCategory(rowData)}
+                      />
+                      <Button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        text
+                        onClick={() => handleDeleteCategory(rowData)}
+                      />
+                    </div>
+                  )
+                }
+              />
+            </DataTable>
           </Dialog>
         </div>
       </div>
+      <Toast ref={toast} />
+      <ConfirmDialog
+        visible={confirmDeleteVisible}
+        onHide={() => setConfirmDeleteVisible(false)}
+        message={`Jeste li sigurni da želite obrisati kategoriju "${editedCategory?.name}"?`}
+        header="Potvrda brisanja"
+        icon="pi pi-exclamation-triangle"
+        accept={confirmDeleteCategory}
+        reject={() => setConfirmDeleteVisible(false)}
+      />
     </div>
   );
 };
