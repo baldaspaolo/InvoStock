@@ -113,50 +113,50 @@ const Expenses = () => {
     if (user?.id) fetchStats();
   }, [user]);
 
-  useEffect(() => {
-    const fetchExpenses = async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/expenses/getUserExpenses`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user?.id,
-              organizationId: user?.organization_id,
-            }),
-          }
-        );
-        const data = await res.json();
-        if (data.success) setExpenses(data.expenses);
-      } catch (err) {
-        console.error("Greška kod dohvata troškova:", err);
-      }
-    };
+  const fetchExpenses = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/expenses/getUserExpenses`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user?.id,
+            organizationId: user?.organization_id,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (data.success) setExpenses(data.expenses);
+    } catch (err) {
+      console.error("Greška kod dohvata troškova:", err);
+    }
+  };
 
+  useEffect(() => {
     if (user?.id) {
       fetchExpenses();
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/expenses/getExpenseCategories`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user?.id }),
-          }
-        );
-        const data = await res.json();
-        if (data.success) setCategories(data.categories);
-      } catch (err) {
-        console.error("Greška kod dohvata kategorija:", err);
-      }
-    };
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/expenses/getExpenseCategories`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user?.id }),
+        }
+      );
+      const data = await res.json();
+      if (data.success) setCategories(data.categories);
+    } catch (err) {
+      console.error("Greška kod dohvata kategorija:", err);
+    }
+  };
 
+  useEffect(() => {
     if (user?.id) {
       fetchCategories();
     }
@@ -209,6 +209,8 @@ const Expenses = () => {
               }
             );
             setExpenses(expenses.filter((exp) => exp.id !== selectedRow.id));
+            fetchExpenses();
+            fetchCategories();
           } catch (err) {
             console.error("Greška kod brisanja:", err);
           }
@@ -219,14 +221,9 @@ const Expenses = () => {
 
   const categoryOptionsMenu = [
     {
-      label: "Moje kategorije",
-      icon: "pi pi-list",
+      label: "Upravljanje kategorijama",
+      icon: "pi pi-cog",
       command: () => setShowCategoryListDialog(true),
-    },
-    {
-      label: "Dodaj kategoriju",
-      icon: "pi pi-plus",
-      command: () => setShowCategoryDialog(true),
     },
   ];
 
@@ -252,6 +249,8 @@ const Expenses = () => {
         }
       );
       setShowDialog(false);
+      fetchExpenses();
+      fetchCategories();
     } catch (err) {
       console.error("Greška kod spremanja izmjena:", err);
     }
@@ -259,6 +258,7 @@ const Expenses = () => {
 
   const addCategory = async () => {
     if (!newCategoryName.trim()) return;
+
     try {
       const res = await fetch(
         `${import.meta.env.VITE_API_URL}/api/expenses/addExpenseCategory`,
@@ -268,16 +268,55 @@ const Expenses = () => {
           body: JSON.stringify({ userId: user.id, name: newCategoryName }),
         }
       );
+
       const data = await res.json();
+
+      if (res.status === 409) {
+        toast.current.show({
+          severity: "warn",
+          summary: "Postojeća kategorija",
+          detail: `Kategorija "${newCategoryName}" već postoji.`,
+          life: 3000,
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: "Kategorija već postoji ili je došlo do greške.",
+          life: 3000,
+        });
+        return;
+      }
+
       if (data.success) {
         const newCategory = { id: data.categoryId, name: newCategoryName };
         setCategories((prev) => [...prev, newCategory]);
         setForm((prevForm) => ({ ...prevForm, categoryId: newCategory.id }));
         setShowCategoryDialog(false);
+        setShowCategoryListDialog(true);
         setNewCategoryName("");
+
+        toast.current.show({
+          severity: "success",
+          summary: "Kategorija dodana",
+          detail: `Nova kategorija "${newCategoryName}" je dodana.`,
+          life: 3000,
+        });
+
+        fetchExpenses();
+        fetchCategories();
       }
     } catch (err) {
       console.error("Greška kod dodavanja kategorije:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Došlo je do greške prilikom komunikacije s poslužiteljem.",
+        life: 3000,
+      });
     }
   };
 
@@ -297,85 +336,84 @@ const Expenses = () => {
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("hr-HR");
 
-    const handleEditCategory = (category) => {
-      setEditedCategory(category);
-      setEditedName(category.name);
-    };
+  const handleEditCategory = (category) => {
+    setEditedCategory(category);
+    setEditedName(category.name);
+  };
 
-    const saveEditedCategory = async () => {
-      if (!editedName.trim()) return;
+  const saveEditedCategory = async () => {
+    if (!editedName.trim()) return;
 
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/expenses/updateExpenseCategory/${
-            editedCategory.id
-          }`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: editedName }),
-          }
-        );
-        const data = await res.json();
-
-        if (data.success) {
-          setCategories((prev) =>
-            prev.map((cat) =>
-              cat.id === editedCategory.id ? { ...cat, name: editedName } : cat
-            )
-          );
-          setEditedCategory(null);
-          setEditedName("");
-          toast.current.show({
-            severity: "success",
-            summary: "Kategorija ažurirana",
-            detail: `Naziv je promijenjen u "${editedName}"`,
-            life: 3000,
-          });
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/expenses/updateExpenseCategory/${
+          editedCategory.id
+        }`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: editedName }),
         }
-      } catch (err) {
-        console.error("Greška kod ažuriranja:", err);
+      );
+      const data = await res.json();
+
+      if (data.success) {
+        setCategories((prev) =>
+          prev.map((cat) =>
+            cat.id === editedCategory.id ? { ...cat, name: editedName } : cat
+          )
+        );
+        setEditedCategory(null);
+        setEditedName("");
+        fetchExpenses();
+        fetchCategories();
+        toast.current.show({
+          severity: "success",
+          summary: "Kategorija ažurirana",
+          detail: `Naziv je promijenjen u "${editedName}"`,
+          life: 3000,
+        });
       }
-    };
+    } catch (err) {
+      console.error("Greška kod ažuriranja:", err);
+    }
+  };
 
+  const handleDeleteCategory = (category) => {
+    setEditedCategory(category);
+    setConfirmDeleteVisible(true);
+  };
 
+  const confirmDeleteCategory = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpenseCategory/${
+          editedCategory.id
+        }`,
+        { method: "DELETE" }
+      );
+      const data = await res.json();
 
- const handleDeleteCategory = (category) => {
-   setEditedCategory(category);
-   setConfirmDeleteVisible(true);
- };
-
- const confirmDeleteCategory = async () => {
-   try {
-     const res = await fetch(
-       `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpenseCategory/${
-         editedCategory.id
-       }`,
-       { method: "DELETE" }
-     );
-     const data = await res.json();
-
-     if (data.success) {
-       setCategories((prev) =>
-         prev.filter((cat) => cat.id !== editedCategory.id)
-       );
-       toast.current.show({
-         severity: "success",
-         summary: "Kategorija obrisana",
-         detail: `"${editedCategory.name}" je uspješno uklonjena.`,
-         life: 3000,
-       });
-     }
-   } catch (err) {
-     console.error("Greška kod brisanja kategorije:", err);
-   } finally {
-     setEditedCategory(null);
-     setConfirmDeleteVisible(false);
-   }
- };
-
-
-
+      if (data.success) {
+        setCategories((prev) =>
+          prev.filter((cat) => cat.id !== editedCategory.id)
+        );
+        toast.current.show({
+          severity: "success",
+          summary: "Kategorija obrisana",
+          detail: `"${editedCategory.name}" je uspješno uklonjena.`,
+          life: 3000,
+        });
+        fetchExpenses();
+        fetchCategories();
+      }
+    } catch (err) {
+      console.error("Greška kod brisanja kategorije:", err);
+    } finally {
+      setEditedCategory(null);
+      setConfirmDeleteVisible(false);
+    }
+  };
 
   return (
     <div className="parent">
@@ -604,36 +642,14 @@ const Expenses = () => {
           </Dialog>
 
           <Dialog
-            header="Nova kategorija"
-            visible={showCategoryDialog}
-            style={{ width: "25rem" }}
-            onHide={() => setShowCategoryDialog(false)}
-          >
-            <div className="p-fluid">
-              <div className="field">
-                <label>Naziv kategorije</label>
-                <InputText
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  placeholder="npr. Alati, Marketing..."
-                />
-              </div>
-              <Button
-                label="Dodaj"
-                icon="pi pi-check"
-                onClick={addCategory}
-                style={{ marginTop: "1rem" }}
-              />
-            </div>
-          </Dialog>
-
-          <Dialog
-            header="Moje kategorije"
+            header="Upravljanje kategorijama"
             visible={showCategoryListDialog}
             style={{ width: "30rem" }}
             onHide={() => {
               setShowCategoryListDialog(false);
               setEditedCategory(null);
+              setEditedName("");
+              setNewCategoryName("");
             }}
           >
             <DataTable value={categories} emptyMessage="Nema kategorija.">
@@ -681,6 +697,25 @@ const Expenses = () => {
                 }
               />
             </DataTable>
+            <div style={{ marginTop: "1rem" }}>
+              <div className="field">
+                <label htmlFor="newCategory">Nova kategorija</label>
+                <InputText
+                  id="newCategory"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="npr. Alati, Marketing..."
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <Button
+                label="Dodaj"
+                icon="pi pi-plus"
+                onClick={addCategory}
+                style={{ marginTop: "0.5rem" }}
+                severity="success"
+              />
+            </div>
           </Dialog>
         </div>
       </div>

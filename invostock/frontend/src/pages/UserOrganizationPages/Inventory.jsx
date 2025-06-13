@@ -256,30 +256,41 @@ const Inventory = () => {
       );
 
       const data = await res.json();
-      if (data.success) {
-        const newCat = { id: data.category_id, name: newCategoryName };
-        setRawCategories((prev) => [...prev, newCat]);
-        setCategoryOptions((prev) => [
-          ...prev,
-          { label: newCategoryName, value: data.category_id.toString() },
-        ]);
+
+      if (res.status === 409) {
         toast.current.show({
-          severity: "success",
-          summary: "Dodana kategorija",
-          detail: `"${newCategoryName}" je uspješno dodana.`,
+          severity: "warn",
+          summary: "Postojeća kategorija",
+          detail: `Kategorija "${newCategoryName}" već postoji ili je došlo do greške!`,
           life: 3000,
         });
-        setNewCategoryName("");
-        fetchInventory();
-        fetchCategories();
-      } else {
+        return;
+      }
+
+      if (!res.ok || !data.success) {
         throw new Error(data.error || "Neuspješno dodavanje kategorije");
       }
+
+      const newCat = { id: data.category_id, name: newCategoryName };
+      setRawCategories((prev) => [...prev, newCat]);
+      setCategoryOptions((prev) => [
+        ...prev,
+        { label: newCategoryName, value: data.category_id.toString() },
+      ]);
+      toast.current.show({
+        severity: "success",
+        summary: "Dodana kategorija",
+        detail: `"${newCategoryName}" je uspješno dodana.`,
+        life: 3000,
+      });
+      setNewCategoryName("");
+      fetchInventory();
+      fetchCategories();
     } catch (err) {
       console.error("Greška kod dodavanja kategorije:", err);
       toast.current.show({
         severity: "error",
-        summary: "Greška",
+        summary: "Kategorija već postoji ili je došlo do greške!",
         detail: err.message,
         life: 3000,
       });
