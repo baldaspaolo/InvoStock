@@ -37,74 +37,74 @@ const OrdersAdd = () => {
     { label: "Odaberi kategoriju", value: "" },
   ]);
 
-  useEffect(() => {
-    const fetchSuppliers = async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/suppliers/getSuppliers`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user.id,
-              organizationId: user.organization_id,
-            }),
-          }
-        );
-        const data = await res.json();
-        setSuppliers(data.suppliers || []);
-      } catch (err) {
-        console.error("Greška pri dohvaćanju dobavljača:", err);
-      }
-    };
-
-    const fetchInventory = async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/inventory/getInventory`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: user.id,
-              organizationId: user.organization_id,
-            }),
-          }
-        );
-        const data = await res.json();
-        setInventoryItems(
-          (data.inventory || []).map((item) => ({
-            ...item,
-            quantity: 1,
-            customPrice: item.price,
-          }))
-        );
-      } catch (err) {
-        console.error("Greška pri dohvaćanju inventara:", err);
-      }
-    };
-
-    const fetchCategories = async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/inventory/getCategories?userId=${
-            user.id
-          }&organizationId=${user.organization_id || ""}`
-        );
-        const data = await res.json();
-        if (data.success) {
-          setCategoryOptions([
-            { label: "Odaberi kategoriju", value: "" },
-            ...data.categories.map((cat) => ({
-              label: cat.name,
-              value: cat.id,
-            })),
-          ]);
+  const fetchSuppliers = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/suppliers/getSuppliers`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
         }
-      } catch (error) {
-        console.error("Greška pri dohvaćanju kategorija:", error);
+      );
+      const data = await res.json();
+      setSuppliers(data.suppliers || []);
+    } catch (err) {
+      console.error("Greška pri dohvaćanju dobavljača:", err);
+    }
+  };
+  const fetchInventory = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/inventory/getInventory`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
+        }
+      );
+      const data = await res.json();
+      setInventoryItems(
+        (data.inventory || []).map((item) => ({
+          ...item,
+          quantity: 1,
+          customPrice: item.price,
+        }))
+      );
+    } catch (err) {
+      console.error("Greška pri dohvaćanju inventara:", err);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/inventory/getCategories?userId=${
+          user.id
+        }&organizationId=${user.organization_id || ""}`
+      );
+      const data = await res.json();
+      if (data.success) {
+        setCategoryOptions([
+          { label: "Odaberi kategoriju", value: "" },
+          ...data.categories.map((cat) => ({
+            label: cat.name,
+            value: cat.id,
+          })),
+        ]);
       }
-    };
+    } catch (error) {
+      console.error("Greška pri dohvaćanju kategorija:", error);
+    }
+  };
+
+  useEffect(() => {
 
     fetchSuppliers();
     fetchInventory();
@@ -214,6 +214,33 @@ const OrdersAdd = () => {
                 onClick={() => setShowSupplierDialog(true)}
               />
             </div>
+            {selectedSupplier && (
+              <div
+                style={{
+                  fontSize: "0.85rem",
+                  marginBottom: "1rem",
+                  padding: "1rem",
+                  border: "1px solid #ccc",
+                  borderRadius: "8px",
+                }}
+              >
+                <div>
+                  <strong>Adresa:</strong> {selectedSupplier.address || "—"}
+                </div>
+                <div>
+                  <strong>Grad:</strong> {selectedSupplier.city || "—"}
+                </div>
+                <div>
+                  <strong>Država:</strong> {selectedSupplier.country || "—"}
+                </div>
+                <div>
+                  <strong>Telefon:</strong> {selectedSupplier.phone || "—"}
+                </div>
+                <div>
+                  <strong>Email:</strong> {selectedSupplier.email || "—"}
+                </div>
+              </div>
+            )}
 
             <div style={{ marginBottom: "1rem" }}>
               <Calendar

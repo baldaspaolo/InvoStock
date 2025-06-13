@@ -671,4 +671,71 @@ router.post("/addInventoryCategory", (req, res) => {
   });
 });
 
+router.put("/updateCategory/:id", (req, res) => {
+  const { id } = req.params;
+  const { name } = req.body;
+
+  if (!name || !id) {
+    return res.status(400).json({ error: "Nedostaje naziv ili ID." });
+  }
+
+  const query = `UPDATE inventory_categories SET name = ? WHERE id = ? AND is_deleted = 0`;
+
+  db.query(query, [name, id], (err, result) => {
+    if (err) {
+      console.error("Greška kod ažuriranja kategorije:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    res.json({ success: true, message: "Kategorija ažurirana." });
+  });
+});
+
+router.delete("/deleteCategory/:id", (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).json({ error: "Nedostaje ID kategorije." });
+  }
+
+  const query = `UPDATE inventory_categories SET is_deleted = 1 WHERE id = ?`;
+
+  db.query(query, [id], (err, result) => {
+    if (err) {
+      console.error("Greška kod brisanja kategorije:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    res.json({ success: true, message: "Kategorija obrisana." });
+  });
+});
+
+router.post("/addCategory", (req, res) => {
+  const { userId, organizationId, name } = req.body;
+
+  if (!userId || !name) {
+    return res.status(400).json({ error: "Nedostaje userId ili naziv." });
+  }
+
+  const query = `
+    INSERT INTO inventory_categories (name, user_id, organization_id, is_deleted)
+    VALUES (?, ?, ?, 0)
+  `;
+
+  db.query(query, [name, userId, organizationId || null], (err, result) => {
+    if (err) {
+      console.error("Greška kod dodavanja kategorije:", err);
+      return res.status(500).json({ error: "Greška na serveru." });
+    }
+
+    res.status(201).json({
+      success: true,
+      category_id: result.insertId,
+    });
+  });
+});
+
+
+
+
 module.exports = router;

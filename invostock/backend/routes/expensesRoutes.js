@@ -199,32 +199,29 @@ router.post("/addExpenseCategory", (req, res) => {
 });
 
 router.put("/updateExpenseCategory/:id", (req, res) => {
-  const { id } = req.params;
   const { name } = req.body;
-  db.query(
-    "UPDATE expense_categories SET name = ? WHERE id = ?",
-    [name, id],
-    (err) => {
-      if (err)
-        return res.status(500).json({
-          success: false,
-          message: "Greška kod ažuriranja kategorije.",
-        });
-      res.json({ success: true });
-    }
-  );
-});
-
-router.delete("/deleteExpenseCategory/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM expense_categories WHERE id = ?", [id], (err) => {
-    if (err)
-      return res
-        .status(500)
-        .json({ success: false, message: "Greška kod brisanja kategorije." });
+
+  if (!name) return res.status(400).json({ error: "Naziv je obavezan" });
+
+  const query = `UPDATE expense_categories SET name = ? WHERE id = ?`;
+  db.query(query, [name, id], (err) => {
+    if (err) return res.status(500).json({ error: "Greška na serveru." });
     res.json({ success: true });
   });
 });
+
+
+router.delete("/deleteExpenseCategory/:id", (req, res) => {
+  const { id } = req.params;
+
+  const query = `UPDATE expense_categories SET is_deleted = 1 WHERE id = ?`;
+  db.query(query, [id], (err) => {
+    if (err) return res.status(500).json({ error: "Greška na serveru." });
+    res.json({ success: true });
+  });
+});
+
 
 router.post("/getExpenseSummary", (req, res) => {
   const { userId, organizationId } = req.body;
