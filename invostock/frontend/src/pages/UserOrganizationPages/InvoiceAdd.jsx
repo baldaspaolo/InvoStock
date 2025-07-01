@@ -45,7 +45,10 @@ const InvoicesAdd = () => {
         const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id }),
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id || null,
+          }),
         });
         const data = await res.json();
         if (data.success) {
@@ -157,8 +160,7 @@ const InvoicesAdd = () => {
     return item.category_id == selectedCategory;
   });
 
-  useEffect(() => {
-     }, [availableItems, selectedCategory, categoryOptions]);
+  useEffect(() => {}, [availableItems, selectedCategory, categoryOptions]);
 
   const totalAmount = invoiceItems.reduce(
     (sum, item) => sum + item.total_price,
@@ -222,7 +224,7 @@ const InvoicesAdd = () => {
           userId: user.id,
           organizationId: user.organization_id,
           items: invoiceItems.map((item) => ({
-            itemId: item.itemId, 
+            itemId: item.itemId,
             quantity: item.quantity,
           })),
         };
@@ -314,7 +316,14 @@ const InvoicesAdd = () => {
       </div>
       <Toast ref={toast} />
       <Panel header="Nova faktura" style={{ fontSize: "0.88rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: "1rem",
+            gap: "0.5rem",
+          }}
+        >
           <Dropdown
             value={selectedClient}
             options={clients}
@@ -357,9 +366,10 @@ const InvoicesAdd = () => {
           <div
             style={{
               fontSize: "0.85rem",
-              marginBottom: "1rem",
+
               padding: "1rem",
               border: "1px solid #ccc",
+
               borderRadius: "8px",
             }}
           >
@@ -390,31 +400,64 @@ const InvoicesAdd = () => {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-          <Calendar
-            value={invoiceDate}
-            onChange={(e) => {
-              setInvoiceDate(e.value);
-
-              if (dueDate < e.value) {
-                const newDueDate = new Date(e.value);
-                newDueDate.setDate(newDueDate.getDate() + 14);
-                setDueDate(newDueDate);
-              }
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.3rem",
             }}
-            placeholder="Datum računa"
-            dateFormat="dd.mm.yy"
-            style={{ width: "100%" }}
-          />
+          >
+            <label
+              style={{
+                fontSize: "0.85rem",
+                color: "#495057",
+                marginBottom: "-5%",
+              }}
+            >
+              Datum računa
+            </label>
+            <Calendar
+              value={invoiceDate}
+              onChange={(e) => {
+                setInvoiceDate(e.value);
+                if (dueDate < e.value) {
+                  const newDueDate = new Date(e.value);
+                  newDueDate.setDate(newDueDate.getDate() + 14);
+                  setDueDate(newDueDate);
+                }
+              }}
+              dateFormat="dd.mm.yy"
+              style={{ width: "100%" }}
+            />
+          </div>
 
-          <Calendar
-            value={dueDate}
-            onChange={(e) => setDueDate(e.value)}
-            placeholder="Datum dospijeća"
-            dateFormat="dd.mm.yy"
-            style={{ width: "100%" }}
-            minDate={invoiceDate}
-          />
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.3rem",
+            }}
+          >
+            <label
+              style={{
+                fontSize: "0.85rem",
+                marginBottom: "-5%",
+                color: "#495057",
+              }}
+            >
+              Datum dospijeća
+            </label>
+            <Calendar
+              value={dueDate}
+              onChange={(e) => setDueDate(e.value)}
+              dateFormat="dd.mm.yy"
+              style={{ width: "100%" }}
+              minDate={invoiceDate}
+            />
+          </div>
         </div>
 
         <DataTable

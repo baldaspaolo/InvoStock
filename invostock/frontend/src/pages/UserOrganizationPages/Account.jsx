@@ -543,7 +543,7 @@ export default function Account() {
                       size="small"
                       severity="success"
                       onClick={() => setShowAddUserDialog(true)}
-                      style={{ marginTop: "1rem" }}
+                      style={{ marginTop: "1rem", marginBottom: "1rem" }}
                     />
                   )}
 

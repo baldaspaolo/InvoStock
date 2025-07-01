@@ -105,7 +105,6 @@ const OrdersAdd = () => {
   };
 
   useEffect(() => {
-
     fetchSuppliers();
     fetchInventory();
     fetchCategories();
@@ -280,6 +279,7 @@ const OrdersAdd = () => {
                         icon="pi pi-trash"
                         severity="danger"
                         rounded
+                        style={{ width: "50px", height: "50px" }}
                         onClick={() =>
                           setOrderItems(
                             orderItems.filter((item) => item.id !== rowData.id)
