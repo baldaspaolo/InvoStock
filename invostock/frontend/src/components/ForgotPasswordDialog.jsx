@@ -39,7 +39,7 @@ const ForgotPasswordDialog = () => {
         toast.current.show({
           severity: "error",
           summary: "Greška",
-          detail: data.message || "Došlo je do greške pri slanju zahtjeva",
+          detail: data.message || "Došlo je do pogreške pri slanju zahtjeva",
           life: 3000,
         });
       }
