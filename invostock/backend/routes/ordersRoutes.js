@@ -404,7 +404,6 @@ router.put("/markAsReceived", (req, res) => {
                       .json({ error: "Greška kod unosa troška" });
                   }
 
-                  // ➕ Ažuriranje inventara
                   let completed = 0;
                   items.forEach((item) => {
                     const checkQuery = `

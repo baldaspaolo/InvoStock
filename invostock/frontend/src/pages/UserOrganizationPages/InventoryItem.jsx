@@ -314,7 +314,6 @@ const InventoryItem = () => {
         </div>
       </div>
 
-      {/* Dialog za Uređivanje proizvoda */}
       <Dialog
         header="Uredi proizvod"
         visible={editDialogVisible}
