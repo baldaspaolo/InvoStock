@@ -159,7 +159,11 @@ router.post("/getOrderDetails", (req, res) => {
   c.first_name,
   c.last_name,
   c.company_name,
-  c.email
+  c.email,
+  c.address,
+  c.zip_code,
+  c.place,
+  c.phone_number
 FROM sales_orders so
 JOIN contacts c ON so.contact_id = c.id
 LEFT JOIN invoices i ON so.invoice_id = i.id

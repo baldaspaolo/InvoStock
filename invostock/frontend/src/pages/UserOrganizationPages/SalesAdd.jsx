@@ -194,7 +194,7 @@ const SalesAdd = () => {
         toast.current.show({
           severity: "success",
           summary: "Uspjeh",
-          detail: `Nalog kreiran (#${data.orderId})`,
+          detail: `Nalog kreiran - ${data.custom_order_code}`,
           life: 4000,
         });
 

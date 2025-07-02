@@ -73,6 +73,9 @@ const SuppliersManagement = ({ user }) => {
             name: editSupplier.name,
             address: editSupplier.address,
             phone: editSupplier.phone,
+            email: editSupplier.email,
+            city: editSupplier.city,
+            country: editSupplier.country,
           }),
         }
       );
@@ -190,6 +193,36 @@ const SuppliersManagement = ({ user }) => {
                 value={editSupplier.phone || ""}
                 onChange={(e) =>
                   setEditSupplier({ ...editSupplier, phone: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label htmlFor="email">Email</label>
+              <InputText
+                id="email"
+                value={editSupplier.email || ""}
+                onChange={(e) =>
+                  setEditSupplier({ ...editSupplier, email: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label htmlFor="city">Grad</label>
+              <InputText
+                id="city"
+                value={editSupplier.city || ""}
+                onChange={(e) =>
+                  setEditSupplier({ ...editSupplier, city: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <label htmlFor="country">Država</label>
+              <InputText
+                id="country"
+                value={editSupplier.country || ""}
+                onChange={(e) =>
+                  setEditSupplier({ ...editSupplier, country: e.target.value })
                 }
               />
             </div>

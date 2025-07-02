@@ -92,7 +92,6 @@ const SalesItem = () => {
 
   const handleCreateInvoice = async () => {
     try {
-      
       const itemsRes = await fetch(
         `${import.meta.env.VITE_API_URL}/api/sales/getOrderDetails`,
         {
@@ -122,7 +121,6 @@ const SalesItem = () => {
 
       console.log("Payload za fakturu:", payload);
 
-     
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/api/invoices/createInvoice`,
         {
@@ -142,7 +140,6 @@ const SalesItem = () => {
           life: 4000,
         });
 
-       
         const stockUpdatePayload = {
           userId: user.id,
           organizationId: user.organization_id,
@@ -181,7 +178,6 @@ const SalesItem = () => {
           });
         }
 
-    
         const res = await fetch(
           `${import.meta.env.VITE_API_URL}/api/sales/getOrderDetails`,
           {
@@ -205,7 +201,6 @@ const SalesItem = () => {
       console.error("Greška pri kreiranju fakture:", error);
     }
   };
-
 
   const handleCreatePackage = async () => {
     try {
@@ -291,7 +286,6 @@ const SalesItem = () => {
         return "Nepoznato";
     }
   };
-
 
   const getExcelData = () => {
     return [
@@ -444,7 +438,7 @@ const SalesItem = () => {
       <div className="div4" ref={salesRef}>
         <div style={{ marginLeft: "3%", marginRight: "3%" }}>
           <Panel
-            header={"Nalog ID: " + orderData?.id}
+            header={"Nalog ID: " + orderData?.custom_order_code}
             style={{ fontSize: "0.9rem" }}
           >
             <div
