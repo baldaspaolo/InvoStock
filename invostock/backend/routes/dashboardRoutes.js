@@ -9,40 +9,41 @@ router.post("/getDashboardStats", (req, res) => {
     return res.status(400).json({ error: "Nedostaje UserID!" });
   }
 
-   const statsQueries = {
-     totalInvoices30Days: `
+  const statsQueries = {
+    totalInvoices30Days: `
       SELECT COUNT(*) AS count FROM invoices 
       WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
       AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     `,
-     totalRevenue30Days: `
+    totalRevenue30Days: `
       SELECT COALESCE(SUM(final_amount), 0) AS sum FROM invoices 
       WHERE user_id = ? AND status IN ('paid', 'partially_paid')
       ${organizationId ? "AND organization_id = ?" : ""}
       AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
     `,
-     outstandingAmount: `
+    outstandingAmount: `
       SELECT COALESCE(SUM(remaining_amount), 0) AS sum FROM invoices 
       WHERE user_id = ? AND (status = 'pending' OR status = 'partially_paid') 
       ${organizationId ? "AND organization_id = ?" : ""}
     `,
-     totalExpenses30Days: `
-      SELECT COALESCE(SUM(amount), 0) AS sum FROM expenses 
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-      AND expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    `,
-     inventoryStats: `
+    totalExpenses30Days: `
+  SELECT COALESCE(SUM(e.amount), 0) AS sum FROM expenses e 
+  WHERE e.user_id = ? ${organizationId ? "AND e.organization_id = ?" : ""}
+  AND e.is_deleted = 0
+  AND e.expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+`,
+
+    inventoryStats: `
       SELECT 
         COUNT(*) AS total_items,
         SUM(CASE WHEN stock_quantity <= reorder_level THEN 1 ELSE 0 END) AS low_stock_items
       FROM inventory_items
       WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
     `,
-   };
+  };
 
   const timeRange = req.body.timeRange || "30days";
 
-  
   let dateCondition = "";
   const now = new Date();
   let startDate = new Date();
@@ -66,7 +67,6 @@ router.post("/getDashboardStats", (req, res) => {
   }
 
   dateCondition = `AND date >= '${startDate.toISOString().split("T")[0]}'`;
-
 
   const recentActivitiesQuery = `
     (
@@ -132,6 +132,7 @@ router.post("/getDashboardStats", (req, res) => {
       FROM expenses e
       LEFT JOIN expense_categories ec ON e.category_id = ec.id
       WHERE e.user_id = ? ${organizationId ? "AND e.organization_id = ?" : ""}
+      AND e.is_deleted = 0
       ORDER BY e.expense_date DESC
       LIMIT 5
     )
@@ -159,13 +160,15 @@ router.post("/getDashboardStats", (req, res) => {
       UNION ALL
       
       SELECT 
-        expense_date AS date, 
-        amount, 
-        'expense' AS type
-      FROM expenses
-      WHERE user_id = ? 
-      ${organizationId ? "AND organization_id = ?" : ""}
-      AND expense_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+  e.expense_date AS date, 
+  e.amount, 
+  'expense' AS type
+FROM expenses e
+WHERE e.user_id = ? 
+${organizationId ? "AND e.organization_id = ?" : ""}
+AND e.is_deleted = 0
+AND e.expense_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+
     ) AS combined_data
     GROUP BY DATE_FORMAT(date, '%Y-%m')
     ORDER BY month ASC
