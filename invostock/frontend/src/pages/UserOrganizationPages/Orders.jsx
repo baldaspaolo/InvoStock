@@ -282,6 +282,7 @@ const Orders = () => {
                 placeholder="Početni datum"
                 showIcon
                 style={inputStyle}
+                dateFormat="dd.mm.yy"
               />
               <Calendar
                 value={endDate}
@@ -289,6 +290,7 @@ const Orders = () => {
                 placeholder="Završni datum"
                 showIcon
                 style={inputStyle}
+                dateFormat="dd.mm.yy"
               />
             </div>
           </Panel>

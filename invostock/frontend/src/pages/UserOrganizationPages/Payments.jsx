@@ -257,37 +257,38 @@ const Payments = () => {
               </div>
             </div>
           </Panel>
-          
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))",
-                gap: "1rem",
-                alignItems: "center",
-              }}
-            >
-              <InputText
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Pretraži broj fakture"
-                style={inputStyle}
-              />
-              <Calendar
-                value={startDate}
-                onChange={(e) => setStartDate(e.value)}
-                placeholder="Početni datum"
-                showIcon
-                style={inputStyle}
-              />
-              <Calendar
-                value={endDate}
-                onChange={(e) => setEndDate(e.value)}
-                placeholder="Završni datum"
-                showIcon
-                style={inputStyle}
-              />
-            </div>
-  
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))",
+              gap: "1rem",
+              alignItems: "center",
+            }}
+          >
+            <InputText
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pretraži broj fakture"
+              style={inputStyle}
+            />
+            <Calendar
+              value={startDate}
+              onChange={(e) => setStartDate(e.value)}
+              placeholder="Početni datum"
+              showIcon
+              style={inputStyle}
+              dateFormat="dd.mm.yy"
+            />
+            <Calendar
+              value={endDate}
+              onChange={(e) => setEndDate(e.value)}
+              placeholder="Završni datum"
+              showIcon
+              style={inputStyle}
+              dateFormat="dd.mm.yy"
+            />
+          </div>
 
           <DataTable
             value={filteredPayments}

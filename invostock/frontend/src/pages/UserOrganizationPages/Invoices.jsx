@@ -202,6 +202,7 @@ const Invoices = () => {
               placeholder="Početni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
             />
             <Calendar
               value={endDate}
@@ -209,6 +210,7 @@ const Invoices = () => {
               placeholder="Završni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
             />
           </div>
 

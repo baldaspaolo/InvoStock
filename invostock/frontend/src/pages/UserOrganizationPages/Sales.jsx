@@ -222,6 +222,7 @@ const Sales = () => {
               placeholder="Početni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
             />
             <Calendar
               value={endDate}
@@ -229,6 +230,7 @@ const Sales = () => {
               placeholder="Završni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
             />
             <Button
               label="Resetiraj"
