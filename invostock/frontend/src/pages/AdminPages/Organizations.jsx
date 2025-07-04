@@ -136,8 +136,6 @@ const Organizations = () => {
     setEditDialogVisible(true);
   };
 
- 
-
   const handleDelete = () => {
     confirmDialog({
       message: `Jeste li sigurni da želite obrisati organizaciju "${selectedOrganization.name}"?`,
@@ -239,6 +237,7 @@ const Organizations = () => {
             scrollHeight="flex"
             emptyMessage="Nema organizacija za prikaz"
           >
+            <Column field="id" header="ID" sortable />
             <Column field="name" header="Naziv" sortable />
             <Column field="address" header="Adresa" sortable />
 
