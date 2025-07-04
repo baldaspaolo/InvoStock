@@ -247,6 +247,12 @@ const Packages = () => {
     []
   );
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("hr-HR");
+  };
+
   return (
     <div
       className="parent"
@@ -311,7 +317,7 @@ const Packages = () => {
                       </p>
                       <p>{pkg.code}</p>
                       <p>
-                        {pkg.courier || "-"} | {pkg.created_at?.split("T")[0]}
+                        {pkg.courier || "-"} | {formatDate(pkg.created_at)}
                       </p>
                     </Card>
                   ))
@@ -330,7 +336,7 @@ const Packages = () => {
                         </p>
                         <p>{pkg.code}</p>
                         <p>
-                          {pkg.courier || "-"} | {pkg.created_at?.split("T")[0]}
+                          {pkg.courier || "-"} |{formatDate(pkg.created_at)}
                         </p>
                       </Card>
                     ))}
@@ -368,7 +374,7 @@ const Packages = () => {
             <Column
               field="created_at"
               header="Datum"
-              body={(rowData) => rowData.created_at?.split("T")[0] || "-"}
+              body={(rowData) => formatDate(rowData.created_at)}
               sortable
             />
             <Column
@@ -464,7 +470,7 @@ const Packages = () => {
                   loading={loading}
                 >
                   <Column expander style={{ width: "3em" }} />
-                  <Column field="id" header="Broj naloga" />
+                  <Column field="custom_order_code" header="Broj naloga" />
                   <Column
                     header="Klijent"
                     body={(rowData) =>
@@ -484,14 +490,15 @@ const Packages = () => {
                 </DataTable>
               ) : (
                 <div>
-                  <h4>Nalog #{selectedOrder.id}</h4>
+                  <h4>Nalog #{selectedOrder.custom_order_code}</h4>
                   <p>
                     Klijent:{" "}
                     <strong>
                       {selectedOrder.first_name} {selectedOrder.last_name}
                     </strong>
                   </p>
-                  <p>Datum: {selectedOrder.created_at?.split("T")[0] || "-"}</p>
+                  <p>Datum: {formatDate(selectedOrder.created_at)}</p>
+
                   <Dropdown
                     value={courier}
                     options={couriers.map((c) => ({ label: c, value: c }))}
@@ -564,7 +571,7 @@ const Packages = () => {
               </p>
               <p>
                 <strong>Datum kreiranja:</strong>{" "}
-                {selectedPackage.created_at?.split("T")[0]}
+                {formatDate(selectedPackage.created_at)}
               </p>
               <p>
                 <strong>Status:</strong>{" "}
