@@ -15,22 +15,23 @@ router.post("/getUserExpenses", (req, res) => {
   const { userId, organizationId } = req.body;
 
   let query = `
-  SELECT 
-    e.id, e.name, e.expense_date, e.amount, e.description,
-    e.category_id, e.custom_expense_code,
-    ec.name AS category
-  FROM expenses e
-  LEFT JOIN expense_categories ec ON e.category_id = ec.id
-  WHERE e.user_id = ? AND e.is_deleted = 0
-`;
+    SELECT 
+      e.id, e.name, e.expense_date, e.amount, e.description,
+      e.category_id, e.custom_expense_code,
+      ec.name AS category
+    FROM expenses e
+    LEFT JOIN expense_categories ec ON e.category_id = ec.id
+    WHERE e.is_deleted = 0
+  `;
 
-  let params = [userId];
+  let params;
 
   if (organizationId) {
     query += " AND e.organization_id = ?";
-    params.push(organizationId);
+    params = [organizationId];
   } else {
-    query += " AND e.organization_id IS NULL";
+    query += " AND e.organization_id IS NULL AND e.user_id = ?";
+    params = [userId];
   }
 
   db.query(query, params, (err, results) => {
@@ -44,6 +45,7 @@ router.post("/getUserExpenses", (req, res) => {
     res.json({ success: true, expenses: results });
   });
 });
+
 
 router.post("/addExpense", (req, res) => {
   const {

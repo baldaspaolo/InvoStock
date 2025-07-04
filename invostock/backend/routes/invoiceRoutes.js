@@ -72,27 +72,28 @@ router.post("/getUserInvoicesSummary", (req, res) => {
     organizationId !== "null" &&
     !isNaN(organizationId);
 
-  const orgCondition = isOrg
+  // Priprema uvjeta i parametara ovisno o tipu korisnika
+  const whereCondition = isOrg
     ? "organization_id = ?"
-    : "organization_id IS NULL";
-  const params = isOrg ? [userId, organizationId] : [userId];
+    : "organization_id IS NULL AND user_id = ?";
+  const params = isOrg ? [organizationId] : [userId];
 
   const totalReceivablesQuery = `
     SELECT SUM(remaining_amount) AS total_receivables
     FROM invoices
-    WHERE user_id = ? AND ${orgCondition} AND (status = 'pending' OR status = 'partially_paid')
+    WHERE ${whereCondition} AND (status = 'pending' OR status = 'partially_paid')
   `;
 
   const unpaidInvoicesQuery = `
     SELECT COUNT(*) AS unpaid_count
     FROM invoices
-    WHERE user_id = ? AND ${orgCondition} AND status = 'pending'
+    WHERE ${whereCondition} AND status = 'pending'
   `;
 
   const partiallyPaidInvoicesQuery = `
     SELECT COUNT(*) AS partially_paid_count
     FROM invoices
-    WHERE user_id = ? AND ${orgCondition} AND status = 'partially_paid'
+    WHERE ${whereCondition} AND status = 'partially_paid'
   `;
 
   db.query(totalReceivablesQuery, params, (err, totalReceivablesResult) => {
@@ -131,6 +132,7 @@ router.post("/getUserInvoicesSummary", (req, res) => {
     });
   });
 });
+
 
 router.post("/getInvoiceItems", (req, res) => {
   const { invoiceId } = req.body;

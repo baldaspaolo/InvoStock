@@ -9,7 +9,7 @@ router.post("/getInvoiceContact", (req, res) => {
     return res.status(400).json({ error: "Nedostaje id fakture!" });
   }
 
-  const query = "SELECT * FROM contacts WHERE id = ?";
+  const query = "SELECT * FROM contacts WHERE id = ? AND is_deleted = 0";
   db.query(query, [contactId], (err, result) => {
     if (err) {
       console.log("Greška pri dohvaćanju faktura!");
@@ -27,8 +27,8 @@ router.post("/getUserContacts", (req, res) => {
   }
 
   const query = organizationId
-    ? "SELECT * FROM contacts WHERE organization_id = ?"
-    : "SELECT * FROM contacts WHERE user_id = ?";
+    ? "SELECT * FROM contacts WHERE organization_id = ? AND is_deleted = 0"
+    : "SELECT * FROM contacts WHERE user_id = ? AND is_deleted = 0";
 
   const params = organizationId ? [organizationId] : [userId];
 
@@ -41,7 +41,6 @@ router.post("/getUserContacts", (req, res) => {
     res.status(200).json({ success: true, contacts: result });
   });
 });
-
 
 router.post("/addUser", (req, res) => {
   const {
@@ -115,7 +114,6 @@ router.post("/addUser", (req, res) => {
     });
   });
 });
-
 
 router.put("/updateContact/:id", (req, res) => {
   const contactId = req.params.id;
@@ -201,7 +199,6 @@ router.put("/updateContact/:id", (req, res) => {
   });
 });
 
-
 router.delete("/deleteContact/:id", (req, res) => {
   const contactId = req.params.id;
   const { userId, organizationId } = req.body;
@@ -245,7 +242,5 @@ router.delete("/deleteContact/:id", (req, res) => {
     });
   });
 });
-
-
 
 module.exports = router;

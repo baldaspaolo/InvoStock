@@ -14,17 +14,23 @@ router.post("/getInventory", (req, res) => {
     return res.status(400).json({ error: "Nedostaje UserID" });
   }
 
+  const isOrg =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    organizationId !== "null" &&
+    !isNaN(organizationId);
+
   let query = "";
   let queryParams = [];
 
-  if (organizationId) {
+  if (isOrg) {
     query = `
       SELECT ii.*, ic.name AS category_name
       FROM inventory_items ii
       LEFT JOIN inventory_categories ic ON ii.category_id = ic.id
       WHERE ii.organization_id = ? AND ii.is_deleted = FALSE
     `;
-    queryParams = [organizationId];
+    queryParams = [parseInt(organizationId)];
   } else {
     query = `
       SELECT ii.*, ic.name AS category_name
@@ -734,8 +740,5 @@ router.post("/addCategory", (req, res) => {
     });
   });
 });
-
-
-
 
 module.exports = router;

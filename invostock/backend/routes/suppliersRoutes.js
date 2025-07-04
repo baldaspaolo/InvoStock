@@ -10,12 +10,18 @@ router.post("/getSuppliers", (req, res) => {
   let query = "";
   let params = [];
 
-  if (organizationId) {
-    query = "SELECT * FROM suppliers WHERE user_id = ? AND organization_id = ?";
-    params = [userId, organizationId];
+  const isOrg =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    organizationId !== "null" &&
+    !isNaN(organizationId);
+
+  if (isOrg) {
+    query = "SELECT * FROM suppliers WHERE organization_id = ?";
+    params = [organizationId];
   } else {
     query =
-      "SELECT * FROM suppliers WHERE user_id = ? AND organization_id IS NULL";
+      "SELECT * FROM suppliers WHERE organization_id IS NULL AND user_id = ?";
     params = [userId];
   }
 
@@ -118,7 +124,6 @@ router.put("/updateSupplier/:id", (req, res) => {
     });
   });
 });
-
 
 router.delete("/deleteSupplier/:id", (req, res) => {
   const { id } = req.params;
