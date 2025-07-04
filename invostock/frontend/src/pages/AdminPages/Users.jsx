@@ -140,7 +140,7 @@ const Users = () => {
       message: `Jeste li sigurni da želite obrisati korisnika "${selectedUser.name}" i sve njegove podatke?`,
       header: "Potvrda brisanja",
       icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Da, obriši",
+      acceptLabel: "Da, deaktiviraj",
       rejectLabel: "Odustani",
       accept: async () => {
         try {
@@ -220,7 +220,7 @@ const Users = () => {
 
     if (selectedUser.is_active) {
       baseItems.push({
-        label: "Briši",
+        label: "Deaktiviraj",
         icon: "pi pi-trash",
         command: handleDelete,
       });
