@@ -69,76 +69,76 @@ router.post("/getDashboardStats", (req, res) => {
   dateCondition = `AND date >= '${startDate.toISOString().split("T")[0]}'`;
 
   const recentActivitiesQuery = `
-    (
-      SELECT 
-        'invoice' AS type,
-        id,
-        custom_invoice_code AS code,
-        client_name AS title,
-        final_amount AS amount,
-        invoice_date AS date,
-        status,
-        NULL AS details
-      FROM invoices
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-      ORDER BY invoice_date DESC
-      LIMIT 5
-    )
-    UNION ALL
-    (
-      SELECT 
-        'payment' AS type,
-        p.id,
-        NULL AS code,
-        CONCAT('Plaćanje za fakturu #', p.invoice_id) AS title,
-        p.amount_paid AS amount,
-        p.payment_date AS date,
-        NULL AS status,
-        p.payment_method AS details
-      FROM payments p
-      JOIN invoices i ON p.invoice_id = i.id
-      WHERE i.user_id = ? ${organizationId ? "AND i.organization_id = ?" : ""}
-      ORDER BY p.payment_date DESC
-      LIMIT 5
-    )
-    UNION ALL
-    (
-      SELECT 
-        'order' AS type,
-        o.id,
-        NULL AS code,
-        CONCAT('Narudžba #', o.id) AS title,
-        o.total_price AS amount,
-        o.order_date AS date,
-        o.status,
-        s.name AS details
-      FROM orders o
-      LEFT JOIN suppliers s ON o.supplier_id = s.id
-      WHERE o.user_id = ? ${organizationId ? "AND o.organization_id = ?" : ""}
-      ORDER BY o.order_date DESC
-      LIMIT 5
-    )
-    UNION ALL
-    (
-      SELECT 
-        'expense' AS type,
-        e.id,
-        NULL AS code,
-        e.name AS title,
-        e.amount AS amount,
-        e.expense_date AS date,
-        NULL AS status,
-        ec.name AS details
-      FROM expenses e
-      LEFT JOIN expense_categories ec ON e.category_id = ec.id
-      WHERE e.user_id = ? ${organizationId ? "AND e.organization_id = ?" : ""}
-      AND e.is_deleted = 0
-      ORDER BY e.expense_date DESC
-      LIMIT 5
-    )
-    ORDER BY date DESC
-    LIMIT 10
-  `;
+  (
+    SELECT 
+      'invoice' AS type,
+      id,
+      custom_invoice_code AS code,
+      client_name AS title,
+      final_amount AS amount,
+      invoice_date AS date,
+      status,
+      NULL AS details
+    FROM invoices
+    WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
+    ORDER BY invoice_date DESC
+    LIMIT 5
+  )
+  UNION ALL
+  (
+    SELECT 
+      'payment' AS type,
+      p.id,
+      i.custom_invoice_code AS code,
+      CONCAT('Plaćanje za fakturu - ', i.custom_invoice_code) AS title,
+      p.amount_paid AS amount,
+      p.payment_date AS date,
+      NULL AS status,
+      p.payment_method AS details
+    FROM payments p
+    JOIN invoices i ON p.invoice_id = i.id
+    WHERE i.user_id = ? ${organizationId ? "AND i.organization_id = ?" : ""}
+    ORDER BY p.payment_date DESC
+    LIMIT 5
+  )
+  UNION ALL
+  (
+    SELECT 
+      'order' AS type,
+      o.id,
+      o.custom_order_code AS code,
+      CONCAT('Nalog #', o.custom_order_code) AS title,
+      o.total_price AS amount,
+      o.order_date AS date,
+      o.status,
+      s.name AS details
+    FROM orders o
+    LEFT JOIN suppliers s ON o.supplier_id = s.id
+    WHERE o.user_id = ? ${organizationId ? "AND o.organization_id = ?" : ""}
+    ORDER BY o.order_date DESC
+    LIMIT 5
+  )
+  UNION ALL
+  (
+    SELECT 
+      'expense' AS type,
+      e.id,
+      NULL AS code,
+      e.name AS title,
+      e.amount AS amount,
+      e.expense_date AS date,
+      NULL AS status,
+      ec.name AS details
+    FROM expenses e
+    LEFT JOIN expense_categories ec ON e.category_id = ec.id
+    WHERE e.user_id = ? ${organizationId ? "AND e.organization_id = ?" : ""}
+    AND e.is_deleted = 0
+    ORDER BY e.expense_date DESC
+    LIMIT 5
+  )
+  ORDER BY date DESC
+  LIMIT 10
+`;
 
   //Podaci za grafikon (prihodi i troškovi po mjesecima)
   const financialDataQuery = `
@@ -328,38 +328,39 @@ router.post("/getRecentActivities", (req, res) => {
     )
     UNION ALL
     (
-      SELECT 
-        'payment' AS type,
-        p.id,
-        NULL AS code,
-        CONCAT('Plaćanje za fakturu #', p.invoice_id) AS title,
-        p.amount_paid AS amount,
-        p.payment_date AS date,
-        NULL AS status,
-        p.payment_method AS details
-      FROM payments p
-      JOIN invoices i ON p.invoice_id = i.id
-      WHERE i.user_id = ? ${organizationId ? "AND i.organization_id = ?" : ""}
-      ORDER BY p.payment_date DESC
-      LIMIT 5
-    )
+  SELECT 
+    'payment' AS type,
+    p.id,
+    i.custom_invoice_code AS code,
+    CONCAT('Plaćanje za fakturu #', i.custom_invoice_code) AS title,
+    p.amount_paid AS amount,
+    p.payment_date AS date,
+    NULL AS status,
+    p.payment_method AS details
+  FROM payments p
+  JOIN invoices i ON p.invoice_id = i.id
+  WHERE i.user_id = ? ${organizationId ? "AND i.organization_id = ?" : ""}
+  ORDER BY p.payment_date DESC
+  LIMIT 5
+)
     UNION ALL
     (
-      SELECT 
-        'order' AS type,
-        o.id,
-        NULL AS code,
-        CONCAT('Narudžba #', o.id) AS title,
-        o.total_price AS amount,
-        o.order_date AS date,
-        o.status,
-        s.name AS details
-      FROM orders o
-      LEFT JOIN suppliers s ON o.supplier_id = s.id
-      WHERE o.user_id = ? ${organizationId ? "AND o.organization_id = ?" : ""}
-      ORDER BY o.order_date DESC
-      LIMIT 5
-    )
+  SELECT 
+    'order' AS type,
+    o.id,
+    o.custom_order_code AS code,
+    CONCAT('Nalog #', o.custom_order_code) AS title,
+    o.total_price AS amount,
+    o.order_date AS date,
+    o.status,
+    s.name AS details
+  FROM orders o
+  LEFT JOIN suppliers s ON o.supplier_id = s.id
+  WHERE o.user_id = ? ${organizationId ? "AND o.organization_id = ?" : ""}
+  ORDER BY o.order_date DESC
+  LIMIT 5
+)
+
     ORDER BY date DESC
     LIMIT 10
   `;

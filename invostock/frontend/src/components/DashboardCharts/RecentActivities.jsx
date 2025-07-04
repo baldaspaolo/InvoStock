@@ -85,9 +85,9 @@ const RecentActivities = ({ activities }) => {
             body={(rowData) => {
               switch (rowData.type) {
                 case "invoice":
-                  return `Faktura #${rowData.id}`;
+                  return `Faktura - ${rowData.code}`;
                 case "order":
-                  return `Nalog #${rowData.id}`;
+                  return `Nalog - ${rowData.code}`;
                 case "expense":
                   return rowData.title || "Trošak";
                 case "payment":
