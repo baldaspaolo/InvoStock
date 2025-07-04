@@ -7,7 +7,7 @@ router.get("/users/no-organization", (req, res) => {
   const query = `
     SELECT id, name, email, created_at, is_active
     FROM users
-    WHERE organization_id IS NULL
+    WHERE organization_id IS NULL AND role != 'systemadmin'
   `;
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: "Greška kod korisnika." });
@@ -15,12 +15,13 @@ router.get("/users/no-organization", (req, res) => {
   });
 });
 
+
 router.get("/users/with-organization", (req, res) => {
   const query = `
     SELECT u.id, u.name, u.email, u.created_at, u.is_active, o.id AS organization_id, o.name AS organization_name
     FROM users u
     LEFT JOIN organizations o ON u.organization_id = o.id
-    WHERE u.organization_id IS NOT NULL
+    WHERE u.organization_id IS NOT NULL AND u.role != 'systemadmin'
   `;
   db.query(query, (err, results) => {
     if (err) return res.status(500).json({ error: "Greška kod korisnika." });

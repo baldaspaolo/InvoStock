@@ -143,7 +143,7 @@ const Organizations = () => {
       message: `Jeste li sigurni da želite obrisati organizaciju "${selectedOrganization.name}"?`,
       header: "Potvrda brisanja",
       icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Da, obriši",
+      acceptLabel: "Da, deaktiviraj",
       rejectLabel: "Odustani",
       accept: () => deleteOrganization(selectedOrganization.id),
     });
@@ -195,7 +195,7 @@ const Organizations = () => {
 
     if (selectedOrganization.is_active) {
       baseItems.push({
-        label: "Briši",
+        label: "Deaktiviraj",
         icon: "pi pi-trash",
         command: handleDelete,
       });
