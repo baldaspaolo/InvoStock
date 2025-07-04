@@ -83,7 +83,7 @@ router.post("/forgot-password", (req, res) => {
 
       resend.emails
         .send({
-          from: "Acme <onboarding@resend.dev>",
+          from: "InvoStock <noreply@seimasters.com>",
           to: [email],
           subject: "Resetiranje lozinke",
           html: `<p>Kliknite <a href="${resetLink}">ovdje</a> kako biste resetirali lozinku.</p> <p>Vaš token: ${token}</p> <p><i>Token je važeći 1 sat od vremena dobivanja ove email poruke.</i></p>`,
@@ -135,6 +135,30 @@ router.post("/reset-password/:token", (req, res) => {
 
       res.status(200).json({ message: "Lozinka je uspješno postavljena." });
     });
+  });
+});
+
+router.get("/validate-reset-token/:token", (req, res) => {
+  const { token } = req.params;
+
+  const query = `
+    SELECT id FROM users 
+    WHERE reset_token = ? AND reset_token_expiry > NOW()
+  `;
+
+  db.query(query, [token], (err, results) => {
+    if (err) {
+      console.error("Greška kod validacije tokena:", err);
+      return res.status(500).json({ message: "Greška na serveru." });
+    }
+
+    if (results.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Token je istekao ili nevažeći." });
+    }
+
+    return res.status(200).json({ message: "Token je valjan." });
   });
 });
 
