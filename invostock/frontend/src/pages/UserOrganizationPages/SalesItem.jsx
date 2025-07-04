@@ -10,6 +10,7 @@ import { Toast } from "primereact/toast";
 import { Tag } from "primereact/tag";
 import { Dialog } from "primereact/dialog";
 import { Calendar } from "primereact/calendar";
+import { Dropdown } from "primereact/dropdown";
 
 import { InputTextarea } from "primereact/inputtextarea";
 
@@ -23,6 +24,16 @@ const SalesItem = () => {
   const salesRef = useRef(null);
   const navigate = useNavigate();
 
+  const [courierOptions] = useState([
+    { label: "GLS", value: "GLS" },
+    { label: "Paket24 - Hrvatska pošta", value: "Paket24 - Hrvatska pošta" },
+    { label: "Overseas", value: "Overseas" },
+    { label: "FedEx", value: "FedEx" },
+    { label: "DHL", value: "DHL" },
+    { label: "BoxNow", value: "BoxNow" },
+    { label: "UPS", value: "UPS" },
+  ]);
+
   const [orderItems, setOrderItems] = useState([]);
   const [orderData, setOrderData] = useState(null);
   const [contact, setContact] = useState(null);
@@ -30,6 +41,10 @@ const SalesItem = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [closeReason, setCloseReason] = useState("");
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  const [showPackageDialog, setShowPackageDialog] = useState(false);
+  const [selectedCourier, setSelectedCourier] = useState(null);
+  const [packageDescription, setPackageDescription] = useState("");
+
   const [selectedDueDate, setSelectedDueDate] = useState(
     new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
   );
@@ -209,8 +224,8 @@ const SalesItem = () => {
         organizationId: user.organization_id,
         contactId: orderData.contact_id,
         salesOrderId: orderData.id,
-        courier: null,
-        description: null,
+        courier: selectedCourier,
+        description: packageDescription,
       };
 
       const response = await fetch(
@@ -637,7 +652,7 @@ const SalesItem = () => {
                   <Button
                     label="Kreiraj paket"
                     icon="pi pi-box"
-                    onClick={handleCreatePackage}
+                    onClick={() => setShowPackageDialog(true)}
                     severity="info"
                   />
                 )}
@@ -691,6 +706,57 @@ const SalesItem = () => {
               showIcon
               dateFormat="dd.mm.yy"
               style={{ width: "100%" }}
+            />
+          </Dialog>
+          <Dialog
+            header="Kreiranje paketa"
+            visible={showPackageDialog}
+            style={{ width: "30vw" }}
+            onHide={() => setShowPackageDialog(false)}
+            footer={
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "1rem",
+                }}
+              >
+                <Button
+                  label="Odustani"
+                  icon="pi pi-times"
+                  onClick={() => setShowPackageDialog(false)}
+                  className="p-button-text"
+                />
+                <Button
+                  label="Kreiraj paket"
+                  icon="pi pi-check"
+                  onClick={() => {
+                    setShowPackageDialog(false);
+                    handleCreatePackage();
+                  }}
+                  disabled={!selectedCourier}
+                  autoFocus
+                />
+              </div>
+            }
+          >
+            <p>Odaberite dostavnu službu:</p>
+            <Dropdown
+              value={selectedCourier}
+              options={courierOptions}
+              onChange={(e) => setSelectedCourier(e.value)}
+              placeholder="Odaberite kurira"
+              style={{ width: "100%", marginBottom: "1rem" }}
+            />
+
+            <p>Unesite opis paketa (opcionalno):</p>
+            <InputTextarea
+              rows={3}
+              autoResize
+              value={packageDescription}
+              onChange={(e) => setPackageDescription(e.target.value)}
+              style={{ width: "100%" }}
+              placeholder="Npr. 2x ručni sat, broj narudžbe..."
             />
           </Dialog>
         </div>
