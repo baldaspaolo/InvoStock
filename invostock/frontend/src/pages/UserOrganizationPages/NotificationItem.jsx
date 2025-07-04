@@ -177,7 +177,7 @@ const NotificationItem = () => {
                 icon="pi pi-check"
                 className="p-button-success"
                 onClick={acceptInvite}
-                style={{ marginRight: "1rem" }}
+                style={{ marginRight: "1rem", marginBottom: "1rem" }}
               />
               <Button
                 label="Odbij"
