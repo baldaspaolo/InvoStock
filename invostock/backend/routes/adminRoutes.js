@@ -15,7 +15,6 @@ router.get("/users/no-organization", (req, res) => {
   });
 });
 
-
 router.get("/users/with-organization", (req, res) => {
   const query = `
     SELECT u.id, u.name, u.email, u.created_at, u.is_active, o.id AS organization_id, o.name AS organization_name
@@ -28,7 +27,6 @@ router.get("/users/with-organization", (req, res) => {
     res.json(results);
   });
 });
-
 
 router.get("/organizations", (req, res) => {
   const query = `
@@ -48,17 +46,15 @@ router.get("/organizations", (req, res) => {
   });
 });
 
-
-
 router.get("/users/:id", (req, res) => {
   db.query(
-    "SELECT * FROM users WHERE id = ?",
+    "SELECT u.id, u.name, u.email, u.organization_id, u.created_at, u.role, o.name AS organization_name FROM users u LEFT JOIN organizations o ON u.organization_id = o.id WHERE u.id = ?",
     [req.params.id],
     (err, results) => {
       if (err || results.length === 0)
         return res.status(404).json({ error: "Korisnik nije pronađen." });
+
       const user = results[0];
-      delete user.password;
       res.json({ user });
     }
   );
@@ -767,7 +763,6 @@ router.delete("/users/:id", (req, res) => {
   });
 });
 
-
 router.put("/organizations/:id", (req, res) => {
   const { id } = req.params;
   const { name, address } = req.body;
@@ -886,7 +881,6 @@ router.get("/statistics", (req, res) => {
         .json({ error: "Greška kod dohvaćanja statistike." });
     }
 
-    
     const stats = results[0];
 
     // Izračun postotaka
@@ -905,7 +899,6 @@ router.get("/statistics", (req, res) => {
         ? ((stats.organization_users / stats.total_users) * 100).toFixed(2)
         : 0;
 
-    
     stats.average_invoice_amount =
       stats.total_invoices > 0
         ? (stats.total_invoice_amount / stats.total_invoices).toFixed(2)

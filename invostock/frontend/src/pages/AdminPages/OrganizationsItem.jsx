@@ -822,7 +822,7 @@ const OrganizationsItem = () => {
           text
           raised
           severity="secondary"
-          onClick={() => navigate("/admin/dashboard")}
+          onClick={() => navigate("/admin/organizations")}
           style={{ width: "10%" }}
         />
       </div>
@@ -846,7 +846,7 @@ const OrganizationsItem = () => {
               {formatDate(organization.created_at)}
             </p>
             <p>
-              <strong>Broj članova:</strong>
+              <strong>Broj članova: </strong>
               {organization.member_count}
             </p>
           </div>

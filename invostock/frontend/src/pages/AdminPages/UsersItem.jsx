@@ -764,7 +764,7 @@ const UsersItem = () => {
             <p>
               <strong>Organizacija:</strong>{" "}
               {user.organization_id
-                ? `ID: ${user.organization_id}`
+                ? `${user.organization_name} - ID: ${user.organization_id}`
                 : "Nema organizacije"}
             </p>
           </div>
