@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Panel,
   Button,
@@ -21,6 +21,7 @@ const UsersItem = () => {
   const { id } = useParams();
   const API_URL = import.meta.env.VITE_API_URL;
   const toast = useRef(null);
+  const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
   const [expandedRows, setExpandedRows] = useState(null);
@@ -740,6 +741,16 @@ const UsersItem = () => {
   return (
     <div style={{ margin: "5%" }}>
       <Toast ref={toast} />
+      <div style={{ display: "flex", marginLeft: "3%" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/users")}
+          style={{ width: "10%" }}
+        />
+      </div>
 
       <Panel header="Podaci o korisniku" style={{ margin: "4% 3% 2% 3%" }}>
         <div>

@@ -188,6 +188,16 @@ const OrdersAdd = () => {
     >
       <div className="div4">
         <div style={{ marginLeft: "3%", marginRight: "3%", marginTop: "2%" }}>
+          <div style={{ display: "flex", marginBottom: "1%" }}>
+            <Button
+              icon="pi pi-arrow-left"
+              text
+              raised
+              severity="secondary"
+              onClick={() => navigate("/orders")}
+              style={{ width: "10%" }}
+            />
+          </div>
           <Panel header="Nova narudžbenica" style={{ fontSize: "0.88rem" }}>
             <div
               style={{

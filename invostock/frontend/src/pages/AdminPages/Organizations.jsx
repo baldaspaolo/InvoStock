@@ -209,7 +209,17 @@ const Organizations = () => {
   };
 
   return (
-    <div style={{ minHeight: "70vh", marginTop: "3%" }}>
+    <div style={{ minHeight: "70vh", marginTop: "4%" }}>
+      <div style={{ display: "flex", marginLeft: "5%" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/dashboard")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <Card
         title="Organizacije"
         className="shadow-sm"

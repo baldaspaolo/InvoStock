@@ -58,6 +58,16 @@ const NotificationsAdmin = () => {
 
   return (
     <div style={{ margin: "5%" }}>
+      <div style={{ display: "flex", marginBottom: "2%" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/dashboard")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <Panel header="Sistemske obavijesti">
         <div
           style={{

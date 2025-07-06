@@ -13,7 +13,6 @@ import EditUserDialog from "../../components/EditUserDialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { confirmDialog } from "primereact/confirmdialog";
 
-
 const Users = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -110,7 +109,6 @@ const Users = () => {
         user.name.toLowerCase().includes(nameQuery.toLowerCase())
       );
     }
-
 
     if (orgQuery) {
       result = result.filter((user) =>
@@ -235,7 +233,6 @@ const Users = () => {
     return baseItems;
   };
 
-
   const actionTemplate = (rowData) => {
     return (
       <div onClick={(e) => e.stopPropagation()}>
@@ -294,8 +291,6 @@ const Users = () => {
     });
   };
 
-
-
   const organizationTemplate = (rowData) => {
     return rowData.organization_id ? (
       <span>{rowData.organization_name || "Da"}</span>
@@ -305,7 +300,17 @@ const Users = () => {
   };
 
   return (
-    <div style={{ minHeight: "70vh", marginTop: "3%" }}>
+    <div style={{ minHeight: "70vh", marginTop: "4%" }}>
+      <div style={{ display: "flex", marginLeft: "5%"}}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/dashboard")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <Card
         title="Upravljanje korisnicima"
         className="shadow-sm"
