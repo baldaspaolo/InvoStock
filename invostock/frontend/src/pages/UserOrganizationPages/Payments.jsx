@@ -207,6 +207,12 @@ const Payments = () => {
     return matchesSearch && matchesDateRange;
   });
 
+  const resetFilters = () => {
+    setSearch("");
+    setStartDate(null);
+    setEndDate(null);
+  };
+
   const inputStyle = { height: "2.5rem", width: "100%" };
 
   return (
@@ -287,6 +293,13 @@ const Payments = () => {
               showIcon
               style={inputStyle}
               dateFormat="dd.mm.yy"
+            />
+            <Button
+              label="Resetiraj"
+              icon="pi pi-refresh"
+              severity="secondary"
+              onClick={resetFilters}
+              style={{ height: "2.5rem", marginTop: "2%" }}
             />
           </div>
 

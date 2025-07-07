@@ -235,6 +235,13 @@ const Orders = () => {
     );
   };
 
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("all");
+    setStartDate(null);
+    setEndDate(null);
+  };
+
   return (
     <div className="parent" style={{ marginTop: "5%" }}>
       <div className="div1">
@@ -291,6 +298,13 @@ const Orders = () => {
                 showIcon
                 style={inputStyle}
                 dateFormat="dd.mm.yy"
+              />
+              <Button
+                label="Resetiraj"
+                icon="pi pi-refresh"
+                onClick={resetFilters}
+                severity="secondary"
+                style={{ height: "2.5rem", marginTop: "0.5rem" }}
               />
             </div>
           </Panel>
