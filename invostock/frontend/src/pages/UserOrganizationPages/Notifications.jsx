@@ -158,7 +158,7 @@ const Notifications = () => {
           selectionMode="single"
           style={{ cursor: "pointer" }}
         >
-          <Column field="custom_notification_code" header="ID" sortable />
+          <Column field="id" header="ID" sortable />
           <Column field="title" header="Naslov" sortable />
           <Column field="message" header="Poruka" />
           <Column body={dateTemplate} header="Datum" />
