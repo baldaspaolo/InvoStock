@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
+
 import { AuthContext } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { DataTable } from "primereact/datatable";
@@ -9,6 +10,8 @@ import { confirmDialog } from "primereact/confirmdialog";
 import { Panel } from "primereact/panel";
 import { Dialog } from "primereact/dialog";
 import { Tag } from "primereact/tag";
+import { Toast } from "primereact/toast";
+
 import NotificationsOrgAdd from "../../components/NotificationsOrgAdd";
 
 const Notifications = () => {
@@ -16,6 +19,8 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogVisible, setDialogVisible] = useState(false);
+  const toast = useRef(null);
+
 
   const navigate = useNavigate();
 
@@ -74,6 +79,69 @@ const Notifications = () => {
     });
   };
 
+  const markAllAsRead = async () => {
+    const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
+  
+    if (unreadIds.length === 0) {
+      toast.current?.show({
+        severity: "info",
+        summary: "Obavijesti",
+        detail: "Sve obavijesti su već pročitane.",
+        life: 3000,
+      });
+      return;
+    }
+  
+    try {
+      const response = await fetch("http://localhost:3000/api/notifications/markAsReadByIds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          notificationIds: unreadIds,
+        }),
+      });
+  
+      const data = await response.json();
+  
+      if (data.success) {
+        toast.current?.show({
+          severity: "success",
+          summary: "Označeno kao pročitano",
+          detail: `${data.message}`,
+          life: 3000,
+        });
+  
+        const refreshed = await fetch("http://localhost:3000/api/notifications/getNotifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
+        });
+  
+        const refreshedData = await refreshed.json();
+        if (refreshedData.success) {
+          const sorted = refreshedData.notifications.sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          );
+          setNotifications(sorted);
+        }
+      }
+    } catch (err) {
+      console.error("Greška kod označavanja svih obavijesti:", err);
+      toast.current?.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Nije uspjelo označavanje kao pročitano.",
+        life: 3000,
+      });
+    }
+  };
+  
+  
+
   const dateTemplate = (rowData) => {
     const date = new Date(rowData.created_at);
     return date.toLocaleString("hr-HR", {
@@ -104,6 +172,8 @@ const Notifications = () => {
 
   return (
     <div style={{ padding: "2rem", margin: "5%" }}>
+      <Toast ref={toast} position="top-left" />
+
       <Panel header="Obavijesti">
         {user.org_role === "admin" && (
           <div
@@ -119,8 +189,21 @@ const Notifications = () => {
               onClick={() => setDialogVisible(true)}
               style={{ width: "15%" }}
             />
+            
           </div>
+          
         )}
+        <div
+  style={{
+    margin: "1rem 0",
+    display: "flex",
+    justifyContent: "flex-start",
+  }}
+>
+  <label onClick={markAllAsRead} style={{cursor: "pointer"}}><u>Označi sve kao pročitano</u></label>
+  
+</div>
+
         <ConfirmDialog />
         <DataTable
           value={notifications}

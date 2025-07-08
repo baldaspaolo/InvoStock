@@ -240,47 +240,29 @@ router.post("/getNotifications", (req, res) => {
   });
 });
 
-router.post("/markAllNotificationsAsRead", (req, res) => {
-  const { userId, organizationId } = req.body;
+router.post("/markAsReadByIds", (req, res) => {
+  const { userId, notificationIds } = req.body;
 
-  if (!userId) {
-    return res.status(400).json({ error: "Nedostaje userId" });
+  if (!userId || !Array.isArray(notificationIds) || notificationIds.length === 0) {
+    return res.status(400).json({ error: "Nedostaju podaci." });
   }
 
-  const selectQuery = `
-    SELECT id FROM notifications
-    WHERE (user_id = ? OR organization_id = ?)
+  const values = notificationIds.map((id) => [id, userId]);
+
+  const insertQuery = `
+    INSERT IGNORE INTO notification_reads (notification_id, user_id)
+    VALUES ?
   `;
 
-  db.query(selectQuery, [userId, organizationId], (err, notifications) => {
+  db.query(insertQuery, [values], (err, result) => {
     if (err) {
-      console.error("Greška pri dohvaćanju obavijesti:", err);
+      console.error("Greška kod označavanja obavijesti:", err);
       return res.status(500).json({ error: "Greška na serveru!" });
     }
 
-    if (!notifications.length) {
-      return res
-        .status(200)
-        .json({ success: false, message: "Nema obavijesti za označiti." });
-    }
-
-    const values = notifications.map((n) => [n.id, userId]);
-
-    const insertQuery = `
-      INSERT IGNORE INTO notification_reads (notification_id, user_id)
-      VALUES ?
-    `;
-
-    db.query(insertQuery, [values], (err2, result) => {
-      if (err2) {
-        console.error("Greška kod masovnog označavanja:", err2);
-        return res.status(500).json({ error: "Greška na serveru!" });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: `${result.affectedRows} obavijesti označeno kao pročitane.`,
-      });
+    res.status(200).json({
+      success: true,
+      message: `${result.affectedRows} novih obavijesti označeno kao pročitano.`,
     });
   });
 });

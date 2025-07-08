@@ -58,27 +58,36 @@ export default function Navbar() {
 
   const markAllAsRead = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:3000/api/notifications/markAllNotificationsAsRead",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            organizationId: user.organization_id || null,
-          }),
-        }
-      );
-
+      const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+  
+      if (unreadIds.length === 0) {
+        toast.current.show({
+          severity: "info",
+          summary: "Obavijesti",
+          detail: "Sve obavijesti su već pročitane.",
+          life: 3000,
+        });
+        return;
+      }
+  
+      const response = await fetch("http://localhost:3000/api/notifications/markAsReadByIds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          notificationIds: unreadIds,
+        }),
+      });
+  
       const data = await response.json();
-
+  
       toast.current.show({
         severity: data.success ? "success" : "info",
         summary: "Obavijesti",
         detail: data.message,
         life: 3000,
       });
-
+  
       if (data.success) {
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       }
@@ -87,11 +96,12 @@ export default function Navbar() {
       toast.current.show({
         severity: "error",
         summary: "Greška",
-        detail: "Neuspješno označavanje obavijesti kao pročitanih.",
+        detail: "Neuspješno označavanje obavijesti.",
         life: 3000,
       });
     }
   };
+  
 
   const logoutUser = () => {
     logout();
