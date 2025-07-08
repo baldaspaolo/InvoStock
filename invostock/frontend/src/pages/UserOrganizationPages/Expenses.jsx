@@ -494,6 +494,7 @@ const Expenses = () => {
               placeholder="Početni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
             />
             <Calendar
               value={endDate}
@@ -501,6 +502,7 @@ const Expenses = () => {
               placeholder="Završni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
             />
             <Button
               label="Resetiraj"

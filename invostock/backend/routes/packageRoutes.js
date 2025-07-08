@@ -115,7 +115,16 @@ router.post("/getUserPackages", (req, res) => {
 
   if (!userId) return res.status(400).json({ error: "Nedostaje User ID" });
 
-  let query = `
+  const hasOrg =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    !isNaN(organizationId);
+  const condition = hasOrg
+    ? "p.organization_id = ?"
+    : "p.organization_id IS NULL AND p.user_id = ?";
+  const params = hasOrg ? [organizationId] : [userId];
+
+  const query = `
     SELECT 
       p.*, 
       c.first_name, 
@@ -124,19 +133,9 @@ router.post("/getUserPackages", (req, res) => {
     FROM packages p
     LEFT JOIN contacts c ON p.contact_id = c.id
     LEFT JOIN sales_orders so ON p.sales_order_id = so.id
-    WHERE p.user_id = ?
+    WHERE ${condition}
+    ORDER BY p.created_at DESC
   `;
-
-  const params = [userId];
-
-  if (organizationId) {
-    query += " AND p.organization_id = ?";
-    params.push(organizationId);
-  } else {
-    query += " AND p.organization_id IS NULL";
-  }
-
-  query += " ORDER BY p.created_at DESC";
 
   db.query(query, params, (err, results) => {
     if (err) {
@@ -146,6 +145,7 @@ router.post("/getUserPackages", (req, res) => {
     res.status(200).json({ success: true, packages: results });
   });
 });
+
 
 
 router.post("/updatePackageStatus", (req, res) => {

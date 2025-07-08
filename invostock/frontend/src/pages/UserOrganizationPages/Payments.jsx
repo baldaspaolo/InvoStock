@@ -207,6 +207,12 @@ const Payments = () => {
     return matchesSearch && matchesDateRange;
   });
 
+  const resetFilters = () => {
+    setSearch("");
+    setStartDate(null);
+    setEndDate(null);
+  };
+
   const inputStyle = { height: "2.5rem", width: "100%" };
 
   return (
@@ -257,37 +263,45 @@ const Payments = () => {
               </div>
             </div>
           </Panel>
-          
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))",
-                gap: "1rem",
-                alignItems: "center",
-              }}
-            >
-              <InputText
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Pretraži broj fakture"
-                style={inputStyle}
-              />
-              <Calendar
-                value={startDate}
-                onChange={(e) => setStartDate(e.value)}
-                placeholder="Početni datum"
-                showIcon
-                style={inputStyle}
-              />
-              <Calendar
-                value={endDate}
-                onChange={(e) => setEndDate(e.value)}
-                placeholder="Završni datum"
-                showIcon
-                style={inputStyle}
-              />
-            </div>
-  
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))",
+              gap: "1rem",
+              alignItems: "center",
+            }}
+          >
+            <InputText
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Pretraži broj fakture"
+              style={inputStyle}
+            />
+            <Calendar
+              value={startDate}
+              onChange={(e) => setStartDate(e.value)}
+              placeholder="Početni datum"
+              showIcon
+              style={inputStyle}
+              dateFormat="dd.mm.yy"
+            />
+            <Calendar
+              value={endDate}
+              onChange={(e) => setEndDate(e.value)}
+              placeholder="Završni datum"
+              showIcon
+              style={inputStyle}
+              dateFormat="dd.mm.yy"
+            />
+            <Button
+              label="Resetiraj"
+              icon="pi pi-refresh"
+              severity="secondary"
+              onClick={resetFilters}
+              style={{ height: "2.5rem", marginTop: "2%" }}
+            />
+          </div>
 
           <DataTable
             value={filteredPayments}

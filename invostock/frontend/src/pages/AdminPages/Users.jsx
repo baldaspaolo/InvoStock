@@ -13,7 +13,6 @@ import EditUserDialog from "../../components/EditUserDialog";
 import { ConfirmDialog } from "primereact/confirmdialog";
 import { confirmDialog } from "primereact/confirmdialog";
 
-
 const Users = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -111,7 +110,6 @@ const Users = () => {
       );
     }
 
-
     if (orgQuery) {
       result = result.filter((user) =>
         user.organization_name?.toLowerCase().includes(orgQuery.toLowerCase())
@@ -140,7 +138,7 @@ const Users = () => {
       message: `Jeste li sigurni da želite obrisati korisnika "${selectedUser.name}" i sve njegove podatke?`,
       header: "Potvrda brisanja",
       icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Da, obriši",
+      acceptLabel: "Da, deaktiviraj",
       rejectLabel: "Odustani",
       accept: async () => {
         try {
@@ -220,7 +218,7 @@ const Users = () => {
 
     if (selectedUser.is_active) {
       baseItems.push({
-        label: "Briši",
+        label: "Deaktiviraj",
         icon: "pi pi-trash",
         command: handleDelete,
       });
@@ -234,7 +232,6 @@ const Users = () => {
 
     return baseItems;
   };
-
 
   const actionTemplate = (rowData) => {
     return (
@@ -294,8 +291,6 @@ const Users = () => {
     });
   };
 
-
-
   const organizationTemplate = (rowData) => {
     return rowData.organization_id ? (
       <span>{rowData.organization_name || "Da"}</span>
@@ -305,7 +300,17 @@ const Users = () => {
   };
 
   return (
-    <div style={{ minHeight: "70vh", marginTop: "3%" }}>
+    <div style={{ minHeight: "70vh", marginTop: "4%" }}>
+      <div style={{ display: "flex", marginLeft: "5%"}}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/dashboard")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <Card
         title="Upravljanje korisnicima"
         className="shadow-sm"

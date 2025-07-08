@@ -96,6 +96,16 @@ const NotificationsAdminAdd = () => {
   return (
     <div style={{ margin: "5%" }}>
       <Toast ref={toast} />
+      <div style={{ display: "flex", marginBottom: "2%" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/notifications")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <Panel header="Nova obavijest">
         <div
           className="p-fluid"
@@ -135,9 +145,22 @@ const NotificationsAdminAdd = () => {
           </div>
 
           <div>
-            <label>Primatelji</label>
-            <div className="p-formgroup-inline" style={{ gap: "1rem" }}>
-              <div>
+            <label style={{ marginBottom: "0.5rem", display: "block" }}>
+              Primatelji
+            </label>
+
+            <div
+              style={{
+                display: "flex",
+                gap: "2rem",
+                alignItems: "center",
+                marginLeft: "40%",
+                marginTop: "2%",
+              }}
+            >
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <RadioButton
                   inputId="global"
                   name="target"
@@ -145,11 +168,11 @@ const NotificationsAdminAdd = () => {
                   onChange={(e) => setTargetType(e.value)}
                   checked={targetType === "global"}
                 />
-                <label htmlFor="global" className="p-ml-2">
-                  Svi korisnici
-                </label>
+                <label htmlFor="global">Svi korisnici</label>
               </div>
-              <div>
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
                 <RadioButton
                   inputId="org"
                   name="target"
@@ -157,9 +180,7 @@ const NotificationsAdminAdd = () => {
                   onChange={(e) => setTargetType(e.value)}
                   checked={targetType === "organization"}
                 />
-                <label htmlFor="org" className="p-ml-2">
-                  Odabrana organizacija
-                </label>
+                <label htmlFor="org">Odabrana organizacija</label>
               </div>
             </div>
           </div>

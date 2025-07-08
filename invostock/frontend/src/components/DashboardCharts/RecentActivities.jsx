@@ -35,7 +35,7 @@ const RecentActivities = ({ activities }) => {
           />
         );
       case "pending":
-        return <Tag severity="danger" value="Neplaćeno" />;
+        return <Tag severity="danger" value="Neplaćeno/Neisporučeno" />;
       case "partially_paid":
         return <Tag severity="warning" value="Djelomično" />;
       default:
@@ -68,8 +68,7 @@ const RecentActivities = ({ activities }) => {
           onRowClick={(e) => {
             if (e.data.type === "invoice")
               navigate(`/invoices/${e.data.id}/${user.id}`);
-            if (e.data.type === "order")
-              navigate(`/orders/${e.data.id}/${user.id}`);
+            if (e.data.type === "order") navigate(`/orders`);
             if (e.data.type === "payment") navigate(`/payments`);
             if (e.data.type === "expense") navigate(`/expenses`);
           }}
@@ -85,9 +84,9 @@ const RecentActivities = ({ activities }) => {
             body={(rowData) => {
               switch (rowData.type) {
                 case "invoice":
-                  return `Faktura #${rowData.id}`;
+                  return `Faktura - ${rowData.code}`;
                 case "order":
-                  return `Nalog #${rowData.id}`;
+                  return `Narudžbenica - ${rowData.code}`;
                 case "expense":
                   return rowData.title || "Trošak";
                 case "payment":

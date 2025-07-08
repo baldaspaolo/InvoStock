@@ -53,11 +53,32 @@ const NotificationsAdmin = () => {
     />
   );
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("hr-HR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const senderTemplate = (rowData) =>
     rowData.sender === "system" ? "System admin" : "Admin organizacije";
 
   return (
     <div style={{ margin: "5%" }}>
+      <div style={{ display: "flex", marginBottom: "2%" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/dashboard")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <Panel header="Sistemske obavijesti">
         <div
           style={{
@@ -102,7 +123,11 @@ const NotificationsAdmin = () => {
         >
           <Column field="title" header="Naslov" sortable />
           <Column field="message" header="Poruka" sortable />
-          <Column field="created_at" header="Datum" sortable />
+          <Column
+            header="Datum"
+            sortable
+            body={(rowData) => formatDate(rowData.created_at)}
+          />
           <Column header="Vrsta" body={typeTemplate} />
           <Column header="Poslao" body={senderTemplate} />
         </DataTable>

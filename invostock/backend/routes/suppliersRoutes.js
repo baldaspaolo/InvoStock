@@ -10,12 +10,18 @@ router.post("/getSuppliers", (req, res) => {
   let query = "";
   let params = [];
 
-  if (organizationId) {
-    query = "SELECT * FROM suppliers WHERE user_id = ? AND organization_id = ?";
-    params = [userId, organizationId];
+  const isOrg =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    organizationId !== "null" &&
+    !isNaN(organizationId);
+
+  if (isOrg) {
+    query = "SELECT * FROM suppliers WHERE organization_id = ?";
+    params = [organizationId];
   } else {
     query =
-      "SELECT * FROM suppliers WHERE user_id = ? AND organization_id IS NULL";
+      "SELECT * FROM suppliers WHERE organization_id IS NULL AND user_id = ?";
     params = [userId];
   }
 
@@ -72,16 +78,28 @@ router.post("/addSupplier", (req, res) => {
 });
 router.put("/updateSupplier/:id", (req, res) => {
   const { id } = req.params;
-  const { userId, organizationId, name, address, phone } = req.body;
+  const { userId, organizationId, name, address, phone, email, city, country } =
+    req.body;
 
   if (!userId || !name)
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
 
   let query = `
-    UPDATE suppliers SET name = ?, address = ?, phone = ?
+    UPDATE suppliers
+    SET name = ?, address = ?, phone = ?, email = ?, city = ?, country = ?
     WHERE id = ? AND user_id = ?
   `;
-  const params = [name, address || null, phone || null, id, userId];
+
+  const params = [
+    name,
+    address || null,
+    phone || null,
+    email || null,
+    city || null,
+    country || null,
+    id,
+    userId,
+  ];
 
   if (organizationId) {
     query += " AND organization_id = ?";

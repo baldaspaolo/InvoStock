@@ -131,11 +131,17 @@ router.post("/getUserPayments", (req, res) => {
       i.status
     FROM payments p
     LEFT JOIN invoices i ON p.invoice_id = i.id
-    WHERE (i.user_id = ? OR i.organization_id = ?)
+    WHERE ${
+      organizationId
+        ? "i.organization_id = ?"
+        : "i.organization_id IS NULL AND i.user_id = ?"
+    }
     ORDER BY p.payment_date DESC
   `;
 
-  db.query(query, [userId, organizationId], (err, results) => {
+  const params = organizationId ? [organizationId] : [userId];
+
+  db.query(query, params, (err, results) => {
     if (err) {
       console.error("Greška kod dohvaćanja uplata:", err);
       return res.status(500).json({ error: "Greška na serveru" });

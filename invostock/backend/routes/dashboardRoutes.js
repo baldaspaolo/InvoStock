@@ -9,40 +9,44 @@ router.post("/getDashboardStats", (req, res) => {
     return res.status(400).json({ error: "Nedostaje UserID!" });
   }
 
-   const statsQueries = {
-     totalInvoices30Days: `
-      SELECT COUNT(*) AS count FROM invoices 
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-      AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    `,
-     totalRevenue30Days: `
-      SELECT COALESCE(SUM(final_amount), 0) AS sum FROM invoices 
-      WHERE user_id = ? AND status IN ('paid', 'partially_paid')
-      ${organizationId ? "AND organization_id = ?" : ""}
-      AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    `,
-     outstandingAmount: `
-      SELECT COALESCE(SUM(remaining_amount), 0) AS sum FROM invoices 
-      WHERE user_id = ? AND (status = 'pending' OR status = 'partially_paid') 
-      ${organizationId ? "AND organization_id = ?" : ""}
-    `,
-     totalExpenses30Days: `
-      SELECT COALESCE(SUM(amount), 0) AS sum FROM expenses 
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-      AND expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
-    `,
-     inventoryStats: `
-      SELECT 
-        COUNT(*) AS total_items,
-        SUM(CASE WHEN stock_quantity <= reorder_level THEN 1 ELSE 0 END) AS low_stock_items
-      FROM inventory_items
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-    `,
-   };
+  const statsQueries = {
+    totalInvoices30Days: `
+    SELECT COUNT(*) AS count FROM invoices 
+    ${organizationId ? "WHERE organization_id = ?" : "WHERE user_id = ?"}
+    AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+  `,
+
+    totalRevenue30Days: `
+    SELECT COALESCE(SUM(final_amount), 0) AS sum FROM invoices 
+    ${organizationId ? "WHERE organization_id = ?" : "WHERE user_id = ?"}
+    AND status IN ('paid', 'partially_paid')
+    AND invoice_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+  `,
+
+    outstandingAmount: `
+    SELECT COALESCE(SUM(remaining_amount), 0) AS sum FROM invoices 
+    ${organizationId ? "WHERE organization_id = ?" : "WHERE user_id = ?"}
+    AND (status = 'pending' OR status = 'partially_paid')
+  `,
+
+    totalExpenses30Days: `
+    SELECT COALESCE(SUM(e.amount), 0) AS sum FROM expenses e 
+    ${organizationId ? "WHERE e.organization_id = ?" : "WHERE e.user_id = ?"}
+    AND e.is_deleted = 0
+    AND e.expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+  `,
+
+    inventoryStats: `
+    SELECT 
+      COUNT(*) AS total_items,
+      SUM(CASE WHEN stock_quantity <= reorder_level THEN 1 ELSE 0 END) AS low_stock_items
+    FROM inventory_items
+    ${organizationId ? "WHERE organization_id = ?" : "WHERE user_id = ?"}
+  `,
+  };
 
   const timeRange = req.body.timeRange || "30days";
 
-  
   let dateCondition = "";
   const now = new Date();
   let startDate = new Date();
@@ -67,80 +71,81 @@ router.post("/getDashboardStats", (req, res) => {
 
   dateCondition = `AND date >= '${startDate.toISOString().split("T")[0]}'`;
 
-
   const recentActivitiesQuery = `
-    (
-      SELECT 
-        'invoice' AS type,
-        id,
-        custom_invoice_code AS code,
-        client_name AS title,
-        final_amount AS amount,
-        invoice_date AS date,
-        status,
-        NULL AS details
-      FROM invoices
-      WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-      ORDER BY invoice_date DESC
-      LIMIT 5
-    )
-    UNION ALL
-    (
-      SELECT 
-        'payment' AS type,
-        p.id,
-        NULL AS code,
-        CONCAT('Plaćanje za fakturu #', p.invoice_id) AS title,
-        p.amount_paid AS amount,
-        p.payment_date AS date,
-        NULL AS status,
-        p.payment_method AS details
-      FROM payments p
-      JOIN invoices i ON p.invoice_id = i.id
-      WHERE i.user_id = ? ${organizationId ? "AND i.organization_id = ?" : ""}
-      ORDER BY p.payment_date DESC
-      LIMIT 5
-    )
-    UNION ALL
-    (
-      SELECT 
-        'order' AS type,
-        o.id,
-        NULL AS code,
-        CONCAT('Narudžba #', o.id) AS title,
-        o.total_price AS amount,
-        o.order_date AS date,
-        o.status,
-        s.name AS details
-      FROM orders o
-      LEFT JOIN suppliers s ON o.supplier_id = s.id
-      WHERE o.user_id = ? ${organizationId ? "AND o.organization_id = ?" : ""}
-      ORDER BY o.order_date DESC
-      LIMIT 5
-    )
-    UNION ALL
-    (
-      SELECT 
-        'expense' AS type,
-        e.id,
-        NULL AS code,
-        e.name AS title,
-        e.amount AS amount,
-        e.expense_date AS date,
-        NULL AS status,
-        ec.name AS details
-      FROM expenses e
-      LEFT JOIN expense_categories ec ON e.category_id = ec.id
-      WHERE e.user_id = ? ${organizationId ? "AND e.organization_id = ?" : ""}
-      ORDER BY e.expense_date DESC
-      LIMIT 5
-    )
-    ORDER BY date DESC
-    LIMIT 10
-  `;
+  (
+    SELECT 
+      'invoice' AS type,
+      id,
+      custom_invoice_code AS code,
+      client_name AS title,
+      final_amount AS amount,
+      invoice_date AS date,
+      status,
+      NULL AS details
+    FROM invoices
+    ${organizationId ? "WHERE organization_id = ?" : "WHERE user_id = ?"}
+    ORDER BY invoice_date DESC
+    LIMIT 5
+  )
+  UNION ALL
+  (
+    SELECT 
+      'payment' AS type,
+      p.id,
+      i.custom_invoice_code AS code,
+      CONCAT('Plaćanje za fakturu - ', i.custom_invoice_code) AS title,
+      p.amount_paid AS amount,
+      p.payment_date AS date,
+      NULL AS status,
+      p.payment_method AS details
+    FROM payments p
+    JOIN invoices i ON p.invoice_id = i.id
+    ${organizationId ? "WHERE i.organization_id = ?" : "WHERE i.user_id = ?"}
+    ORDER BY p.payment_date DESC
+    LIMIT 5
+  )
+  UNION ALL
+  (
+    SELECT 
+      'order' AS type,
+      o.id,
+      o.custom_order_code AS code,
+      CONCAT('Nalog #', o.custom_order_code) AS title,
+      o.total_price AS amount,
+      o.order_date AS date,
+      o.status,
+      s.name AS details
+    FROM orders o
+    LEFT JOIN suppliers s ON o.supplier_id = s.id
+    ${organizationId ? "WHERE o.organization_id = ?" : "WHERE o.user_id = ?"}
+    ORDER BY o.order_date DESC
+    LIMIT 5
+  )
+  UNION ALL
+  (
+    SELECT 
+      'expense' AS type,
+      e.id,
+      NULL AS code,
+      e.name AS title,
+      e.amount AS amount,
+      e.expense_date AS date,
+      NULL AS status,
+      ec.name AS details
+    FROM expenses e
+    LEFT JOIN expense_categories ec ON e.category_id = ec.id
+    ${organizationId ? "WHERE e.organization_id = ?" : "WHERE e.user_id = ?"}
+    AND e.is_deleted = 0
+    ORDER BY e.expense_date DESC
+    LIMIT 5
+  )
+  ORDER BY date DESC
+  LIMIT 10
+`;
 
   //Podaci za grafikon (prihodi i troškovi po mjesecima)
-  const financialDataQuery = `
+  const financialDataQuery = organizationId
+    ? `
     SELECT 
       DATE_FORMAT(date, '%Y-%m') AS month,
       COALESCE(SUM(CASE WHEN type = 'revenue' THEN amount ELSE 0 END), 0) AS revenue,
@@ -151,28 +156,57 @@ router.post("/getDashboardStats", (req, res) => {
         final_amount AS amount, 
         'revenue' AS type
       FROM invoices
-      WHERE user_id = ? 
-      ${organizationId ? "AND organization_id = ?" : ""}
+      WHERE organization_id = ?
       AND status IN ('paid', 'partially_paid')
       AND invoice_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-      
+
       UNION ALL
-      
+
       SELECT 
-        expense_date AS date, 
-        amount, 
+        e.expense_date AS date, 
+        e.amount, 
         'expense' AS type
-      FROM expenses
-      WHERE user_id = ? 
-      ${organizationId ? "AND organization_id = ?" : ""}
-      AND expense_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+      FROM expenses e
+      WHERE e.organization_id = ?
+      AND e.is_deleted = 0
+      AND e.expense_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+    ) AS combined_data
+    GROUP BY DATE_FORMAT(date, '%Y-%m')
+    ORDER BY month ASC
+  `
+    : `
+    SELECT 
+      DATE_FORMAT(date, '%Y-%m') AS month,
+      COALESCE(SUM(CASE WHEN type = 'revenue' THEN amount ELSE 0 END), 0) AS revenue,
+      COALESCE(SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END), 0) AS expenses
+    FROM (
+      SELECT 
+        invoice_date AS date, 
+        final_amount AS amount, 
+        'revenue' AS type
+      FROM invoices
+      WHERE user_id = ?
+      AND status IN ('paid', 'partially_paid')
+      AND invoice_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+
+      UNION ALL
+
+      SELECT 
+        e.expense_date AS date, 
+        e.amount, 
+        'expense' AS type
+      FROM expenses e
+      WHERE e.user_id = ?
+      AND e.is_deleted = 0
+      AND e.expense_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
     ) AS combined_data
     GROUP BY DATE_FORMAT(date, '%Y-%m')
     ORDER BY month ASC
   `;
 
   //Upozorenja za zalihe
-  const inventoryAlertsQuery = `
+  const inventoryAlertsQuery = organizationId
+    ? `
     SELECT 
       id,
       item_name,
@@ -180,15 +214,33 @@ router.post("/getDashboardStats", (req, res) => {
       reorder_level,
       price
     FROM inventory_items
-    WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
+    WHERE organization_id = ?
+    AND stock_quantity <= reorder_level
+    ORDER BY stock_quantity ASC
+    LIMIT 10
+  `
+    : `
+    SELECT 
+      id,
+      item_name,
+      stock_quantity,
+      reorder_level,
+      price
+    FROM inventory_items
+    WHERE user_id = ?
     AND stock_quantity <= reorder_level
     ORDER BY stock_quantity ASC
     LIMIT 10
   `;
 
-  const queryParams = organizationId ? [userId, organizationId] : [userId];
+  const queryParams = organizationId ? [organizationId] : [userId];
+
+  const recentActivitiesParams = organizationId
+    ? [organizationId, organizationId, organizationId, organizationId]
+    : [userId, userId, userId, userId];
+
   const financialParams = organizationId
-    ? [userId, organizationId, userId, organizationId]
+    ? [organizationId, organizationId]
     : [userId, userId];
 
   db.query(
@@ -223,12 +275,7 @@ router.post("/getDashboardStats", (req, res) => {
 
                       db.query(
                         recentActivitiesQuery,
-                        [
-                          ...queryParams,
-                          ...queryParams,
-                          ...queryParams,
-                          ...queryParams,
-                        ],
+                        recentActivitiesParams, // ✅ koristiš pravilno definirane parametre
                         (err, activitiesResult) => {
                           if (err)
                             return handleError(res, err, "Nedavne aktivnosti");
@@ -325,38 +372,39 @@ router.post("/getRecentActivities", (req, res) => {
     )
     UNION ALL
     (
-      SELECT 
-        'payment' AS type,
-        p.id,
-        NULL AS code,
-        CONCAT('Plaćanje za fakturu #', p.invoice_id) AS title,
-        p.amount_paid AS amount,
-        p.payment_date AS date,
-        NULL AS status,
-        p.payment_method AS details
-      FROM payments p
-      JOIN invoices i ON p.invoice_id = i.id
-      WHERE i.user_id = ? ${organizationId ? "AND i.organization_id = ?" : ""}
-      ORDER BY p.payment_date DESC
-      LIMIT 5
-    )
+  SELECT 
+    'payment' AS type,
+    p.id,
+    i.custom_invoice_code AS code,
+    CONCAT('Plaćanje za fakturu #', i.custom_invoice_code) AS title,
+    p.amount_paid AS amount,
+    p.payment_date AS date,
+    NULL AS status,
+    p.payment_method AS details
+  FROM payments p
+  JOIN invoices i ON p.invoice_id = i.id
+  WHERE i.user_id = ? ${organizationId ? "AND i.organization_id = ?" : ""}
+  ORDER BY p.payment_date DESC
+  LIMIT 5
+)
     UNION ALL
     (
-      SELECT 
-        'order' AS type,
-        o.id,
-        NULL AS code,
-        CONCAT('Narudžba #', o.id) AS title,
-        o.total_price AS amount,
-        o.order_date AS date,
-        o.status,
-        s.name AS details
-      FROM orders o
-      LEFT JOIN suppliers s ON o.supplier_id = s.id
-      WHERE o.user_id = ? ${organizationId ? "AND o.organization_id = ?" : ""}
-      ORDER BY o.order_date DESC
-      LIMIT 5
-    )
+  SELECT 
+    'order' AS type,
+    o.id,
+    o.custom_order_code AS code,
+    CONCAT('Nalog #', o.custom_order_code) AS title,
+    o.total_price AS amount,
+    o.order_date AS date,
+    o.status,
+    s.name AS details
+  FROM orders o
+  LEFT JOIN suppliers s ON o.supplier_id = s.id
+  WHERE o.user_id = ? ${organizationId ? "AND o.organization_id = ?" : ""}
+  ORDER BY o.order_date DESC
+  LIMIT 5
+)
+
     ORDER BY date DESC
     LIMIT 10
   `;
@@ -385,6 +433,12 @@ router.post("/getInventoryAlerts", (req, res) => {
     return res.status(400).json({ error: "Nedostaje UserID!" });
   }
 
+  const isOrg =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    organizationId !== "null" &&
+    !isNaN(organizationId);
+
   const query = `
     SELECT 
       id,
@@ -393,13 +447,16 @@ router.post("/getInventoryAlerts", (req, res) => {
       reorder_level,
       price
     FROM inventory_items
-    WHERE user_id = ? ${organizationId ? "AND organization_id = ?" : ""}
-    AND stock_quantity <= reorder_level
+    WHERE ${
+      isOrg ? "organization_id = ?" : "user_id = ? AND organization_id IS NULL"
+    }
+      AND stock_quantity <= reorder_level
+      AND is_deleted = FALSE
     ORDER BY stock_quantity ASC
     LIMIT 10
   `;
 
-  const queryParams = organizationId ? [userId, organizationId] : [userId];
+  const queryParams = isOrg ? [parseInt(organizationId)] : [userId];
 
   db.query(query, queryParams, (err, results) => {
     if (err) {
@@ -413,5 +470,6 @@ router.post("/getInventoryAlerts", (req, res) => {
     });
   });
 });
+
 
 module.exports = router;

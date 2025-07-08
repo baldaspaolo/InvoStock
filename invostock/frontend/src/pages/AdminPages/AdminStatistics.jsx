@@ -1,11 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Card } from "primereact/card";
 import { Panel } from "primereact/panel";
+import { useNavigate } from "react-router-dom";
 import { Tag } from "primereact/tag";
+import { Button } from "primereact/button";
+
 import { Divider } from "primereact/divider";
 
 const AdminStatistics = () => {
   const [stats, setStats] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -26,12 +30,29 @@ const AdminStatistics = () => {
   if (!stats) return <p>Učitavanje...</p>;
 
   return (
-    <div className="p-4">
+    <div className="p-4" style={{ margin: "4%" }}>
+      <div style={{ display: "flex" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/dashboard")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <h2 className="text-xl mb-3">📊 Administratorska Statistika</h2>
 
       <Panel header="👥 Korisnici i Organizacije">
         <div className="grid">
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Ukupno korisnika:</strong> {stats.total_users}
             </p>
@@ -44,7 +65,14 @@ const AdminStatistics = () => {
               %)
             </p>
           </Card>
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Ukupno organizacija:</strong> {stats.total_organizations}
             </p>
@@ -64,7 +92,14 @@ const AdminStatistics = () => {
 
       <Panel header="📄 Fakture i Uplate">
         <div className="grid">
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Ukupno faktura:</strong> {stats.total_invoices}
             </p>
@@ -80,7 +115,14 @@ const AdminStatistics = () => {
               {stats.pending_invoices_percentage}%)
             </p>
           </Card>
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Ukupan iznos faktura:</strong>{" "}
               {stats.total_invoice_amount} €
@@ -99,7 +141,14 @@ const AdminStatistics = () => {
 
       <Panel header="📦 Inventar i Narudžbe">
         <div className="grid">
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Stavki u inventaru:</strong> {stats.total_inventory_items}
             </p>
@@ -113,7 +162,14 @@ const AdminStatistics = () => {
               <strong>Turnover ratio:</strong> {stats.inventory_turnover_ratio}
             </p>
           </Card>
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Ukupno narudžbi:</strong> {stats.total_orders}
             </p>
@@ -134,12 +190,26 @@ const AdminStatistics = () => {
 
       <Panel header="📬 Paketi i Troškovi">
         <div className="grid">
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Ukupno paketa:</strong> {stats.total_packages}
             </p>
           </Card>
-          <Card className="col">
+          <Card
+            className="col"
+            style={{
+              borderRadius: "15px",
+              overflow: "hidden",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             <p>
               <strong>Ukupni troškovi:</strong> {stats.total_expenses} €
             </p>

@@ -136,14 +136,12 @@ const Organizations = () => {
     setEditDialogVisible(true);
   };
 
- 
-
   const handleDelete = () => {
     confirmDialog({
       message: `Jeste li sigurni da želite obrisati organizaciju "${selectedOrganization.name}"?`,
       header: "Potvrda brisanja",
       icon: "pi pi-exclamation-triangle",
-      acceptLabel: "Da, obriši",
+      acceptLabel: "Da, deaktiviraj",
       rejectLabel: "Odustani",
       accept: () => deleteOrganization(selectedOrganization.id),
     });
@@ -195,7 +193,7 @@ const Organizations = () => {
 
     if (selectedOrganization.is_active) {
       baseItems.push({
-        label: "Briši",
+        label: "Deaktiviraj",
         icon: "pi pi-trash",
         command: handleDelete,
       });
@@ -211,7 +209,17 @@ const Organizations = () => {
   };
 
   return (
-    <div style={{ minHeight: "70vh", marginTop: "3%" }}>
+    <div style={{ minHeight: "70vh", marginTop: "4%" }}>
+      <div style={{ display: "flex", marginLeft: "5%" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/dashboard")}
+          style={{ width: "10%" }}
+        />
+      </div>
       <Card
         title="Organizacije"
         className="shadow-sm"
@@ -239,6 +247,7 @@ const Organizations = () => {
             scrollHeight="flex"
             emptyMessage="Nema organizacija za prikaz"
           >
+            <Column field="id" header="ID" sortable />
             <Column field="name" header="Naziv" sortable />
             <Column field="address" header="Adresa" sortable />
 

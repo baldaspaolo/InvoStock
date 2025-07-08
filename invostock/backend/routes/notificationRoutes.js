@@ -6,14 +6,13 @@ function generateNotificationCode(orgOrUserCode, count) {
   return `NOTIF-${orgOrUserCode}-${String(count).padStart(3, "0")}`;
 }
 
-
 router.post("/addNotification", async (req, res) => {
   const {
-    senderUserId, 
+    senderUserId,
     title,
     message,
-    type, 
-    organizationId, 
+    type,
+    organizationId,
     isGlobal = false,
   } = req.body;
 
@@ -125,7 +124,6 @@ router.get("/admin/getAllNotifications", (req, res) => {
   });
 });
 
-
 router.post("/getSingleNotification", (req, res) => {
   const { notificationId, userId } = req.body;
 
@@ -157,7 +155,6 @@ router.post("/getSingleNotification", (req, res) => {
   LIMIT 1
 `;
 
-
   db.query(query, [userId, notificationId], (err, result) => {
     if (err) {
       console.error("Greška pri izvođenju upita:", err);
@@ -179,17 +176,14 @@ router.post("/getSingleNotification", (req, res) => {
   });
 });
 
-
 router.post("/markSingleNotificationAsRead", (req, res) => {
   const { notificationId, userId } = req.body;
 
   if (!notificationId || !userId) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message: "Nedostaje notificationId ili userId.",
-      });
+    return res.status(400).json({
+      success: false,
+      message: "Nedostaje notificationId ili userId.",
+    });
   }
 
   const query = `
@@ -220,17 +214,17 @@ router.post("/getNotifications", (req, res) => {
   }
 
   const query = `
-    SELECT n.*, 
-           IF(nr.id IS NOT NULL, 1, 0) AS is_read
-    FROM notifications n
-    LEFT JOIN notification_reads nr 
-      ON nr.notification_id = n.id AND nr.user_id = ?
-    WHERE 
-      n.user_id = ? OR 
-      n.organization_id = ? OR 
-      (n.user_id IS NULL AND n.organization_id IS NULL)
-    ORDER BY n.created_at DESC
-  `;
+  SELECT n.*, 
+         IF(nr.id IS NOT NULL, 1, 0) AS is_read
+  FROM notifications n
+  LEFT JOIN notification_reads nr 
+    ON nr.notification_id = n.id AND nr.user_id = ?
+  WHERE 
+    n.user_id = ? OR 
+    (n.organization_id = ? AND n.type != 'org_invite') OR 
+    (n.user_id IS NULL AND n.organization_id IS NULL)
+  ORDER BY n.created_at DESC
+`;
 
   db.query(query, [userId, userId, organizationId], (err, result) => {
     if (err) {
@@ -245,9 +239,6 @@ router.post("/getNotifications", (req, res) => {
     });
   });
 });
-
-
-
 
 router.post("/markAllNotificationsAsRead", (req, res) => {
   const { userId, organizationId } = req.body;
@@ -293,6 +284,5 @@ router.post("/markAllNotificationsAsRead", (req, res) => {
     });
   });
 });
-
 
 module.exports = router;

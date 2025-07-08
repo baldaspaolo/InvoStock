@@ -138,6 +138,14 @@ const Invoices = () => {
     return <Tag value={s.label} severity={s.severity} />;
   }, []);
 
+  const resetFilters = () => {
+    setSearch("");
+    setStatusFilter("sve");
+    setStartDate(null);
+    setEndDate(null);
+    fetchData(); 
+  };
+
   const inputStyle = { height: "2.5rem", width: "100%" };
 
   return (
@@ -202,6 +210,7 @@ const Invoices = () => {
               placeholder="Početni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
             />
             <Calendar
               value={endDate}
@@ -209,6 +218,14 @@ const Invoices = () => {
               placeholder="Završni datum"
               showIcon
               style={inputStyle}
+              dateFormat="dd.mm.yy"
+            />
+            <Button
+              label="Resetiraj"
+              icon="pi pi-refresh"
+              severity="secondary"
+              onClick={resetFilters}
+              style={{ height: "2.5rem", marginTop: "2%" }}
             />
           </div>
 

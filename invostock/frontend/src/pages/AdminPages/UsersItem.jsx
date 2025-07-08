@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Panel,
   Button,
@@ -21,6 +21,7 @@ const UsersItem = () => {
   const { id } = useParams();
   const API_URL = import.meta.env.VITE_API_URL;
   const toast = useRef(null);
+  const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
   const [expandedRows, setExpandedRows] = useState(null);
@@ -50,6 +51,7 @@ const UsersItem = () => {
         if (!res.ok) throw new Error("Neuspješno dohvaćanje korisnika");
         const data = await res.json();
         setUser(data.user);
+        console.log(data);
       } catch (error) {
         showError(error.message);
       } finally {
@@ -59,7 +61,7 @@ const UsersItem = () => {
     fetchUser();
   }, [API_URL, id]);
 
-   useEffect(() => {
+  useEffect(() => {
     if (!activeTab) return;
     const fetchTabData = async () => {
       setLoading((prev) => ({ ...prev, tabData: true }));
@@ -141,9 +143,9 @@ const UsersItem = () => {
     switch (activeTab) {
       case "invoices":
         return (
-          <div >
-            <div >
-              <div >
+          <div>
+            <div>
+              <div>
                 <h3>Osnovne informacije</h3>
                 <p>
                   <strong>Broj fakture:</strong>{" "}
@@ -177,7 +179,7 @@ const UsersItem = () => {
                   {formatCurrency(selectedItem.remaining_amount)}
                 </p>
               </div>
-              <div >
+              <div>
                 <h3>Klijent</h3>
                 <p>
                   <strong>Ime:</strong> {selectedItem.contact_first_name || "-"}{" "}
@@ -224,7 +226,6 @@ const UsersItem = () => {
                 <DataTable
                   value={selectedItem.payments}
                   className="p-datatable-sm"
-
                 >
                   <Column
                     field="payment_date"
@@ -245,9 +246,9 @@ const UsersItem = () => {
 
       case "orders":
         return (
-          <div >
-            <div >
-              <div >
+          <div>
+            <div>
+              <div>
                 <h3>Osnovne informacije</h3>
                 <p>
                   <strong>Broj narudžbe:</strong>{" "}
@@ -269,7 +270,7 @@ const UsersItem = () => {
                   {formatCurrency(selectedItem.total_price)}
                 </p>
               </div>
-              <div >
+              <div>
                 <h3>Dobavljač</h3>
                 <p>
                   <strong>Naziv:</strong> {selectedItem.supplier_name || "-"}
@@ -305,9 +306,9 @@ const UsersItem = () => {
 
       case "expenses":
         return (
-          <div >
-            <div >
-              <div >
+          <div>
+            <div>
+              <div>
                 <h3>Osnovne informacije</h3>
                 <p>
                   <strong>Naziv:</strong> {selectedItem.name || "-"}
@@ -324,7 +325,7 @@ const UsersItem = () => {
                   <strong>Iznos:</strong> {formatCurrency(selectedItem.amount)}
                 </p>
               </div>
-              <div >
+              <div>
                 <h3>Dodatne informacije</h3>
                 <p>
                   <strong>Broj troška:</strong>{" "}
@@ -341,8 +342,8 @@ const UsersItem = () => {
       case "packages":
         return (
           <div>
-            <div >
-              <div >
+            <div>
+              <div>
                 <h3>Osnovne informacije</h3>
                 <p>
                   <strong>Broj paketa:</strong> {selectedItem.code || "-"}
@@ -413,7 +414,7 @@ const UsersItem = () => {
                   {selectedItem.custom_payment_code || "-"}
                 </p>
               </div>
-              <div >
+              <div>
                 <h3>Faktura</h3>
                 <p>
                   <strong>Broj fakture:</strong>{" "}
@@ -433,9 +434,9 @@ const UsersItem = () => {
 
       case "inventory":
         return (
-          <div >
-            <div >
-              <div >
+          <div>
+            <div>
+              <div>
                 <h3>Osnovne informacije</h3>
                 <p>
                   <strong>Naziv artikla:</strong>{" "}
@@ -633,7 +634,7 @@ const UsersItem = () => {
     switch (activeTab) {
       case "invoices":
         return (
-          <div >
+          <div>
             <h5>Stavke fakture:</h5>
             <ul>
               {rowData.items?.map((item, index) => (
@@ -652,7 +653,7 @@ const UsersItem = () => {
         );
       case "orders":
         return (
-          <div >
+          <div>
             <h5>Stavke narudžbe:</h5>
             <ul>
               {rowData.items?.map((item, index) => (
@@ -669,7 +670,7 @@ const UsersItem = () => {
         );
       case "expenses":
         return (
-          <div >
+          <div>
             <p>
               <strong>Opis:</strong> {rowData.description || "-"}
             </p>
@@ -683,7 +684,7 @@ const UsersItem = () => {
         );
       case "payments":
         return (
-          <div >
+          <div>
             <p>
               <strong>Način plaćanja:</strong> {rowData.payment_method || "-"}
             </p>
@@ -694,7 +695,7 @@ const UsersItem = () => {
         );
       case "packages":
         return (
-          <div >
+          <div>
             <p>
               <strong>Klijent:</strong> {rowData.contact_first_name || "-"}{" "}
               {rowData.contact_last_name || "-"}
@@ -706,7 +707,7 @@ const UsersItem = () => {
         );
       case "inventory":
         return (
-          <div >
+          <div>
             <p>
               <strong>Kategorija:</strong> {rowData.category || "-"}
             </p>
@@ -740,10 +741,20 @@ const UsersItem = () => {
   return (
     <div style={{ margin: "5%" }}>
       <Toast ref={toast} />
+      <div style={{ display: "flex", marginLeft: "3%" }}>
+        <Button
+          icon="pi pi-arrow-left"
+          text
+          raised
+          severity="secondary"
+          onClick={() => navigate("/admin/users")}
+          style={{ width: "10%" }}
+        />
+      </div>
 
       <Panel header="Podaci o korisniku" style={{ margin: "4% 3% 2% 3%" }}>
-        <div >
-          <div >
+        <div>
+          <div>
             <p>
               <strong>Ime:</strong> {user.name}
             </p>
@@ -753,11 +764,11 @@ const UsersItem = () => {
             <p>
               <strong>Organizacija:</strong>{" "}
               {user.organization_id
-                ? `ID: ${user.organization_id}`
+                ? `${user.organization_name} - ID: ${user.organization_id}`
                 : "Nema organizacije"}
             </p>
           </div>
-          <div >
+          <div>
             <p>
               <strong>Uloga:</strong>{" "}
               {user.role === "systemadmin"

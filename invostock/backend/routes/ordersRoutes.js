@@ -4,28 +4,23 @@ const db = require("../db");
 
 router.post("/getOrders", async (req, res) => {
   const { userId, organizationId } = req.body;
-
   if (!userId) {
     return res.status(400).json({ error: "Nedostaje userId" });
   }
+
+  const condition = organizationId
+    ? "o.organization_id = ?"
+    : "o.organization_id IS NULL AND o.user_id = ?";
+
+  const params = organizationId ? [organizationId] : [userId];
 
   let query = `
     SELECT o.*, s.name AS supplier
     FROM orders o
     LEFT JOIN suppliers s ON o.supplier_id = s.id
-    WHERE o.user_id = ?
+    WHERE ${condition}
+    ORDER BY o.order_date DESC
   `;
-
-  const params = [userId];
-
-  if (organizationId) {
-    query += " AND o.organization_id = ?";
-    params.push(organizationId);
-  } else {
-    query += " AND o.organization_id IS NULL";
-  }
-
-  query += " ORDER BY o.order_date DESC";
 
   try {
     db.query(query, params, async (err, orders) => {
@@ -34,9 +29,8 @@ router.post("/getOrders", async (req, res) => {
         return res.status(500).json({ error: "Greška na serveru" });
       }
 
-      // Dohvati items za sve narudžbe
       const ordersWithItems = await Promise.all(
-        orders.map(async (order) => {
+        orders.map((order) => {
           return new Promise((resolve, reject) => {
             const itemsQuery = `
               SELECT item_name, quantity, price, description
@@ -512,6 +506,5 @@ router.put("/markAsReceived", (req, res) => {
     });
   });
 });
-
 
 module.exports = router;

@@ -15,22 +15,23 @@ router.post("/getUserExpenses", (req, res) => {
   const { userId, organizationId } = req.body;
 
   let query = `
-  SELECT 
-    e.id, e.name, e.expense_date, e.amount, e.description,
-    e.category_id, e.custom_expense_code,
-    ec.name AS category
-  FROM expenses e
-  LEFT JOIN expense_categories ec ON e.category_id = ec.id
-  WHERE e.user_id = ?
-`;
+    SELECT 
+      e.id, e.name, e.expense_date, e.amount, e.description,
+      e.category_id, e.custom_expense_code,
+      ec.name AS category
+    FROM expenses e
+    LEFT JOIN expense_categories ec ON e.category_id = ec.id
+    WHERE e.is_deleted = 0
+  `;
 
-  let params = [userId];
+  let params;
 
   if (organizationId) {
     query += " AND e.organization_id = ?";
-    params.push(organizationId);
+    params = [organizationId];
   } else {
-    query += " AND e.organization_id IS NULL";
+    query += " AND e.organization_id IS NULL AND e.user_id = ?";
+    params = [userId];
   }
 
   db.query(query, params, (err, results) => {
@@ -44,6 +45,7 @@ router.post("/getUserExpenses", (req, res) => {
     res.json({ success: true, expenses: results });
   });
 });
+
 
 router.post("/addExpense", (req, res) => {
   const {
@@ -60,7 +62,6 @@ router.post("/addExpense", (req, res) => {
     return res.status(400).json({ error: "Nedostaju obavezni podaci" });
   }
 
-  
   const formattedDate = new Date(date).toISOString().split("T")[0];
 
   const countQuery = `
@@ -99,7 +100,7 @@ router.post("/addExpense", (req, res) => {
       userId,
       organizationId || null,
       categoryId,
-      formattedDate, 
+      formattedDate,
       amount,
       name,
       description || null,
@@ -121,7 +122,6 @@ router.post("/addExpense", (req, res) => {
     });
   });
 });
-
 
 router.put("/updateExpense/:id", (req, res) => {
   const { id } = req.params;
@@ -211,7 +211,6 @@ router.put("/updateExpenseCategory/:id", (req, res) => {
   });
 });
 
-
 router.delete("/deleteExpenseCategory/:id", (req, res) => {
   const { id } = req.params;
 
@@ -221,7 +220,6 @@ router.delete("/deleteExpenseCategory/:id", (req, res) => {
     res.json({ success: true });
   });
 });
-
 
 router.post("/getExpenseSummary", (req, res) => {
   const { userId, organizationId } = req.body;
@@ -234,10 +232,12 @@ router.post("/getExpenseSummary", (req, res) => {
   let params;
 
   if (organizationId) {
-    whereClause = "e.organization_id = ? AND e.user_id = ?";
+    whereClause =
+      "e.organization_id = ? AND e.user_id = ? AND e.is_deleted = 0";
     params = [organizationId, userId];
   } else {
-    whereClause = "e.organization_id IS NULL AND e.user_id = ?";
+    whereClause =
+      "e.organization_id IS NULL AND e.user_id = ? AND e.is_deleted = 0";
     params = [userId];
   }
 

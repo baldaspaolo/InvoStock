@@ -100,30 +100,29 @@ router.post("/getOrders", (req, res) => {
     return res.status(400).json({ error: "Nedostaje userId" });
   }
 
-  let query = `
+  const hasOrg =
+    organizationId !== null &&
+    organizationId !== undefined &&
+    !isNaN(organizationId);
+  const condition = hasOrg
+    ? "so.organization_id = ?"
+    : "so.organization_id IS NULL AND so.user_id = ?";
+  const params = hasOrg ? [organizationId] : [userId];
+
+  const query = `
     SELECT 
-  so.*,
-  c.first_name,
-  c.last_name,
-  i.status AS invoice_status,
-  p.status AS package_status
-FROM sales_orders so
-LEFT JOIN contacts c ON so.contact_id = c.id
-LEFT JOIN invoices i ON so.invoice_id = i.id
-LEFT JOIN packages p ON p.sales_order_id = so.id
-WHERE so.user_id = ?
+      so.*,
+      c.first_name,
+      c.last_name,
+      i.status AS invoice_status,
+      p.status AS package_status
+    FROM sales_orders so
+    LEFT JOIN contacts c ON so.contact_id = c.id
+    LEFT JOIN invoices i ON so.invoice_id = i.id
+    LEFT JOIN packages p ON p.sales_order_id = so.id
+    WHERE ${condition}
+    ORDER BY so.created_at DESC
   `;
-
-  const params = [userId];
-
-  if (organizationId) {
-    query += " AND so.organization_id = ?";
-    params.push(organizationId);
-  } else {
-    query += " AND so.organization_id IS NULL";
-  }
-
-  query += " ORDER BY so.created_at DESC";
 
   db.query(query, params, (err, results) => {
     if (err) {
@@ -159,7 +158,11 @@ router.post("/getOrderDetails", (req, res) => {
   c.first_name,
   c.last_name,
   c.company_name,
-  c.email
+  c.email,
+  c.address,
+  c.zip_code,
+  c.place,
+  c.phone_number
 FROM sales_orders so
 JOIN contacts c ON so.contact_id = c.id
 LEFT JOIN invoices i ON so.invoice_id = i.id

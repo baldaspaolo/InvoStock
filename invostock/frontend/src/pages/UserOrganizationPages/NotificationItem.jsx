@@ -169,22 +169,31 @@ const NotificationItem = () => {
               <p>
                 <strong>Organizacija:</strong> {notification.organization_name}
               </p>
-              <p>
-                <strong>Želite li se pridružiti organizaciji?</strong>
-              </p>
-              <Button
-                label="Prihvati"
-                icon="pi pi-check"
-                className="p-button-success"
-                onClick={acceptInvite}
-                style={{ marginRight: "1rem" }}
-              />
-              <Button
-                label="Odbij"
-                icon="pi pi-times"
-                className="p-button-danger"
-                onClick={declineInvite}
-              />
+
+              {user.organization_id ? (
+                <p style={{ marginTop: "1rem", color: "green" }}>
+                  Već ste član organizacije.
+                </p>
+              ) : (
+                <>
+                  <p>
+                    <strong>Želite li se pridružiti organizaciji?</strong>
+                  </p>
+                  <Button
+                    label="Prihvati"
+                    icon="pi pi-check"
+                    className="p-button-success"
+                    onClick={acceptInvite}
+                    style={{ marginRight: "1rem", marginBottom: "1rem" }}
+                  />
+                  <Button
+                    label="Odbij"
+                    icon="pi pi-times"
+                    className="p-button-danger"
+                    onClick={declineInvite}
+                  />
+                </>
+              )}
             </div>
           )}
         </div>

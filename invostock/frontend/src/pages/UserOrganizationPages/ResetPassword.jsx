@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
@@ -13,6 +13,30 @@ const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [isValidToken, setIsValidToken] = useState(null);
+
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        const res = await fetch(
+          `${
+            import.meta.env.VITE_API_URL
+          }/api/users/validate-reset-token/${token}`
+        );
+        if (res.ok) {
+          setIsValidToken(true);
+        } else {
+          setIsValidToken(false);
+        }
+      } catch (err) {
+        console.error("Greška pri provjeri tokena:", err);
+        setIsValidToken(false);
+      }
+    };
+
+    checkToken();
+  }, [token]);
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -87,35 +111,49 @@ const ResetPassword = () => {
     <div className="reset-password-container" style={{ paddingTop: "5rem" }}>
       <Toast ref={toast} />
       <div className="card" style={{ width: "25rem", margin: "auto" }}>
-        <h2>Reset lozinke</h2>
-        <form onSubmit={handleReset}>
-          <div className="field">
-            <label htmlFor="newPassword">Nova lozinka</label>
-            <InputText
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
+        {isValidToken === null ? (
+          <p>Provjera tokena...</p>
+        ) : isValidToken === false ? (
+          <div>
+            <h2>Nevažeći ili istekao token</h2>
+            <p>
+              Link za resetiranje lozinke više nije važeći. Zatražite novi putem
+              opcije "Zaboravljena lozinka".
+            </p>
           </div>
-          <div className="field" style={{ marginTop: "1rem" }}>
-            <label htmlFor="confirmPassword">Ponovi lozinku</label>
-            <InputText
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </div>
-          <Button
-            type="submit"
-            label={loading ? "Resetiram..." : "Resetiraj lozinku"}
-            disabled={loading}
-            style={{ marginTop: "1.5rem", width: "100%" }}
-          />
-        </form>
+        ) : (
+          <>
+            <h2>Reset lozinke</h2>
+            <form onSubmit={handleReset}>
+              <div className="field">
+                <label htmlFor="newPassword">Nova lozinka</label>
+                <InputText
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field" style={{ marginTop: "1rem" }}>
+                <label htmlFor="confirmPassword">Ponovi lozinku</label>
+                <InputText
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                label={loading ? "Resetiram..." : "Resetiraj lozinku"}
+                disabled={loading}
+                style={{ marginTop: "1.5rem", width: "100%" }}
+              />
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
