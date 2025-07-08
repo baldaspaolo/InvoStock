@@ -211,7 +211,7 @@ router.post("/registerOrganizationUser", (req, res) => {
       .json({ success: false, message: "Sva polja su obavezna." });
   }
 
-  // Provjera da li email već postoji
+  
   db.query(
     "SELECT * FROM users WHERE email = ?",
     [email],
@@ -281,7 +281,11 @@ router.get("/getUserOrganization/:userId", (req, res) => {
 
   const query = `
     SELECT 
-      o.name AS name,
+      o.id,
+      o.name,
+      o.email,
+      o.address,
+      o.created_at,
       COUNT(u2.id) AS members
     FROM users u
     JOIN organizations o ON u.organization_id = o.id
@@ -303,6 +307,7 @@ router.get("/getUserOrganization/:userId", (req, res) => {
     res.status(200).json(results[0]);
   });
 });
+
 
 router.get("/getOrganizationUsers/:orgId", (req, res) => {
   const orgId = req.params.orgId;

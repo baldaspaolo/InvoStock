@@ -34,9 +34,15 @@ export default function Account() {
   const [notify, setNotify] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [activeSection, setActiveSection] = useState("profil");
-
+  
   const [organization, setOrganization] = useState(null);
   const [users, setUsers] = useState([]);
+  const [showOrgEditDialog, setShowOrgEditDialog] = useState(false);
+  const [orgForm, setOrgForm] = useState({
+    name: organization?.name || "",
+    email: organization?.email || "",
+    address: organization?.address || "",
+  });
 
   const [showUserDialog, setShowUserDialog] = useState(false);
   const [showAddUserDialog, setShowAddUserDialog] = useState(false);
@@ -51,6 +57,12 @@ export default function Account() {
   const [changePassword, setChangePassword] = useState(false);
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
   const [deactivatePassword, setDeactivatePassword] = useState("");
+  const [editedOrganization, setEditedOrganization] = useState({
+    name: "",
+    email: "",
+    address: "",
+  });
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -58,36 +70,36 @@ export default function Account() {
         setFirstName(user.name);
       }
       setEmail(user.email);
-
+  
       if (user.organization_id) {
         try {
           const res = await fetch(
-            `${import.meta.env.VITE_API_URL}/api/users/getUserOrganization/${
-              user.id
-            }`
+            `${import.meta.env.VITE_API_URL}/api/users/getUserOrganization/${user.id}`
           );
           const data = await res.json();
           setOrganization(data);
+          
+          setOrgForm({
+            name: data.name || "",
+            email: data.email || "",
+            address: data.address || ""
+          });
         } catch (err) {
           console.error("Greška kod organizacije:", err);
         }
-
-        if (user.organization_id) {
-          try {
-            const res = await fetch(
-              `${import.meta.env.VITE_API_URL}/api/users/getOrganizationUsers/${
-                user.organization_id
-              }`
-            );
-            const data = await res.json();
-            setUsers(data);
-          } catch (err) {
-            console.error("Greška kod korisnika:", err);
-          }
+        
+        try {
+          const res = await fetch(
+            `${import.meta.env.VITE_API_URL}/api/users/getOrganizationUsers/${user.organization_id}`
+          );
+          const data = await res.json();
+          setUsers(data);
+        } catch (err) {
+          console.error("Greška kod korisnika:", err);
         }
       }
     };
-
+  
     fetchData();
   }, [user]);
 
@@ -136,6 +148,59 @@ export default function Account() {
       });
     }
   };
+
+  const handleUpdateOrganization = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/organizations/updateOrganization`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id, 
+          organizationId: organization.id,
+          name: orgForm.name,
+          email: orgForm.email,
+          address: orgForm.address,
+        }),
+      });
+  
+      const data = await res.json();
+  
+      if (data.success) {
+        toast.current.show({
+          severity: "success",
+          summary: "Uspješno ažurirano",
+          detail: "Podaci o organizaciji su ažurirani.",
+          life: 3000,
+        });
+        
+        setOrganization({
+          ...organization,
+          name: orgForm.name,
+          email: orgForm.email,
+          address: orgForm.address,
+        });
+        setShowOrgEditDialog(false);
+      } else {
+        toast.current.show({
+          severity: "error",
+          summary: "Greška",
+          detail: data.message || "Nešto je pošlo po zlu.",
+          life: 3000,
+        });
+      }
+    } catch (err) {
+      console.error("Greška prilikom ažuriranja:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Došlo je do greške kod komunikacije s poslužiteljem.",
+        life: 3000,
+      });
+    }
+  };
+  
+  
+  
 
   const handleAddUser = async () => {
     if (!newUserEmail.includes("@")) {
@@ -537,6 +602,15 @@ export default function Account() {
                     <strong>Broj članova:</strong> {users.length}
                   </p>
                   {user.org_role === "admin" && (
+  <Button
+    icon="pi pi-pencil"
+    label="Uredi podatke o organizaciji"
+    className="p-button-sm p-button-secondary"
+    style={{ marginTop: "1rem" }}
+    onClick={() => setShowOrgEditDialog(true)}
+  />
+)}
+                  {user.org_role === "admin" && (
                     <Button
                       icon="pi pi-user-plus"
                       label="Pozovi korisnika"
@@ -892,6 +966,56 @@ export default function Account() {
           </div>
         </div>
       </Dialog>
+      <Dialog
+        header="Uredi podatke o organizaciji"
+        visible={showOrgEditDialog}
+        onHide={() => setShowOrgEditDialog(false)}
+        style={{ width: "400px" }}
+        footer={
+          <div>
+            <Button
+              label="Odustani"
+              icon="pi pi-times"
+              className="p-button-text"
+              onClick={() => setShowOrgEditDialog(false)}
+            />
+            <Button
+              label="Spremi"
+              icon="pi pi-check"
+              onClick={handleUpdateOrganization}
+              autoFocus
+            />
+          </div>
+            }
+          >
+  <div className="p-fluid">
+    <div className="p-field">
+      <label htmlFor="name">Naziv</label>
+      <InputText
+        id="name"
+        value={orgForm.name}
+        onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })}
+      />
+    </div>
+    <div className="p-field">
+      <label htmlFor="email">Email</label>
+      <InputText
+        id="email"
+        value={orgForm.email}
+        onChange={(e) => setOrgForm({ ...orgForm, email: e.target.value })}
+      />
+    </div>
+    <div className="p-field">
+      <label htmlFor="address">Adresa</label>
+      <InputText
+        id="address"
+        value={orgForm.address}
+        onChange={(e) => setOrgForm({ ...orgForm, address: e.target.value })}
+      />
+    </div>
+  </div>
+</Dialog>
+
     </div>
   );
 }

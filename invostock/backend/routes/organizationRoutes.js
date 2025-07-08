@@ -200,6 +200,46 @@ router.post("/declineOrganizationInvite", (req, res) => {
   });
 });
 
+router.put("/updateOrganization", (req, res) => {
+  const { userId, organizationId, name, email, address } = req.body;
+
+  if (!userId || !organizationId || !name || !email || !address) {
+    return res.status(400).json({ success: false, message: "Nedostaju podaci." });
+  }
+
+  const checkQuery = `
+    SELECT * FROM users 
+    WHERE id = ? AND organization_id = ? AND org_role = 'admin'
+  `;
+
+  db.query(checkQuery, [userId, organizationId], (err, result) => {
+    if (err) {
+      console.error("Greška kod provjere korisnika:", err);
+      return res.status(500).json({ success: false, message: "Greška na serveru." });
+    }
+
+    if (result.length === 0) {
+      return res.status(403).json({ success: false, message: "Nemate ovlasti za uređivanje ove organizacije." });
+    }
+
+    const updateQuery = `
+      UPDATE organizations
+      SET name = ?, email = ?, address = ?
+      WHERE id = ?
+    `;
+
+    db.query(updateQuery, [name, email, address, organizationId], (err, updateResult) => {
+      if (err) {
+        console.error("Greška kod ažuriranja organizacije:", err);
+        return res.status(500).json({ success: false, message: "Greška kod ažuriranja." });
+      }
+
+      return res.status(200).json({ success: true, message: "Podaci o organizaciji su ažurirani." });
+    });
+  });
+});
+
+
 
 
 
