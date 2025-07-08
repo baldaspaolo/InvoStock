@@ -38,20 +38,22 @@ const NotificationsAdmin = () => {
     return notifications;
   }, [filter, notifications]);
 
-  const typeTemplate = (rowData) => (
-    <Tag
-      value={rowData.type}
-      severity={
-        rowData.type === "info"
-          ? "info"
-          : rowData.type === "warning"
-          ? "warning"
-          : rowData.type === "error"
-          ? "danger"
-          : "success"
-      }
-    />
-  );
+  const typeTemplate = (rowData) => {
+    const typeMap = {
+      info: { label: "Informacija", severity: "info" },
+      warning: { label: "Upozorenje", severity: "warning" },
+      error: { label: "Greška", severity: "danger" },
+      success: { label: "Uspjeh", severity: "success" },
+      org_invite: { label: "Poziv u organizaciju", severity: "info" },
+    };
+
+    const tagData = typeMap[rowData.type] || {
+      label: rowData.type,
+      severity: "info",
+    };
+
+    return <Tag value={tagData.label} severity={tagData.severity} />;
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);

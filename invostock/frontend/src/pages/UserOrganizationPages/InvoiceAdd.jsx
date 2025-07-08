@@ -310,7 +310,7 @@ const InvoicesAdd = () => {
           raised
           severity="secondary"
           aria-label="Natrag"
-          onClick={() => navigate("/inventory")}
+          onClick={() => navigate("/invoices")}
           style={{ width: "8%", marginBottom: "0.5%" }}
         />
       </div>
