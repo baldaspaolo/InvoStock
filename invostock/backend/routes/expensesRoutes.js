@@ -125,78 +125,143 @@ router.post("/addExpense", (req, res) => {
 
 router.put("/updateExpense/:id", (req, res) => {
   const { id } = req.params;
-  const { categoryId, date, amount, name, description } = req.body;
-  db.query(
-    "UPDATE expenses SET category_id = ?, expense_date = ?, amount = ?, name = ?, description = ? WHERE id = ?",
-    [categoryId, date, amount, name, description, id],
-    (err) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ success: false, message: "Greška kod ažuriranja." });
-      res.json({ success: true });
+  const { userId, organizationId, categoryId, date, amount, name, description } = req.body;
+
+  if (!id || !userId || !categoryId || !date || !amount || !name) {
+    return res.status(400).json({ success: false, message: "Nedostaju podaci." });
+  }
+
+  let query = `
+    UPDATE expenses
+    SET category_id = ?, expense_date = ?, amount = ?, name = ?, description = ?
+    WHERE id = ?
+      AND is_deleted = 0
+      AND ${
+        organizationId
+          ? "organization_id = ?"
+          : "organization_id IS NULL AND user_id = ?"
+      }
+  `;
+
+  let params = [categoryId, date, amount, name, description, id];
+  params.push(organizationId ? organizationId : userId);
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error("Greška kod ažuriranja:", err);
+      return res.status(500).json({ success: false, message: "Greška kod ažuriranja." });
     }
-  );
+
+    if (result.affectedRows === 0) {
+      return res.status(403).json({ success: false, message: "Nemaš pravo na ovaj trošak." });
+    }
+
+    res.json({ success: true });
+  });
 });
+
 
 router.delete("/deleteExpense/:id", (req, res) => {
   const { id } = req.params;
+  const { userId, organizationId } = req.body;
 
-  if (!id) {
-    return res.status(400).json({ success: false, message: "Nedostaje ID." });
+  if (!id || !userId) {
+    return res.status(400).json({ success: false, message: "Nedostaju podaci." });
   }
 
-  db.query(
-    "UPDATE expenses SET is_deleted = 1 WHERE id = ?",
-    [id],
-    (err, result) => {
-      if (err) {
-        console.error("Greška kod mekog brisanja troška:", err);
-        return res
-          .status(500)
-          .json({ success: false, message: "Greška kod mekog brisanja." });
+  const query = `
+    UPDATE expenses
+    SET is_deleted = 1
+    WHERE id = ?
+      AND ${
+        organizationId
+          ? "organization_id = ?"
+          : "organization_id IS NULL AND user_id = ?"
       }
+  `;
 
-      if (result.affectedRows === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Trošak nije pronađen." });
-      }
+  const params = [id, organizationId ? organizationId : userId];
 
-      res.json({ success: true, message: "Trošak je označen kao obrisan." });
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error("Greška kod brisanja troška:", err);
+      return res.status(500).json({ success: false, message: "Greška kod brisanja." });
     }
-  );
+
+    if (result.affectedRows === 0) {
+      return res.status(403).json({ success: false, message: "Nemaš pravo na ovaj trošak." });
+    }
+
+    res.json({ success: true, message: "Trošak je označen kao obrisan." });
+  });
 });
+
 
 router.post("/getExpenseCategories", (req, res) => {
-  const { userId } = req.body;
-  db.query(
-    "SELECT * FROM expense_categories WHERE user_id = ? ORDER BY name",
-    [userId],
-    (err, results) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ success: false, message: "Greška kod dohvata kategorija." });
-      res.json({ success: true, categories: results });
+  const { userId, organizationId } = req.body;
+
+  let query;
+  let params;
+
+  if (organizationId) {
+    query = `
+      SELECT * FROM expense_categories
+      WHERE organization_id = ?
+      ORDER BY name
+    `;
+    params = [organizationId];
+  } else {
+    query = `
+      SELECT * FROM expense_categories
+      WHERE user_id = ?
+      ORDER BY name
+    `;
+    params = [userId];
+  }
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      return res.status(500).json({
+        success: false,
+        message: "Greška kod dohvata kategorija.",
+      });
     }
-  );
+    res.json({ success: true, categories: results });
+  });
 });
 
+
 router.post("/addExpenseCategory", (req, res) => {
-  const { userId, name } = req.body;
-  db.query(
-    "INSERT INTO expense_categories (user_id, name) VALUES (?, ?)",
-    [userId, name],
-    (err, result) => {
-      if (err)
-        return res
-          .status(500)
-          .json({ success: false, message: "Greška kod dodavanja." });
-      res.status(201).json({ success: true, categoryId: result.insertId });
+  const { userId, organizationId, name } = req.body;
+
+  if (!name || !userId) {
+    return res.status(400).json({ success: false, message: "Nedostaju podaci." });
+  }
+
+  const query = `
+    INSERT INTO expense_categories (name, user_id, organization_id)
+    VALUES (?, ?, ?)
+  `;
+
+  const params = [
+    name,
+    userId,                     
+    organizationId || null      
+  ];
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error("Greška kod dodavanja kategorije:", err);
+      return res.status(500).json({ success: false, message: "Greška kod dodavanja." });
     }
-  );
+
+    res.status(201).json({ success: true, categoryId: result.insertId });
+  });
 });
+
+
+
+
 
 router.put("/updateExpenseCategory/:id", (req, res) => {
   const { name } = req.body;
@@ -232,12 +297,10 @@ router.post("/getExpenseSummary", (req, res) => {
   let params;
 
   if (organizationId) {
-    whereClause =
-      "e.organization_id = ? AND e.user_id = ? AND e.is_deleted = 0";
-    params = [organizationId, userId];
+    whereClause = "e.organization_id = ? AND e.is_deleted = 0";
+    params = [organizationId];
   } else {
-    whereClause =
-      "e.organization_id IS NULL AND e.user_id = ? AND e.is_deleted = 0";
+    whereClause = "e.organization_id IS NULL AND e.user_id = ? AND e.is_deleted = 0";
     params = [userId];
   }
 
@@ -295,5 +358,6 @@ router.post("/getExpenseSummary", (req, res) => {
     });
   });
 });
+
 
 module.exports = router;

@@ -146,7 +146,10 @@ const Expenses = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user?.id }),
+          body: JSON.stringify({
+            userId: user?.id,
+            organizationId: user?.organization_id,
+          }),
         }
       );
       const data = await res.json();
@@ -245,7 +248,12 @@ const Expenses = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({
+            ...payload,
+            userId: user.id,
+            organizationId: user.organization_id
+          })
+          
         }
       );
       setShowDialog(false);
@@ -265,7 +273,7 @@ const Expenses = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id, name: newCategoryName }),
+          body: JSON.stringify({ userId: user.id, name: newCategoryName, organizationId: user.organization_id }),
         }
       );
 
@@ -352,7 +360,12 @@ const Expenses = () => {
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: editedName }),
+          body: JSON.stringify({
+            name: editedName,
+            userId: user.id,
+            organizationId: user.organization_id
+          })
+          
         }
       );
       const data = await res.json();
@@ -387,11 +400,17 @@ const Expenses = () => {
   const confirmDeleteCategory = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpenseCategory/${
-          editedCategory.id
-        }`,
-        { method: "DELETE" }
+        `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpenseCategory/${editedCategory.id}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
+        }
       );
+      
       const data = await res.json();
 
       if (data.success) {
