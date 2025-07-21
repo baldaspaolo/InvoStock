@@ -196,6 +196,12 @@ const InventoryItem = () => {
             });
             setStockChange(0);
             setStockDialogVisible(false);
+          } else {
+            toast.current?.show({
+              severity: "error",
+              summary: "Zaliha ne može biti manja od 0!",
+              life: 2000,
+            });
           }
         } catch (err) {
           console.error("Greška pri ažuriranju zalihe:", err);
@@ -377,7 +383,7 @@ const InventoryItem = () => {
         </div>
       </Dialog>
 
-           <Dialog
+      <Dialog
         header="Uskladi zalihu"
         visible={stockDialogVisible}
         onHide={() => setStockDialogVisible(false)}

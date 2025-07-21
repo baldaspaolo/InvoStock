@@ -72,7 +72,6 @@ router.post("/getUserInvoicesSummary", (req, res) => {
     organizationId !== "null" &&
     !isNaN(organizationId);
 
-  // Priprema uvjeta i parametara ovisno o tipu korisnika
   const whereCondition = isOrg
     ? "organization_id = ?"
     : "organization_id IS NULL AND user_id = ?";

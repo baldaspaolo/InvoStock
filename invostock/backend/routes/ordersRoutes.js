@@ -150,7 +150,7 @@ function generateCustomCode(prefix, date, orgOrUserCode, count) {
     .toLocaleDateString("hr-HR")
     .split(".")
     .reverse()
-    .join(""); // npr. 20250508
+    .join("");
   return `${prefix}-${formattedDate}-${orgOrUserCode}-${count}`;
 }
 
@@ -279,6 +279,15 @@ router.delete("/cancelOrder/:id", (req, res) => {
   });
 });
 
+function generateCustomCode(prefix, date, orgOrUserCode, count) {
+  const formattedDate = new Date(date)
+    .toLocaleDateString("hr-HR")
+    .split(".")
+    .reverse()
+    .join("");
+  return `${prefix}-${formattedDate}-${orgOrUserCode}-${count}`;
+}
+
 router.put("/markAsReceived", (req, res) => {
   const { orderId, userId, organizationId, receivedDate } = req.body;
 
@@ -366,11 +375,16 @@ router.put("/markAsReceived", (req, res) => {
                 }
 
                 const count = countResult[0].count + 1;
-                const padded = String(count).padStart(3, "0");
-                const codePrefix = organizationId
-                  ? `ORG${organizationId}`
-                  : `USER${userId}`;
-                const customExpenseCode = `EXP-${codePrefix}-${padded}`;
+                const orgOrUserCode = organizationId
+                  ? `O${organizationId}`
+                  : `U${userId}`;
+
+                const customExpenseCode = generateCustomCode(
+                  "EXP",
+                  receivedDate,
+                  orgOrUserCode,
+                  count
+                );
 
                 const insertExpenseQuery = `
                 INSERT INTO expenses (user_id, organization_id, category_id, expense_date, amount, name, description, custom_expense_code)

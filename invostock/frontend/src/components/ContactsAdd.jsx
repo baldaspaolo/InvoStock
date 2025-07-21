@@ -33,6 +33,12 @@ const ContactsAdd = ({ userId, organizationId, onSuccess, onError }) => {
     if (!contact.last_name.trim()) {
       newErrors.last_name = "Prezime je obavezno.";
     }
+    if (!contact.email.trim()) {
+      newErrors.email = "Email adresa je obavezna.";
+    }
+    if (!contact.address.trim()) {
+      newErrors.address = "Adresa je obavezna.";
+    }
 
     if (contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
       newErrors.email = "Neispravan email.";
@@ -138,7 +144,7 @@ const ContactsAdd = ({ userId, organizationId, onSuccess, onError }) => {
                   ? "Adresa"
                   : id === "zip_code"
                   ? "Poštanski broj"
-                  : "Grad"}
+                  : "Mjesto"}
               </label>
               <InputText
                 id={id}

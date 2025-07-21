@@ -34,24 +34,27 @@ const SalesAdd = () => {
   const toast = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchContacts = async () => {
-      const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setClients(
-          data.contacts.map((c) => ({
-            ...c,
-            name: `${c.first_name} ${c.last_name}`,
-          }))
-        );
-      }
-    };
+  const fetchContacts = async () => {
+    const res = await fetch(`${API_URL}/api/contacts/getUserContacts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user.id,
+        organizationId: user.organization_id || null, //
+      }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setClients(
+        data.contacts.map((c) => ({
+          ...c,
+          name: `${c.first_name} ${c.last_name}`,
+        }))
+      );
+    }
+  };
 
+  useEffect(() => {
     fetchContacts();
   }, [user.id]);
 

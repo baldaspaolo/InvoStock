@@ -643,28 +643,40 @@ export default function Account() {
                     {user.org_role === "admin" && (
                       <Column
                         header="Akcije"
-                        body={(rowData) => (
-                          <div style={{ display: "flex", gap: "0.5rem" }}>
-                            <Button
-                              icon="pi pi-pencil"
-                              rounded
-                              text
-                              severity="primary"
-                              onClick={() => {
-                                setEditUserId(rowData.id);
-                                setEditUserEmail(rowData.email);
-                                setEditUserRole(rowData.role);
-                              }}
-                            />
-                            <Button
-                              icon="pi pi-trash"
-                              rounded
-                              text
-                              severity="danger"
-                              onClick={() => handleDeleteUser(rowData.id)}
-                            />
-                          </div>
-                        )}
+                        body={(rowData) => {
+                          if (rowData.role === "admin") {
+                            return (
+                              <span
+                                style={{ fontStyle: "italic", color: "gray" }}
+                              >
+                                Administrator organizacije
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                              <Button
+                                icon="pi pi-pencil"
+                                rounded
+                                text
+                                severity="primary"
+                                onClick={() => {
+                                  setEditUserId(rowData.id);
+                                  setEditUserEmail(rowData.email);
+                                  setEditUserRole(rowData.role);
+                                }}
+                              />
+                              <Button
+                                icon="pi pi-trash"
+                                rounded
+                                text
+                                severity="danger"
+                                onClick={() => handleDeleteUser(rowData.id)}
+                              />
+                            </div>
+                          );
+                        }}
                       />
                     )}
                   </DataTable>

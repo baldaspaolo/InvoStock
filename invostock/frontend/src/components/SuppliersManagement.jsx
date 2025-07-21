@@ -94,7 +94,7 @@ const SuppliersManagement = ({ user }) => {
   return (
     <div>
       <Toast ref={toast} />
-      <Panel header="Postavke" toggleable={false}>
+      <Panel header="Dobavljači" toggleable={false}>
         <div style={{ textAlign: "right", marginBottom: "1rem" }}>
           <Button
             label="Dodaj dobavljača"

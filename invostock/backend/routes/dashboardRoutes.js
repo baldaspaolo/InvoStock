@@ -42,6 +42,7 @@ router.post("/getDashboardStats", (req, res) => {
       SUM(CASE WHEN stock_quantity <= reorder_level THEN 1 ELSE 0 END) AS low_stock_items
     FROM inventory_items
     ${organizationId ? "WHERE organization_id = ?" : "WHERE user_id = ?"}
+     AND is_deleted = 0
   `,
   };
 
@@ -216,6 +217,7 @@ router.post("/getDashboardStats", (req, res) => {
     FROM inventory_items
     WHERE organization_id = ?
     AND stock_quantity <= reorder_level
+    AND is_deleted = 0
     ORDER BY stock_quantity ASC
     LIMIT 10
   `
@@ -229,6 +231,7 @@ router.post("/getDashboardStats", (req, res) => {
     FROM inventory_items
     WHERE user_id = ?
     AND stock_quantity <= reorder_level
+    AND is_deleted = 0
     ORDER BY stock_quantity ASC
     LIMIT 10
   `;
@@ -275,7 +278,7 @@ router.post("/getDashboardStats", (req, res) => {
 
                       db.query(
                         recentActivitiesQuery,
-                        recentActivitiesParams, // ✅ koristiš pravilno definirane parametre
+                        recentActivitiesParams,
                         (err, activitiesResult) => {
                           if (err)
                             return handleError(res, err, "Nedavne aktivnosti");
@@ -470,6 +473,5 @@ router.post("/getInventoryAlerts", (req, res) => {
     });
   });
 });
-
 
 module.exports = router;

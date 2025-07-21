@@ -33,7 +33,7 @@ router.post("/createOrder", (req, res) => {
 
     const count = result1[0].order_count + 1;
     const prefix = "SO";
-    const codePrefix = organizationId ? `O${organizationId}` : "U";
+    const codePrefix = organizationId ? `O${organizationId}` : `U${userId}`;
     const date = new Date();
     const customOrderCode = generateCustomCode(prefix, date, codePrefix, count);
 

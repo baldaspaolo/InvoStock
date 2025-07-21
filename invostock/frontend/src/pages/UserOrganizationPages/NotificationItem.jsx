@@ -72,7 +72,8 @@ const NotificationItem = () => {
 
       if (data.success) {
         setTimeout(() => {
-          navigate("/account");
+          localStorage.clear();
+          navigate("/login");
         }, 2000);
       } else {
         setJoiningMessage("");

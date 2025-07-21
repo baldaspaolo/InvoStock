@@ -216,9 +216,9 @@ const ContactsManagement = ({ user }) => {
               "last_name",
               "email",
               "phone_number",
+              "place",
               "address",
               "zip_code",
-              "place",
               "company_name",
               "tax_id",
             ].map((field) => (
@@ -232,6 +232,14 @@ const ContactsManagement = ({ user }) => {
                     ? "Telefon"
                     : field === "zip_code"
                     ? "Poštanski broj"
+                    : field === "place"
+                    ? "Mjesto"
+                    : field === "address"
+                    ? "Adresa"
+                    : field === "company_name"
+                    ? "Tvrtka"
+                    : field === "email"
+                    ? "Email adresa"
                     : field === "tax_id"
                     ? "TAX ID"
                     : field.replace("_", " ")}

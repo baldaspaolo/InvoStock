@@ -462,6 +462,12 @@ router.post("/updateStock", (req, res) => {
 
     const newQuantity = results[0].stock_quantity + quantityChange;
 
+    if (newQuantity < 0) {
+      return res.status(400).json({
+        error: "Nije moguće uskladiti zalihu: rezultat bi bio negativan broj",
+      });
+    }
+
     const updateQuery = `
       UPDATE inventory_items 
       SET stock_quantity = ?, 

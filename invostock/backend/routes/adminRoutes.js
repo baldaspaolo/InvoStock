@@ -736,7 +736,7 @@ router.get("/organizations/:orgId/users/:userId", (req, res) => {
   });
 });
 
-///
+
 router.put("/users/:id", (req, res) => {
   const { id } = req.params;
   const { name, email, organization_id } = req.body;
@@ -748,7 +748,7 @@ router.put("/users/:id", (req, res) => {
   });
 });
 
-// DELETE /api/admin/users/:id
+
 router.delete("/users/:id", (req, res) => {
   const { id } = req.params;
 

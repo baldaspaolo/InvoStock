@@ -42,6 +42,8 @@ const Expenses = () => {
   const [summary, setSummary] = useState(null);
   const [interval, setInterval] = useState("last_30_days");
   const [stats, setStats] = useState(null);
+  const [confirmDeleteVisibleExpense, setConfirmDeleteVisibleExpense] =
+    useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -180,6 +182,46 @@ const Expenses = () => {
     });
   }, [expenses, searchTerm, startDate, endDate]);
 
+  const confirmDeleteExpense = async () => {
+    try {
+      await fetch(
+        `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpense/${
+          selectedRow.id
+        }`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            organizationId: user.organization_id,
+          }),
+        }
+      );
+
+      setExpenses(expenses.filter((exp) => exp.id !== selectedRow.id));
+      fetchExpenses();
+      fetchCategories();
+      toast.current.show({
+        severity: "success",
+        summary: "Trošak obrisan",
+        detail: "Trošak je uspješno obrisan.",
+        life: 3000,
+      });
+    } catch (err) {
+      console.error("Greška kod brisanja:", err);
+      toast.current.show({
+        severity: "error",
+        summary: "Greška",
+        detail: "Neuspješno brisanje troška.",
+        life: 3000,
+      });
+    } finally {
+      setConfirmDeleteVisibleExpense(false);
+    }
+  };
+
   const menuItems = [
     {
       label: "Uredi",
@@ -200,24 +242,8 @@ const Expenses = () => {
     {
       label: "Obriši",
       icon: "pi pi-trash",
-      command: async () => {
-        if (window.confirm("Jeste li sigurni da želite obrisati trošak?")) {
-          try {
-            await fetch(
-              `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpense/${
-                selectedRow.id
-              }`,
-              {
-                method: "DELETE",
-              }
-            );
-            setExpenses(expenses.filter((exp) => exp.id !== selectedRow.id));
-            fetchExpenses();
-            fetchCategories();
-          } catch (err) {
-            console.error("Greška kod brisanja:", err);
-          }
-        }
+      command: () => {
+        setConfirmDeleteVisibleExpense(true);
       },
     },
   ];
@@ -251,9 +277,8 @@ const Expenses = () => {
           body: JSON.stringify({
             ...payload,
             userId: user.id,
-            organizationId: user.organization_id
-          })
-          
+            organizationId: user.organization_id,
+          }),
         }
       );
       setShowDialog(false);
@@ -273,7 +298,11 @@ const Expenses = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id, name: newCategoryName, organizationId: user.organization_id }),
+          body: JSON.stringify({
+            userId: user.id,
+            name: newCategoryName,
+            organizationId: user.organization_id,
+          }),
         }
       );
 
@@ -363,9 +392,8 @@ const Expenses = () => {
           body: JSON.stringify({
             name: editedName,
             userId: user.id,
-            organizationId: user.organization_id
-          })
-          
+            organizationId: user.organization_id,
+          }),
         }
       );
       const data = await res.json();
@@ -400,7 +428,9 @@ const Expenses = () => {
   const confirmDeleteCategory = async () => {
     try {
       const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpenseCategory/${editedCategory.id}`,
+        `${import.meta.env.VITE_API_URL}/api/expenses/deleteExpenseCategory/${
+          editedCategory.id
+        }`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -410,7 +440,7 @@ const Expenses = () => {
           }),
         }
       );
-      
+
       const data = await res.json();
 
       if (data.success) {
@@ -650,6 +680,7 @@ const Expenses = () => {
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.value })}
                   showIcon
+                  dateFormat="dd.mm.yy"
                   style={{ width: "100%" }}
                 />
               </div>
@@ -749,6 +780,14 @@ const Expenses = () => {
         icon="pi pi-exclamation-triangle"
         accept={confirmDeleteCategory}
         reject={() => setConfirmDeleteVisible(false)}
+      />
+      <ConfirmDialog
+        visible={confirmDeleteVisibleExpense}
+        onHide={() => setConfirmDeleteVisibleExpense(false)}
+        message="Jeste li sigurni da želite obrisati trošak?"
+        header="Potvrda brisanja"
+        icon="pi pi-exclamation-triangle"
+        accept={confirmDeleteExpense}
       />
     </div>
   );
