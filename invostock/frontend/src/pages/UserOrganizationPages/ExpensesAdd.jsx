@@ -34,7 +34,10 @@ const ExpensesAdd = () => {
       const res = await fetch(`${API_URL}/api/expenses/getExpenseCategories`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({
+          userId: user?.id,
+          organizationId: user?.organization_id,
+        }),
       });
       const data = await res.json();
       if (data.success) setCategories(data.categories);
