@@ -168,19 +168,26 @@ router.post("/updateStockAfterInvoice", (req, res) => {
   let errorOccurred = false;
 
   items.forEach((item) => {
-    const updateQuery = `
-      UPDATE inventory_items
-      SET stock_quantity = stock_quantity - ?
-      WHERE id = ? AND user_id = ? AND ${
-        organizationId ? "organization_id = ?" : "organization_id IS NULL"
-      }
-    `;
+    let updateQuery;
+    let params;
 
-    const params = organizationId
-      ? [item.quantity, item.itemId, userId, organizationId]
-      : [item.quantity, item.itemId, userId];
+    if (organizationId) {
+      updateQuery = `
+        UPDATE inventory_items
+        SET stock_quantity = stock_quantity - ?
+        WHERE id = ? AND organization_id = ?
+      `;
+      params = [item.quantity, item.itemId, organizationId];
+    } else {
+      updateQuery = `
+        UPDATE inventory_items
+        SET stock_quantity = stock_quantity - ?
+        WHERE id = ? AND user_id = ? AND organization_id IS NULL
+      `;
+      params = [item.quantity, item.itemId, userId];
+    }
 
-    db.query(updateQuery, params, (err) => {
+    db.query(updateQuery, params, (err, result) => {
       if (err && !errorOccurred) {
         errorOccurred = true;
         console.error(
@@ -188,7 +195,9 @@ router.post("/updateStockAfterInvoice", (req, res) => {
           item.itemId,
           err
         );
-        return res.status(500).json({ error: "Greška pri ažuriranju zaliha." });
+        return res
+          .status(500)
+          .json({ error: "Greška pri ažuriranju zaliha." });
       }
 
       completed++;
@@ -203,6 +212,7 @@ router.post("/updateStockAfterInvoice", (req, res) => {
     });
   });
 });
+
 
 router.post("/lowStock", (req, res) => {
   const { userId, organizationId } = req.body;

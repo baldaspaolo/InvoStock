@@ -32,7 +32,7 @@ const InvoicesAdd = () => {
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [showAddItemDialog, setShowAddItemDialog] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState([
-    { label: "Sve kategorije", value: "ALL" }, // Koristimo "ALL" umjesto null
+    { label: "Sve kategorije", value: "ALL" }, 
   ]);
 
   const { user } = useContext(AuthContext);

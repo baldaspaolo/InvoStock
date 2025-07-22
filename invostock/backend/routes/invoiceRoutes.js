@@ -2,6 +2,10 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+
+
+
+
 router.post("/getUserInvoices", (req, res) => {
   const { userId, organizationId } = req.body;
   console.log("REQ BODY:", req.body);
@@ -356,7 +360,7 @@ router.post("/createInvoice", async (req, res) => {
                   
                   try {
                     await fetch(
-                      `${process.env.API_URL}/api/email/sendInvoiceEmail`,
+                      `http://localhost:3000/api/email/sendInvoiceEmail`,
                       {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
