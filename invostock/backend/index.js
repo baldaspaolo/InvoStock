@@ -1,16 +1,30 @@
+const cors = require("cors");
 const express = require("express");
 const dotenv = require("dotenv");
-const cors = require("cors");
 const { Resend } = require("resend");
 
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = "0.0.0.0";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://invo-stock.vercel.app",
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
-app.use(cors());
 
 const userRoutes = require("./routes/userRoutes");
 const organizationRoutes = require("./routes/organizationRoutes");
@@ -44,66 +58,62 @@ app.use("/api/dashboard", dashboard);
 app.use("/api/admin", adminRoutes);
 app.use("/api/email", emailRoutes);
 
-app.post("/api/sendLowStockNotification", (req, res) => {
+app.post("/api/sendLowStockNotification", async (req, res) => {
   const { itemName, userEmail } = req.body;
 
-  if (!userEmail || !userEmail) {
-    return res
-      .status(400)
-      .json({ error: "Email i podatak o stavki su obavezni." });
+  if (!userEmail || !itemName) {
+    return res.status(400).json({
+      error: "Email i podatak o stavki su obavezni.",
+    });
   }
 
-  resend.emails.send(
-    {
+  try {
+    await resend.emails.send({
       from: "Acme <onboarding@resend.dev>",
       to: [userEmail],
       subject: `Niska zaliha za artikal: ${itemName}`,
       html: `<p>Obavještavamo vas da zaliha artikla <strong>${itemName}</strong> pada ispod minimalne razine. Molimo da poduzmete odgovarajuće mjere.</p>`,
-    },
-    (err, result) => {
-      if (err) {
-        console.error("Greška pri slanju emaila:", err);
-        return res
-          .status(500)
-          .json({ error: "Interna greška pri slanju emaila." });
-      }
+    });
 
-      res.status(200).json({
-        message: `Email obavijest za ${itemName} poslana korisniku.`,
-      });
-    }
-  );
+    res.status(200).json({
+      message: `Email obavijest za ${itemName} poslana korisniku.`,
+    });
+  } catch (err) {
+    console.error("Greška pri slanju emaila:", err);
+
+    res.status(500).json({
+      error: "Interna greška pri slanju emaila.",
+    });
+  }
 });
 
-app.post("/api/sendZeroStockNotification", (req, res) => {
+app.post("/api/sendZeroStockNotification", async (req, res) => {
   const { itemName, userEmail } = req.body;
 
-  if (!userEmail || !userEmail) {
-    return res
-      .status(400)
-      .json({ error: "Email i podatak o stavki su obavezni." });
+  if (!userEmail || !itemName) {
+    return res.status(400).json({
+      error: "Email i podatak o stavki su obavezni.",
+    });
   }
 
-  resend.emails.send(
-    {
+  try {
+    await resend.emails.send({
       from: "Acme <onboarding@resend.dev>",
       to: [userEmail],
-      subject: `Niska zaliha za artikal: ${itemName}`,
-      html: `<p>Obavještavamo vas da zaliha artikla <strong>${itemName}</strong> je jednaka nuli. Molimo da poduzmete odgovarajuće mjere.</p>`,
-    },
-    (err, result) => {
-      if (err) {
-        console.error("Greška pri slanju emaila:", err);
-        return res
-          .status(500)
-          .json({ error: "Interna greška pri slanju emaila." });
-      }
+      subject: `Zaliha artikla je jednaka nuli: ${itemName}`,
+      html: `<p>Obavještavamo vas da je zaliha artikla <strong>${itemName}</strong> jednaka nuli. Molimo da poduzmete odgovarajuće mjere.</p>`,
+    });
 
-      res.status(200).json({
-        message: `Email obavijest za ${itemName} poslana korisniku.`,
-      });
-    }
-  );
+    res.status(200).json({
+      message: `Email obavijest za ${itemName} poslana korisniku.`,
+    });
+  } catch (err) {
+    console.error("Greška pri slanju emaila:", err);
+
+    res.status(500).json({
+      error: "Interna greška pri slanju emaila.",
+    });
+  }
 });
 
 app.get("/", (req, res) => {
@@ -114,7 +124,6 @@ app.use((req, res) => {
   res.status(404).send("Ruta nije pronađena");
 });
 
-const HOST = "0.0.0.0";
 app.listen(PORT, HOST, () => {
   console.log(`Server pokrenut na http://${HOST}:${PORT}`);
 });
